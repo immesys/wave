@@ -86,10 +86,8 @@ type InheritanceMap struct {
 	//be the same as the partition that the dot is encrypted under, but
 	//it need not be
 	DelegationPartition string `msg:"delegationPartition"`
-	//This is the AES key that decodes the DOT contents
-	ContentsKey AESKey `msg:"contentsKey"`
 	//This is for end-to-end encryption
-	STARWAVE OAQUEKey `msg:"starwave"`
+	E2EE OAQUEKey `msg:"e2ee"`
 }
 
 //This information is public

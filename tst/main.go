@@ -1,8 +1,18 @@
 package main
 
-import "github.com/immesys/wave/geth"
+import (
+	"context"
+	"fmt"
+
+	"github.com/immesys/wave/geth"
+	"github.com/immesys/wave/storage"
+)
 
 func main() {
-	geth.Main([]string{"geth", "--verbosity", "6", "console"})
-
+	go geth.Main([]string{"geth", "--datadir", "/home/immesys/.wave"})
+	strg, err := storage.NewEthereumStorage(context.Background(), "/home/immesys/.wave/geth.ipc")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("all good\n")
 }
