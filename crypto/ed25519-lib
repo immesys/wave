@@ -1,0 +1,15 @@
+#!/bin/bash
+
+PREFIX=${PREFIX-}
+CC=${CC-"${PREFIX}gcc -O3 $*"}
+SSE2=$(grep sse2 /proc/cpuinfo >/dev/null && echo -msse2)
+$CC $SSE2 -E - </dev/null >/dev/null 2>/dev/null && CC="$CC $SSE2"
+LIB=ed25519-prims
+BITS=${BITS-$(getconf LONG_BIT|grep 64)}
+INSTALL=${INSTALL-/usr/local}
+ROOTCMD=${ROOTCMD-"ssh root@localhost"}
+
+${PREFIX}libtool --tag=CC --mode=compile $CC -c $LIB.c
+${PREFIX}libtool --tag=CC --mode=link $CC -module -rpath $INSTALL/lib$BITS/ $LIB.lo -o .libs/lib$LIB.la
+(cd .libs/.libs; tar cf - .) | $ROOTCMD "cd $INSTALL/lib$BITS; tar --no-same-owner -xvf -; /sbin/ldconfig"
+tar cf - ed25519.h ed25519-prims.h ed25519-donna-portable-identify.h | $ROOTCMD "cd $INSTALL/include; tar --no-same-owner -xvf -"
