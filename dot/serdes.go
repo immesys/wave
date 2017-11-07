@@ -1,6 +1,7 @@
 package dot
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -12,7 +13,7 @@ import (
 	"vuvuzela.io/crypto/bn256"
 
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/cryptutils"
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/hibe"
+	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
 	"github.com/davecgh/go-spew/spew"
 	wavecrypto "github.com/immesys/wave/crypto"
 	"github.com/immesys/wave/dot/objs"
@@ -21,10 +22,14 @@ import (
 
 type EncryptionContext interface {
 	SourceKeys() (sk []byte, vk []byte)
-	DstHIBEParams() *hibe.Params
-	SrcHIBEParams() (*hibe.Params, hibe.MasterKey)
+	DstOAQUEParams() *oaque.Params
+	SrcOAQUEParams() (*oaque.Params, oaque.MasterKey)
 	Auditors() [][]byte
 }
+
+const OAQUEMetaSlotPartitionLabel = "partitionLabel"
+const OAQUEMetaSlotPartition = "partition"
+const OAQUEMetaSlotResource = "resource"
 
 //Some DOTS do not have a namespace. If it does, return it
 //otherwise return "",false
@@ -45,6 +50,20 @@ func idToInts(id string) []*big.Int {
 		bigint.Mod(bigint, new(big.Int).Add(bn256.Order, big.NewInt(-1)))
 		bigint.Add(bigint, big.NewInt(1))
 		rv = append(rv, bigint)
+	}
+	return rv
+}
+func idToAttrMap(id string) oaque.AttributeList {
+	rv := make(map[oaque.AttributeIndex]*big.Int)
+	parts := strings.Split(id, "/")
+	index := oaque.AttributeIndex(0)
+	for _, p := range parts {
+		digest := sha256.Sum256([]byte(p))
+		bigint := new(big.Int).SetBytes(digest[:])
+		bigint.Mod(bigint, new(big.Int).Add(bn256.Order, big.NewInt(-1)))
+		bigint.Add(bigint, big.NewInt(1))
+		rv[index] = bigint
+		index++
 	}
 	return rv
 }
@@ -83,10 +102,27 @@ func aesGCMDecrypt(key []byte, ciphertext []byte, nonce []byte) ([]byte, bool) {
 	return plaintext, true
 }
 func partitionkey(ns string) string {
-	return "$/" + ns
+	return OAQUEMetaSlotPartitionLabel + "/" + ns
 }
 func globalpartitionkey() string {
-	return "$/$"
+	return OAQUEMetaSlotPartitionLabel + "/*"
+}
+func makeDelegationSlots(s string) map[int]string {
+	rv := make(map[int]string)
+	rv[0] = OAQUEMetaSlotPartition
+	parts := strings.Split(s, "/")
+	for i, p := range parts {
+		rv[i+1] = p
+	}
+	//TODO enforce max elements etc
+	return rv
+}
+func randInt() *big.Int {
+	rv, err := rand.Int(rand.Reader, bn256.Order)
+	if err != nil {
+		panic(err)
+	}
+	return rv
 }
 func generateECDHSecret(vk []byte, sk []byte, nonce []byte, dst []byte) []byte {
 	fmt.Printf("ECDH SECRET GEN vk=%x sk=%x nonce=%x\n", vk, sk, nonce)
@@ -113,11 +149,12 @@ func EncryptDOT(dot objs.DOT, ectx EncryptionContext) ([]byte, error) {
 	}
 	wavecrypto.SignBlob(sk, vk, dot.Content.Signature, msgpackDotContents)
 
-	//Encrypt the partition label
-	//This is encrypted under HIBE("$/<namespace>") if a namespace is present
-	//otherwise HIBE("$/$")
+	//Encrypt the partition label (the ID used to encrypt content and inheritance)
+	//This is encrypted under OAQUE[DSTVK](partition, <namespace>) if a namespace is present
+	//otherwise OAQUE[DSTVK](partition, "*")
 	ns, hasNS := dotNamespace(dot)
-	dstparams := ectx.DstHIBEParams()
+	dstparams := ectx.DstOAQUEParams()
+	//The ID to encrypt the partition label with
 	var idForPartition string
 	if hasNS {
 		idForPartition = partitionkey(ns)
@@ -130,7 +167,7 @@ func EncryptDOT(dot objs.DOT, ectx EncryptionContext) ([]byte, error) {
 	partLabelAESK := partLabelPool[:16]
 	partLabelNonce := partLabelPool[16:]
 	//Encrypt the group element
-	partLabelGroupElCiphertext, err := hibe.Encrypt(rand.Reader, dstparams, idToInts(idForPartition), partLabelGroupEl)
+	partLabelGroupElCiphertext, err := oaque.Encrypt(nil, dstparams, idToAttrMap(idForPartition), partLabelGroupEl)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +191,7 @@ func EncryptDOT(dot objs.DOT, ectx EncryptionContext) ([]byte, error) {
 	inheritanceAESK := sharedPool[16:32]
 	contentNonce := sharedPool[32:44]
 	inheritanceNonce := sharedPool[44:56]
-	sharedGroupElCiphertext, err := hibe.Encrypt(rand.Reader, dstparams, idToInts(dot.PartitionLabel), sharedGroupEl)
+	sharedGroupElCiphertext, err := oaque.Encrypt(nil, dstparams, idToAttrMap(dot.PartitionLabel), sharedGroupEl)
 	if err != nil {
 		return nil, err
 	}
@@ -200,28 +237,32 @@ func GTToSecretKey(gt *bn256.GT) [32]byte {
 
 type DecryptionContext interface {
 	NamespaceHints() []string
-	OurHIBEKey(vk []byte) hibe.MasterKey
-	HIBEParamsForVK(vk []byte) *hibe.Params
-	HIBEPartitionKeysFor(vk []byte) []*hibe.PrivateKey
-	HIBEDelegationKeyFor(vk []byte, partition string) *hibe.PrivateKey
+	OurOAQUEKey(vk []byte) oaque.MasterKey
 	OurSK(vk []byte) []byte
+
+	OAQUEParamsForVK(ctx context.Context, vk []byte) (*oaque.Params, error)
+	//We call onResult for each result and if it returns true we keep searching for results. If there
+	//is some kind of error, we stop calling onResult and return that error
+	OAQUEKeysFor(ctx context.Context, vk []byte, slots map[int]string, onResult func(k *oaque.PrivateKey) bool) error
+	//OAQUEPartitionKeysFor(ctx context.Context, vk []byte) ([]*oaque.PrivateKey, error)
+	//OAQUEDelegationKeyFor(ctx context.Context, vk []byte, partition string) (*oaque.PrivateKey, error)
 }
 
-func tryDecryptPartitionWithMaster(dt *objs.DOT, id string, p *hibe.Params, mk hibe.MasterKey) (string, bool) {
-	intID := idToInts(id)
-	privkey, err := hibe.KeyGenFromMaster(rand.Reader, p, mk, intID)
+func tryDecryptPartitionWithMaster(dt *objs.DOT, id string, p *oaque.Params, mk oaque.MasterKey) (string, bool) {
+	attrMap := idToAttrMap(id)
+	privkey, err := oaque.KeyGen(nil, p, mk, attrMap)
 	if err != nil {
 		panic(err)
 	}
 	return tryDecryptPartitionWithKey(dt, p, privkey)
 }
-func tryDecryptPartitionWithKey(dt *objs.DOT, p *hibe.Params, pk *hibe.PrivateKey) (string, bool) {
-	ciphertext := hibe.Ciphertext{}
+func tryDecryptPartitionWithKey(dt *objs.DOT, p *oaque.Params, pk *oaque.PrivateKey) (string, bool) {
+	ciphertext := oaque.Ciphertext{}
 	_, okay := ciphertext.Unmarshal(dt.EncryptedPartitionLabelKey)
 	if !okay {
 		return "", false
 	}
-	groupEl := hibe.Decrypt(pk, &ciphertext)
+	groupEl := oaque.Decrypt(pk, &ciphertext)
 	pool := cryptutils.GTToSecretKey(groupEl, make([]byte, 16+12))
 	partitionAESK := pool[:16]
 	partitionNonce := pool[16:]
@@ -237,7 +278,10 @@ func tryDecryptPartitionWithKey(dt *objs.DOT, p *hibe.Params, pk *hibe.PrivateKe
 //  - dot is invalid (never need to look again)
 //  - missing a key (look again whenever we get another dot from DST)
 //  -
-func DecryptDOT(blob []byte, dctx DecryptionContext) (*objs.DOT, error) {
+func DecryptDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*objs.DOT, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	//First, deserialize the top level
 	dot := &objs.DOT{}
 	remainder, err := dot.UnmarshalMsg(blob)
@@ -250,8 +294,11 @@ func DecryptDOT(blob []byte, dctx DecryptionContext) (*objs.DOT, error) {
 	spew.Dump(dot)
 	fmt.Printf("deserialized top level. Dst VK is: %s\n", wavecrypto.FmtKey(dot.PlaintextHeader.DSTVK))
 	//TODO sanitize DOT object (plaintext header not null, dstvk correct size etc etc)
-	masterkey := dctx.OurHIBEKey(dot.PlaintextHeader.DSTVK)
-	hibeParamsForVK := dctx.HIBEParamsForVK(dot.PlaintextHeader.DSTVK)
+	masterkey := dctx.OurOAQUEKey(dot.PlaintextHeader.DSTVK)
+	oaqueParamsForVK, err := dctx.OAQUEParamsForVK(ctx, dot.PlaintextHeader.DSTVK)
+	if err != nil {
+		return nil, err
+	}
 	foundLabel := false
 	if masterkey != nil {
 		//This DOT is to one of our VKs
@@ -294,8 +341,19 @@ func DecryptDOT(blob []byte, dctx DecryptionContext) (*objs.DOT, error) {
 	} else {
 		//Try all the private keys we have for this VK. There is no heirarchy
 		//so no point extending keys
-		for _, pk := range dctx.HIBEPartitionKeysFor(dot.PlaintextHeader.DSTVK) {
-			partition, ok := tryDecryptPartitionWithKey(dot, hibeParamsForVK, pk)
+		partitionslots := make(map[int]string)
+		partitionslots[0] = OAQUEMetaSlotPartitionLabel
+		allprivatekeys := []*oaque.PrivateKey{}
+		err := dctx.OAQUEKeysFor(ctx, dot.PlaintextHeader.DSTVK, partitionslots, func(k *oaque.PrivateKey) bool {
+			allprivatekeys = append(allprivatekeys, k)
+			return true
+		})
+		if err != nil {
+			return nil, err
+		}
+		//TODO we could maybe just try the keys inside the callback above rather
+		for _, pk := range allprivatekeys {
+			partition, ok := tryDecryptPartitionWithKey(dot, oaqueParamsForVK, pk)
 			if ok {
 				dot.PartitionLabel = partition
 				foundLabel = true
@@ -310,27 +368,35 @@ func DecryptDOT(blob []byte, dctx DecryptionContext) (*objs.DOT, error) {
 	}
 
 	//Ok now we have the partition label, lets try decode the content using that label
-	var sharedPrivateKey *hibe.PrivateKey
+	var sharedPrivateKey *oaque.PrivateKey
 	if masterkey != nil {
 		//Just generate it ourselves
-		intID := idToInts(dot.PartitionLabel)
-		sharedPrivateKey, err = hibe.KeyGenFromMaster(rand.Reader, hibeParamsForVK, masterkey, intID)
+		attrMap := idToAttrMap(dot.PartitionLabel)
+		sharedPrivateKey, err = oaque.KeyGen(nil, oaqueParamsForVK, masterkey, attrMap)
 		if err != nil {
 			return nil, fmt.Errorf("Could not generate content key: %v", err)
 		}
 	} else {
 		//We need to get this from our pool of keys
-		sharedPrivateKey = dctx.HIBEDelegationKeyFor(dot.PlaintextHeader.DSTVK, dot.PartitionLabel)
+		delegationSlots := makeDelegationSlots(dot.PartitionLabel)
+		var sharedPrivateKey *oaque.PrivateKey
+		err = dctx.OAQUEKeysFor(ctx, dot.PlaintextHeader.DSTVK, delegationSlots, func(k *oaque.PrivateKey) bool {
+			sharedPrivateKey = k
+			return false
+		})
+		if err != nil {
+			return nil, err
+		}
 		if sharedPrivateKey == nil {
 			return nil, fmt.Errorf("We do not have the delegation key for this DOT")
 		}
 	}
-	ciphertext := hibe.Ciphertext{}
+	ciphertext := oaque.Ciphertext{}
 	_, ok := ciphertext.Unmarshal(dot.DelegationKeyhole)
 	if !ok {
 		return nil, fmt.Errorf("Could not unmarshal delegation key ciphertext")
 	}
-	sharedGroupEl := hibe.Decrypt(sharedPrivateKey, &ciphertext)
+	sharedGroupEl := oaque.Decrypt(sharedPrivateKey, &ciphertext)
 	sharedPool := cryptutils.GTToSecretKey(sharedGroupEl, make([]byte, 16+16+12+12))
 	contentAESK := sharedPool[0:16]
 	inheritanceAESK := sharedPool[16:32]

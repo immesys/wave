@@ -7,25 +7,30 @@ type Ed25519Signature []byte
 type Ed25519VK []byte
 type OAQUEKey []byte
 
+//We want to encrypt a dot to also include expiry
+//easy way: need permission at the time the dot was granted
+//          that sucks
+//could encrypt multiple keys at different times, allowing dst to decrypt
+
+//The actual partition ID is OQUE [ partition_label, namespace ]
+
 //This is a DOT as it appears on the wire
 type DOT struct {
 	//Public information about the DOT
 	PlaintextHeader *PlaintextHeader `msg:"header"`
-	//Encrypted using AES128(ContentKey_AES128)
+	//Encrypted using AES128(ContentKey)
 	EncryptedContent []byte `msg:"content"`
-
-	//Encrypted using HIBE(dstvk, $/<namespace>)
-	EncryptedPartitionLabel []byte `msg:"plabel"`
-	//This key requires knowing the namespace:
-	EncryptedPartitionLabelKey []byte `msg:"plabelk"`
-	//This key requires being the DST (not delegated)
-	EncryptedDirectPartLabelKey []byte `msg:"plabelk2"`
-	//TODO when marshalling partition key for delegation, remove the element called B
-
 	//Encrypted using AES128(InheritanceKey)
 	EncryptedInheritance []byte `msg:"inheritance"`
 
-	//This, when ulocked with HIBE(DSTVK, Partition) contains the AES
+	//Encrypted using AES128(PartitionLabelKey), contains the OAQUE ID for delegation keyhole
+	EncryptedPartitionLabel []byte `msg:"partition"`
+	//This is an OAQUE ciphertext requriing DSTVK[partition_label, namespace]
+	EncryptedPartitionLabelKey []byte `msg:"plabelk"`
+	//This is an Ed25519 ciphertext requiring DstVK
+	EncryptedDirectPartLabelKey []byte `msg:"plabelk2"`
+
+	//This, when ulocked with OQAUE(DSTVK, "partition", Partition) contains the AES
 	//keys for both the content and the inheritance
 	DelegationKeyhole []byte `msg:"delegationKeyhole"`
 
@@ -76,17 +81,19 @@ type AttributeMap struct {
 //Contains extra data that DOT recipients (and delegated recipients) obtain
 //but not proof recipients
 type InheritanceMap struct {
-	//This key allows the inheritor to read the partitions of dots
+	//This key allows the inheritor to read the partition labels of dots
 	//granted to SRCVK under the same namespace
-	PartitionKey HIBEKEY `msg:"partitionKey"`
+	PartitionLabelKey OAQUEKey `msg:"partitionLabelKey"`
 	//This key allows the inheritor to decrypt dots granted to
 	//SRCVK with a partition at or below DelegationPartition
-	DelegationKey HIBEKEY `msg:"delegationKey"`
-	//This is the partition key being delegated. In general this would
+	DelegationKey OAQUEKey `msg:"delegationKey"`
+	//This is the partition key being delegated (the ID for DelegationKey).
+	//In general this would
 	//be the same as the partition that the dot is encrypted under, but
 	//it need not be
 	DelegationPartition string `msg:"delegationPartition"`
-	//This is for end-to-end encryption
+	//This is for end-to-end encryption, the ID should be obvious from
+	//the permissions in the content of the dot
 	E2EE OAQUEKey `msg:"e2ee"`
 }
 
