@@ -43,7 +43,7 @@ type DOT struct {
 
 	//Decrypted version (not transmitted, populated later)
 	Content        *DOTContent     `msg:"-"`
-	PartitionLabel string          `msg:"-"`
+	PartitionLabel [][]byte        `msg:"-"`
 	Inheritance    *InheritanceMap `msg:"-"`
 }
 
@@ -78,6 +78,8 @@ type AttributeMap struct {
 	TTL     int8   `msg:"ttl"`
 }
 
+type PartitionLabel [][]byte
+
 //Contains extra data that DOT recipients (and delegated recipients) obtain
 //but not proof recipients
 type InheritanceMap struct {
@@ -91,7 +93,7 @@ type InheritanceMap struct {
 	//In general this would
 	//be the same as the partition that the dot is encrypted under, but
 	//it need not be
-	DelegationPartition string `msg:"delegationPartition"`
+	DelegationPartition [][]byte `msg:"delegationPartition"`
 	//This is for end-to-end encryption, the ID should be obvious from
 	//the permissions in the content of the dot
 	E2EE OAQUEKey `msg:"e2ee"`

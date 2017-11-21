@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
+	"github.com/immesys/wave/dot"
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -60,14 +61,77 @@ type LowLevelStorage interface {
 	Store(path string, from msgp.Marshaler) (err error)
 }
 
-//
+type PendingDOTResult struct {
+	Err        error
+	Ciphertext []byte
+	Hash       []byte
+	//Only for pending without partition
+	SecretIndex *int
+}
+
+type Secret struct {
+	//If true, this is a main content key,
+	//If false this is a label key
+	IsPartitionKey bool
+	Slots          [][]byte
+	Key            *oaque.PrivateKey
+}
+
+type InterestingEntityResult struct {
+	VK  []byte
+	Err error
+}
+
+//Retrieving dots:
+//for pending with partition:
+// we need to be able to retrieve only the dots that we expect to be able to decrypt
+// lookup(dstvk, slots)
+//for pending
+// naive: try every partition label key when we get it
+// later: filter by interesting namespzaces
+
 type WaveState interface {
 	LoadSecretEd25519Keys() (map[string][]byte, error)
 	LoadMasterOAQUEKeys() (map[string]oaque.MasterKey, error)
-	LoadNamespaceHints() ([]string, error)
+	//LoadNamespaceHints() ([]string, error)
+
+	//An entity that should be inspected
+	//Pipeline is IGNORED->INTERESTING
+	InsertInterestingEntity(ctx context.Context, vk []byte) error
+	GetInterestingEntities(ctx context.Context) chan InterestingEntityResult
+
+	//Fully decoded DOT
+	InsertDOT(ctx context.Context, dt *dot.DOT) error
+
+	//Not decoded, but we know the ID of the decryption key
+	InsertPendingDOTWithPartition(ctx context.Context, ciphertext []byte, dothash []byte, dstvk []byte, partition [][]byte) error
+	RemovePendingDOTWithPartition(ctx context.Context, dothash []byte, dstvk []byte) error
+
+	//Returns all the dots that match the given partition
+	GetPendingDOTsWithPartition(ctx context.Context, dstvk []byte, partition [][]byte) chan PendingDOTResult
+
+	//Get the max number of partition label
+	GetPartitionLabelSecretIndex(ctx context.Context, dstvk []byte) (int, error)
+
+	//Not decoded, but we think we would want to try decode it in future
+	// The secret index is the index of the last secret we used to try decode the dot's partition
+	InsertPendingDOT(ctx context.Context, ciphertext []byte, dothash []byte, dstvk []byte, secretindex int) error
+	UpdatePendingDOTSecretIndex(ctx context.Context, dothash []byte, dstvk []byte, secretindex int) error
+	RemovePendingDOT(ctx context.Context, dothash []byte, dstvk []byte) error
+
+	//If you return a result with err != nil it must be the last in the channel
+	//If the context is cancelled you must close the channel (and not deadlock)
+	GetPendingDOTs(ctx context.Context, dstvk []byte) chan PendingDOTResult
+
+	//This will also call InsertOAQUEKeysFor but will add it to the secret log for the VK
+	InsertPartitionLabelSecret(ctx context.Context, dstvk []byte, ciphertext []byte, partition [][]byte) error
+	GetPartitionLabelSecret(ctx context.Context, dstvk []byte, index int) (*Secret, error)
+
 	GetEntityDOTIndex(ctx context.Context, vk []byte) (int, error)
+	SetEntityDOTIndex(ctx context.Context, vk []byte, index int) error
 	GetOAQUEParamsForVK(ctx context.Context, vk []byte) ([]byte, error)
-	OAQUEKeysFor(ctx context.Context, vk []byte, slots map[int]string, onResult func(k []byte) bool) error
+	OAQUEKeysFor(ctx context.Context, vk []byte, slots [][]byte, onResult func(k []byte) bool) error
+	InsertOAQUEKeysFor(ctx context.Context, vk []byte, slots [][]byte, key []byte) error
 }
 
 //

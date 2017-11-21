@@ -1,6 +1,7 @@
 package dot
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/crypto"
 	"github.com/immesys/wave/dot/objs"
+	"github.com/immesys/wave/params"
 )
 
 type stub struct {
@@ -50,22 +52,45 @@ func (s *stub) OAQUEParamsForVK(ctx context.Context, vk []byte) (*oaque.Params, 
 func (s *stub) OurSK(vk []byte) []byte {
 	return s.dstsk
 }
-func (s *stub) OAQUEPartitionKeysFor(ctx context.Context, vk []byte) ([]*oaque.PrivateKey, error) {
-	gk := globalpartitionkey()
-	//fmt.Printf("dp is %v\n, dstm")
-	gpk, e := oaque.KeyGen(nil, s.dp, s.dstmk, idToAttrMap(gk))
+
+func (s *stub) OAQUEKeysForPartitionLabel(ctx context.Context, vk []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
+	return s.OAQUEKeysFor(ctx, vk, slots, onResult)
+}
+func (s *stub) OAQUEKeysForContent(ctx context.Context, vk []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
+	return s.OAQUEKeysFor(ctx, vk, slots, onResult)
+}
+func (s *stub) OAQUEKeysFor(ctx context.Context, vk []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
+	var params *oaque.Params
+	var mk oaque.MasterKey
+	if bytes.Equal(s.dstvk, vk) {
+		params = s.dp
+		mk = s.dstmk
+	} else {
+		panic("unknown vk")
+	}
+	pk, e := oaque.KeyGen(nil, params, mk, slotsToAttrMap(slots))
 	if e != nil {
 		panic(e)
 	}
-	nsk := partitionkey("namespace")
-	npk, e := oaque.KeyGen(nil, s.dp, s.dstmk, idToAttrMap(nsk))
+	onResult(pk)
+	return nil
+}
+func (s *stub) OAQUEPartitionKeysFor(ctx context.Context, vk []byte) ([]*oaque.PrivateKey, error) {
+	gk := globalpartitionkey()
+	//fmt.Printf("dp is %v\n, dstm")
+	gpk, e := oaque.KeyGen(nil, s.dp, s.dstmk, slotsToAttrMap(gk))
+	if e != nil {
+		panic(e)
+	}
+	nsk := partitionkey([]byte("namespace"))
+	npk, e := oaque.KeyGen(nil, s.dp, s.dstmk, slotsToAttrMap(nsk))
 	if e != nil {
 		panic(e)
 	}
 	return []*oaque.PrivateKey{gpk, npk}, nil
 }
-func (s *stub) OAQUEDelegationKeyFor(ctx context.Context, vk []byte, partition string) (*oaque.PrivateKey, error) {
-	pk, e := oaque.KeyGen(nil, s.dp, s.dstmk, idToAttrMap(partition))
+func (s *stub) OAQUEDelegationKeyFor(ctx context.Context, vk []byte, partition [][]byte) (*oaque.PrivateKey, error) {
+	pk, e := oaque.KeyGen(nil, s.dp, s.dstmk, slotsToAttrMap(partition))
 	if e != nil {
 		panic(e)
 	}
@@ -94,13 +119,15 @@ func TestSerdes(t *testing.T) {
 	dot.Content = &objs.DOTContent{
 		SRCVK:       st.vk,
 		DSTVK:       st.dstvk,
-		URI:         "namespace/foo/bard",
+		URI:         "CSnDzka2Nuu5e0UmOR6FH9YEYwIdEx5GwaD_ms9rDV0=/foo/bard",
 		Permissions: []string{"wave:publish"},
 	}
 	dot.PlaintextHeader = &objs.PlaintextHeader{
 		DSTVK: st.dstvk,
 	}
-	dot.PartitionLabel = "foo/bar"
+	dot.PartitionLabel = make([][]byte, params.OAQUESlots)
+	dot.PartitionLabel[0] = []byte(OAQUEMetaSlotPartition)
+	dot.PartitionLabel[1] = []byte("hello")
 	dot.Inheritance = &objs.InheritanceMap{}
 	representation, err := EncryptDOT(dot, &st)
 	if err != nil {

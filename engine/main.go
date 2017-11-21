@@ -1,194 +1,194 @@
 package engine
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
 	wavecrypto "github.com/immesys/wave/crypto"
 	"github.com/immesys/wave/dot"
 	"github.com/immesys/wave/localdb"
-	"github.com/immesys/wave/storage"
 )
 
-//how to develop this?
-// guiding principles: we don't take an action based on a new BC event
-// but rather based on a task
-// BUT we may also trigger some tasks based on observed logs blooms
-// in the block headers
-// actions:
-//  A) update an entity (fields, attestations)
-//  B) update dot index (dstvk, index)
-//  C) add out-of-band DOT
-// b+c will trigger further actions that must get added to the work queue
-
-// When agent first starts, all interesting entities will be updated.
-// after that, updates are triggered by header block blooms
-
-type Engine struct {
-	ws localdb.WaveState
-	st storage.Storage
-	//all the SKs that we have
-	secretEd25519Keys map[string][]byte
-	masterOAQUEKeys   map[string]oaque.MasterKey
-	namespaceHints    []string
-}
-
-type DecryptionContext interface {
-	NamespaceHints() []string
-	OurOAQUEKey(vk []byte) oaque.MasterKey
-	OAQUEParamsForVK(vk []byte) *oaque.Params
-	OAQUEPartitionKeysFor(vk []byte) []*oaque.PrivateKey
-	OAQUEDelegationKeyFor(vk []byte, partition string) *oaque.PrivateKey
-	OurSK(vk []byte) []byte
-}
-
-func (e *Engine) Init() error {
-	var err error
-	e.secretEd25519Keys, err = e.ws.LoadSecretEd25519Keys()
+//This should try decrypt the dot, and insert
+//it into any work queues. It should only return an error if
+//something abnormal happens and the dot should not be considered
+//as processed (i.e processDot should be called again on the same
+//ciphertext again). This particular method assumes the DOT is new
+//so even if it fails to decrypt, it should be inserted into the database
+//for later processing
+func (e *Engine) ProcessNewDOT(ctx context.Context, ciphertext []byte, contractDstVK []byte) error {
+	sidx, err := e.ws.GetPartitionLabelSecretIndex(ctx, contractDstVK)
 	if err != nil {
 		return err
 	}
-	e.namespaceHints, err = e.ws.LoadNamespaceHints()
+	pr, err := dot.DecryptDOT(ctx, ciphertext, e)
 	if err != nil {
 		return err
 	}
-	e.masterOAQUEKeys, err = e.ws.LoadMasterOAQUEKeys()
-	if err != nil {
-		return err
+	if pr.BadOrMalformed {
+		//Do not process the dot, it is bad
+		return nil
+	}
+	if !bytes.Equal(pr.DOT.PlaintextHeader.DSTVK, contractDstVK) {
+		//Do not process the dot, it was submitted badly
+		return nil
+	}
+	if pr.FullyDecrypted {
+		//We fully decoded the dot
+		//We need to trigger a scan of the granting entity's dots.
+		e.entitiesRequiringFullScan[wavecrypto.FmtKey(pr.DOT.Content.SRCVK)] = true
+		if err := e.ws.InsertInterestingEntity(ctx, pr.DOT.Content.SRCVK); err != nil {
+			return err
+		}
+		return e.ws.InsertDOT(ctx, pr.DOT)
+	}
+	if pr.PartitionDecrypted {
+		//We decoded the partition, but not the dot itself
+		return e.ws.InsertPendingDOTWithPartition(ctx, ciphertext, pr.Hash, pr.DOT.PlaintextHeader.DSTVK, pr.DOT.PartitionLabel)
+	}
+	//We did not decode the dot, but we think we may be interested in it
+	//going forward
+	return e.ws.InsertPendingDOT(ctx, ciphertext, pr.Hash, pr.DOT.PlaintextHeader.DSTVK, sidx)
+}
+
+type Slots [][]byte
+
+//This will bring up to date new entities that have been deemed interesting
+func (e *Engine) PendingTasks(ctx context.Context) error {
+	for entity, _ := range e.entitiesRequiringFullScan {
+		entityVK, err := wavecrypto.UnFmtKey(entity)
+		if err != nil {
+			return err
+		}
+		if err := e.UpdateEntityNewDOTS(ctx, entityVK); err != nil {
+			return err
+		}
+		if err := e.UpdateEntityPendingDOTs(ctx, entityVK); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (e *Engine) NamespaceHints() []string {
-	return e.NamespaceHints()
-}
-
-func (e *Engine) OurOAQUEKey(vk []byte) oaque.MasterKey {
-	return e.masterOAQUEKeys[wavecrypto.FmtKey(vk)]
-}
-func (e *Engine) OAQUEParamsForVK(ctx context.Context, vk []byte) (*oaque.Params, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-	blob, err := e.ws.GetOAQUEParamsForVK(ctx, vk)
-	if err != nil {
-		return nil, err
-	}
-	rv := &oaque.Params{}
-	rv, ok := rv.Unmarshal(blob)
-	if !ok {
-		return nil, fmt.Errorf("failed to unmarshal params object")
-	}
-	return rv, nil
-}
-
-func (e *Engine) OAQUEKeysFor(ctx context.Context, vk []byte, slots map[int]string, onResult func(k *oaque.PrivateKey) bool) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	var err error
-	oerr := e.ws.OAQUEKeysFor(ctx, vk, slots, func(k []byte) bool {
-		pk := &oaque.PrivateKey{}
-		var ok bool
-		pk, ok := pk.Unmarshal(k)
-		if !ok {
-			oerr = fmt.Errorf("could not unmarshal private key")
-			return false
+func (e *Engine) UpdateAllInterestingEntities(ctx context.Context) error {
+	subctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	for res := range e.ws.GetInterestingEntities(subctx) {
+		if res.Err != nil {
+			return res.Err
 		}
-		return onResult(pk)
-	})
-	if oerr != nil {
-		return oerr
+		if err := e.UpdateEntityNewDOTS(ctx, res.VK); err != nil {
+			return err
+		}
+		if err := e.UpdateEntityPendingDOTs(ctx, res.VK); err != nil {
+			return err
+		}
 	}
-	return err
 }
 
-// }
-// func (e *Engine) OAQUEPartitionKeysFor(ctx context.Context, vk []byte) ([]*oaque.PrivateKey, error) {
-// 	if ctx.Err() != nil {
-// 		return nil, ctx.Err()
-// 	}
-// 	blobs, err := e.ws.GetOAQUEPartitionKeysFor(ctx, vk)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	rv := make([]*oaque.PrivateKey, len(blobs))
-// 	for idx, blob := range blobs {
-// 		pk := &oaque.PrivateKey{}
-// 		var ok bool
-// 		pk, ok = pk.Unmarshal(blob)
-// 		if !ok {
-// 			return nil, fmt.Errorf("Could not unmarshal private key")
-// 		}
-// 		rv[idx] = pk
-// 	}
-// 	return rv, nil
-// }
-//
-// //TODO: represent partition as slots properly
-//
-// func (e *Engine) OAQUEDelegationKeyFor(ctx context.Context, vk []byte, partition string) (*oaque.PrivateKey, error) {
-// 	if ctx.Err() != nil {
-// 		return nil, ctx.Err()
-// 	}
-// 	blob, err := e.ws.GetOAQUEDelegationKeyFor(ctx, vk, partition)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	pk := &oaque.PrivateKey{}
-// 	var ok bool
-// 	pk, ok = pk.Unmarshal(blob)
-// 	if !ok {
-// 		return nil, fmt.Errorf("Could not unmarshal private key")
-// 	}
-// 	return pk, nil
-// }
-func (e *Engine) OurSK(vk []byte) []byte {
-	return e.secretEd25519Keys[wavecrypto.FmtKey(vk)]
+//For a given DSTVK, bring all the pending dots up to date with any new partition label
+//secrets. This should be called when we suspect this is actually required
+func (e *Engine) processPartitionLabelSecrets(ctx context.Context, dstvk []byte) error {
+	targetIndex, err := e.ws.GetPartitionLabelSecretIndex(ctx, dstvk)
+	if err != nil {
+		return err
+	}
+	secretCache := make(map[int]*localdb.Secret)
+	subctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	for res := range e.ws.GetPendingDOTs(subctx, dstvk) {
+		if res.Err != nil {
+			return res.Err
+		}
+		sidx := *res.SecretIndex
+		for sidx < targetIndex {
+			secret, ok := secretCache[sidx]
+			if !ok {
+				var serr error
+				secret, serr = e.ws.GetPartitionLabelSecret(ctx, dstvk, sidx)
+				if serr != nil {
+					return serr
+				}
+				if secret == nil {
+					panic("Unexpected nil secret")
+				}
+				secretCache[sidx] = secret
+			}
+		}
+		decodeResult, err := dot.DecryptDOT(ctx, res.Ciphertext, e.decryptionContextWithPartitionKeys(secretCache))
+		if err != nil {
+			return err
+		}
+		if decodeResult.BadOrMalformed {
+			//New information leads us to believe we must delete this dot
+			if err := e.ws.RemovePendingDOT(ctx, res.Hash, dstvk); err != nil {
+				return err
+			}
+		} else if decodeResult.FullyDecrypted {
+			//Great, lets add it to the pool
+			if err := e.ws.InsertDOT(ctx, decodeResult.DOT); err != nil {
+				return err
+			}
+			//And remove it from pending list
+			if err := e.ws.RemovePendingDOT(ctx, res.Hash, dstvk); err != nil {
+				return err
+			}
+		} else if decodeResult.PartitionDecrypted {
+			//We need to move this dot to partition decrypted
+			if err := e.ws.InsertPendingDOTWithPartition(ctx, res.Ciphertext, res.Hash, dstvk, decodeResult.DOT.PartitionLabel); err != nil {
+				return err
+			}
+			if err := e.ws.RemovePendingDOT(ctx, res.Hash, dstvk); err != nil {
+				return err
+			}
+		} else {
+			//We failed to decrypt it
+			//We need to update the secret index
+			if err := e.ws.UpdatePendingDOTSecretIndex(ctx, res.Hash, dstvk, targetIndex); err != nil {
+				return err
+			}
+		}
+	}
 }
 
-func (e *Engine) UpdateEntityDOTS(ctx context.Context, vk []byte) error {
-	//Update the fields
-	//TODO
-	// index, err := e.ws.GetEntityFieldIndex(ctx, vk)
-	// if err != nil {
-	// 	return err
-	// }
-	// for {
-	// 	if ctx.Err() != nil {
-	// 		return ctx.Err()
-	// 	}
-	// 	fieldblob, stateInformation, err := e.st.RetrieveEntityField(ctx, vk, index)
-	// 	//TODO verify fieldblob
-	// }
-	// Update the attestations
-	// TODO
+//The caller must determine that we are actually interested in updating the
+//given entity's pending dots.
+func (e *Engine) UpdateEntityPendingDOTs(ctx context.Context, vk []byte) error {
+
+}
+
+//The caller must determine that we are actually interested in updating the
+//given entity's dots. This pulls from the blockchain if required.
+func (e *Engine) UpdateEntityNewDOTS(ctx context.Context, vk []byte) error {
 	// Update the dots
 	index, err := e.ws.GetEntityDOTIndex(ctx, vk)
+	if err != nil {
+		return err
+	}
+	indexChanged := false
 	for {
-		dotreg, stateInformation, err := e.st.RetrieveDOTByVKIndex(ctx, vk, index)
+		dotreg, _, err := e.st.RetrieveDOTByVKIndex(ctx, vk, index)
 		if dotreg == nil {
 			//index already points to next (waiting)
 			break
 		}
-		ddot, err := dot.DecryptDOT(dotreg.Data, e)
-
-		// We process a DOT now. result
-		// - we fully processed it
-		// - we know the partition label but cannot process it further
-		//  > re-examine when we obtain
-		// - we could not decode it at all
+		err = e.ProcessNewDOT(ctx, dotreg.Data, dotreg.DstVK)
+		if err != nil {
+			return err
+		}
 
 		index++
+		indexChanged = true
 		if index == dotreg.MaxIndex {
 			break
 		}
-
 	}
-	//Add
-	//Add interesting namespace to DB
-	//Get the lates
-	//Enqueue UPD_ENT(VK)
-	//Enqueue UPD_DOT(DSTVK)
+	if indexChanged {
+		return e.ws.SetEntityDOTIndex(ctx, vk, index)
+	}
+	return nil
+}
+
+func (e *Engine) UpdateEntityMisc(ctx context.Context, vk []byte) error {
+	panic("TODO")
 }
