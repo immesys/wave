@@ -19,7 +19,7 @@ var extrainfoDatabase map[common.Hash]*extrainfo
 func init() {
 	extrainfoDatabase = make(map[common.Hash]*extrainfo)
 	extrainfoDatabase[common.HexToHash("5e31ddf9f93f71ee232ca25885f39fa8b669f51013c9c01db5e7a2772ef7d69f")] = &extrainfo{
-		RegistryContractAddress: common.HexToAddress("0x6D7030A63DEA0C9BbF32D76Cf6B03f93E818CD8F"),
+		RegistryContractAddress: common.HexToAddress("0x7Cde6B054E09369966E1adC8a8172faAdD1a3a51"),
 		AliasContractAddress:    common.HexToAddress("0x5a76921D67b863E7d6c77ACfe1307D2ACEdd9007"),
 	}
 }
