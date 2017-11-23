@@ -13,7 +13,7 @@ import (
 )
 
 // AliasAPIABI is the input ABI used to generate the binding from.
-const AliasAPIABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"tld\",\"type\":\"bytes32\"},{\"name\":\"domain\",\"type\":\"bytes32\"},{\"name\":\"subdomain\",\"type\":\"bytes32\"},{\"name\":\"value\",\"type\":\"bytes\"}],\"name\":\"CreateSubdomain\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"tld\",\"type\":\"bytes32\"}],\"name\":\"CreateTLD\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"toplevels\",\"outputs\":[{\"name\":\"controller\",\"type\":\"address\",\"value\":\"0x0000000000000000000000000000000000000000\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]"
+const AliasAPIABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"tld\",\"type\":\"bytes32\"},{\"name\":\"domain\",\"type\":\"bytes32\"},{\"name\":\"subdomain\",\"type\":\"bytes32\"}],\"name\":\"GetSubdomain\",\"outputs\":[{\"name\":\"v\",\"type\":\"bytes\",\"value\":\"0x\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"tld\",\"type\":\"bytes32\"},{\"name\":\"domain\",\"type\":\"bytes32\"},{\"name\":\"subdomain\",\"type\":\"bytes32\"},{\"name\":\"value\",\"type\":\"bytes\"}],\"name\":\"CreateSubdomain\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"tld\",\"type\":\"bytes32\"},{\"name\":\"domain\",\"type\":\"bytes32\"}],\"name\":\"GetHead\",\"outputs\":[{\"name\":\"head\",\"type\":\"bytes32\",\"value\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"tld\",\"type\":\"bytes32\"}],\"name\":\"CreateTLD\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"toplevels\",\"outputs\":[{\"name\":\"controller\",\"type\":\"address\",\"value\":\"0x0000000000000000000000000000000000000000\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
 // AliasAPI is an auto generated Go binding around an Ethereum contract.
 type AliasAPI struct {
@@ -140,6 +140,58 @@ func (_AliasAPI *AliasAPITransactorRaw) Transfer(opts *bind.TransactOpts) (*type
 // Transact invokes the (paid) contract method with params as input values.
 func (_AliasAPI *AliasAPITransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	return _AliasAPI.Contract.contract.Transact(opts, method, params...)
+}
+
+// GetHead is a free data retrieval call binding the contract method 0x869753f0.
+//
+// Solidity: function GetHead(tld bytes32, domain bytes32) constant returns(head bytes32)
+func (_AliasAPI *AliasAPICaller) GetHead(opts *bind.CallOpts, tld [32]byte, domain [32]byte) ([32]byte, error) {
+	var (
+		ret0 = new([32]byte)
+	)
+	out := ret0
+	err := _AliasAPI.contract.Call(opts, out, "GetHead", tld, domain)
+	return *ret0, err
+}
+
+// GetHead is a free data retrieval call binding the contract method 0x869753f0.
+//
+// Solidity: function GetHead(tld bytes32, domain bytes32) constant returns(head bytes32)
+func (_AliasAPI *AliasAPISession) GetHead(tld [32]byte, domain [32]byte) ([32]byte, error) {
+	return _AliasAPI.Contract.GetHead(&_AliasAPI.CallOpts, tld, domain)
+}
+
+// GetHead is a free data retrieval call binding the contract method 0x869753f0.
+//
+// Solidity: function GetHead(tld bytes32, domain bytes32) constant returns(head bytes32)
+func (_AliasAPI *AliasAPICallerSession) GetHead(tld [32]byte, domain [32]byte) ([32]byte, error) {
+	return _AliasAPI.Contract.GetHead(&_AliasAPI.CallOpts, tld, domain)
+}
+
+// GetSubdomain is a free data retrieval call binding the contract method 0x4c664b92.
+//
+// Solidity: function GetSubdomain(tld bytes32, domain bytes32, subdomain bytes32) constant returns(v bytes)
+func (_AliasAPI *AliasAPICaller) GetSubdomain(opts *bind.CallOpts, tld [32]byte, domain [32]byte, subdomain [32]byte) ([]byte, error) {
+	var (
+		ret0 = new([]byte)
+	)
+	out := ret0
+	err := _AliasAPI.contract.Call(opts, out, "GetSubdomain", tld, domain, subdomain)
+	return *ret0, err
+}
+
+// GetSubdomain is a free data retrieval call binding the contract method 0x4c664b92.
+//
+// Solidity: function GetSubdomain(tld bytes32, domain bytes32, subdomain bytes32) constant returns(v bytes)
+func (_AliasAPI *AliasAPISession) GetSubdomain(tld [32]byte, domain [32]byte, subdomain [32]byte) ([]byte, error) {
+	return _AliasAPI.Contract.GetSubdomain(&_AliasAPI.CallOpts, tld, domain, subdomain)
+}
+
+// GetSubdomain is a free data retrieval call binding the contract method 0x4c664b92.
+//
+// Solidity: function GetSubdomain(tld bytes32, domain bytes32, subdomain bytes32) constant returns(v bytes)
+func (_AliasAPI *AliasAPICallerSession) GetSubdomain(tld [32]byte, domain [32]byte, subdomain [32]byte) ([]byte, error) {
+	return _AliasAPI.Contract.GetSubdomain(&_AliasAPI.CallOpts, tld, domain, subdomain)
 }
 
 // Toplevels is a free data retrieval call binding the contract method 0xde3f1fd0.
