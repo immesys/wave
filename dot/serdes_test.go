@@ -3,54 +3,38 @@ package dot
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"fmt"
 	"testing"
 
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/immesys/wave/crypto"
 	"github.com/immesys/wave/dot/objs"
+	"github.com/immesys/wave/entity"
 	"github.com/immesys/wave/params"
 )
 
 type stub struct {
-	sk []byte
-	vk []byte
-
-	dstsk      []byte
-	dstvk      []byte
-	dp         *oaque.Params
-	srcp       *oaque.Params
-	srcmk      oaque.MasterKey
-	dstmk      oaque.MasterKey
-	namespaces []string
+	source *entity.Entity
+	dst    *entity.Entity
 }
 
-func (s *stub) SourceKeys() (sk []byte, vk []byte) {
-	return s.sk, s.vk
+func (s *stub) DestEntity() *entity.Entity {
+	return s.dst
 }
-func (s *stub) DstOAQUEParams() *oaque.Params {
-	return s.dp
+func (s *stub) SourceEntity() *entity.Entity {
+	return s.source
 }
-func (s *stub) SrcOAQUEParams() (*oaque.Params, oaque.MasterKey) {
-	return s.srcp, s.srcmk
+func (s *stub) EntityFromHash(h []byte) (*entity.Entity, error) {
+	if bytes.Equal(s.source.Hash, h) {
+		return s.source, nil
+	}
+	if bytes.Equal(s.dst.Hash, h) {
+		return s.dst, nil
+	}
+	panic("huh")
 }
 func (s *stub) Auditors() [][]byte {
 	return [][]byte{}
-}
-
-func (s *stub) NamespaceHints() []string {
-	return s.namespaces
-}
-func (s *stub) OurOAQUEKey(vk []byte) oaque.MasterKey {
-	return s.dstmk
-}
-func (s *stub) OAQUEParamsForVK(ctx context.Context, vk []byte) (*oaque.Params, error) {
-	return s.dp, nil
-}
-func (s *stub) OurSK(vk []byte) []byte {
-	return s.dstsk
 }
 
 func (s *stub) OAQUEKeysForPartitionLabel(ctx context.Context, vk []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
@@ -61,10 +45,10 @@ func (s *stub) OAQUEKeysForContent(ctx context.Context, vk []byte, slots [][]byt
 }
 func (s *stub) OAQUEKeysFor(ctx context.Context, vk []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
 	var params *oaque.Params
-	var mk oaque.MasterKey
-	if bytes.Equal(s.dstvk, vk) {
-		params = s.dp
-		mk = s.dstmk
+	var mk *oaque.MasterKey
+	if bytes.Equal(s.dst.VK, vk) {
+		params = s.dst.Params
+		mk = s.dst.MasterKey
 	} else {
 		panic("unknown vk")
 	}
@@ -78,19 +62,19 @@ func (s *stub) OAQUEKeysFor(ctx context.Context, vk []byte, slots [][]byte, onRe
 func (s *stub) OAQUEPartitionKeysFor(ctx context.Context, vk []byte) ([]*oaque.PrivateKey, error) {
 	gk := globalpartitionkey()
 	//fmt.Printf("dp is %v\n, dstm")
-	gpk, e := oaque.KeyGen(nil, s.dp, s.dstmk, slotsToAttrMap(gk))
+	gpk, e := oaque.KeyGen(nil, s.dst.Params, s.dst.MasterKey, slotsToAttrMap(gk))
 	if e != nil {
 		panic(e)
 	}
 	nsk := partitionkey([]byte("namespace"))
-	npk, e := oaque.KeyGen(nil, s.dp, s.dstmk, slotsToAttrMap(nsk))
+	npk, e := oaque.KeyGen(nil, s.dst.Params, s.dst.MasterKey, slotsToAttrMap(nsk))
 	if e != nil {
 		panic(e)
 	}
 	return []*oaque.PrivateKey{gpk, npk}, nil
 }
 func (s *stub) OAQUEDelegationKeyFor(ctx context.Context, vk []byte, partition [][]byte) (*oaque.PrivateKey, error) {
-	pk, e := oaque.KeyGen(nil, s.dp, s.dstmk, slotsToAttrMap(partition))
+	pk, e := oaque.KeyGen(nil, s.dst.Params, s.dst.MasterKey, slotsToAttrMap(partition))
 	if e != nil {
 		panic(e)
 	}
@@ -99,31 +83,18 @@ func (s *stub) OAQUEDelegationKeyFor(ctx context.Context, vk []byte, partition [
 
 func TestSerdes(t *testing.T) {
 	st := stub{}
-	st.sk, st.vk = crypto.GenerateKeypair()
-	st.dstsk, st.dstvk = crypto.GenerateKeypair()
-	aP, aMK, err := oaque.Setup(rand.Reader, 4)
-	if err != nil {
-		panic(err)
-	}
-	bP, bMK, err := oaque.Setup(rand.Reader, 4)
-	if err != nil {
-		panic(err)
-	}
-	st.dp = bP
-	_ = bMK
-	st.srcp = aP
-	st.srcmk = aMK
-	st.dstmk = bMK
-	//st.namespaces = []string{"namespace"}
+	st.source = entity.NewEntity()
+	st.dst = entity.NewEntity()
+
 	dot := objs.DOT{}
 	dot.Content = &objs.DOTContent{
-		SRCVK:       st.vk,
-		DSTVK:       st.dstvk,
+		SRC:         st.source.Hash,
+		DST:         st.dst.Hash,
 		URI:         "CSnDzka2Nuu5e0UmOR6FH9YEYwIdEx5GwaD_ms9rDV0=/foo/bard",
 		Permissions: []string{"wave:publish"},
 	}
 	dot.PlaintextHeader = &objs.PlaintextHeader{
-		DSTVK: st.dstvk,
+		DST: st.dst.Hash,
 	}
 	dot.PartitionLabel = make([][]byte, params.OAQUESlots)
 	dot.PartitionLabel[0] = []byte(OAQUEMetaSlotPartition)

@@ -6,8 +6,17 @@ import (
 
 	wavecrypto "github.com/immesys/wave/crypto"
 	"github.com/immesys/wave/dot"
-	"github.com/immesys/wave/localdb"
+	localdb "github.com/immesys/wave/localdb/types"
 )
+
+//DOTs can be in the following states:
+// unknown (they have a VK+Index greater than we have processed)
+// pending (we have them in our DB but could not decrypt it)
+// pending with label (we know the partition label but could not decrypt partition)
+// decrypted
+//Entities can be in the following states:
+// unknown we ignore everything to do with this entity
+// interesting we process all dots to this entity
 
 //This should try decrypt the dot, and insert
 //it into any work queues. It should only return an error if
@@ -16,8 +25,8 @@ import (
 //ciphertext again). This particular method assumes the DOT is new
 //so even if it fails to decrypt, it should be inserted into the database
 //for later processing
-func (e *Engine) ProcessNewDOT(ctx context.Context, ciphertext []byte, contractDstVK []byte) error {
-	sidx, err := e.ws.GetPartitionLabelSecretIndex(ctx, contractDstVK)
+func (e *Engine) processNewDOT(ctx context.Context, ciphertext []byte, contractDstHash []byte) error {
+	sidx, err := e.ws.GetPartitionLabelSecretIndex(ctx, contractDstHash)
 	if err != nil {
 		return err
 	}
@@ -26,35 +35,39 @@ func (e *Engine) ProcessNewDOT(ctx context.Context, ciphertext []byte, contractD
 		return err
 	}
 	if pr.BadOrMalformed {
-		//Do not process the dot, it is bad
+		//Do not process the dot, it was submitted badly (is malevolent)
 		return nil
 	}
-	if !bytes.Equal(pr.DOT.PlaintextHeader.DSTVK, contractDstVK) {
-		//Do not process the dot, it was submitted badly
+	if !bytes.Equal(pr.DOT.PlaintextHeader.DST, contractDstHash) {
+		//Do not process the dot, it was submitted badly (is malevolent)
 		return nil
 	}
 	if pr.FullyDecrypted {
 		//We fully decoded the dot
 		//We need to trigger a scan of the granting entity's dots.
-		e.entitiesRequiringFullScan[wavecrypto.FmtKey(pr.DOT.Content.SRCVK)] = true
-		if err := e.ws.InsertInterestingEntity(ctx, pr.DOT.Content.SRCVK); err != nil {
+		e.entitiesRequiringFullScan[wavecrypto.FmtHash(pr.DOT.Content.SRC)] = true
+		if err := e.ws.InsertInterestingEntity(ctx, pr.DOT.Content.SRC); err != nil {
 			return err
 		}
 		return e.ws.InsertDOT(ctx, pr.DOT)
 	}
 	if pr.PartitionDecrypted {
 		//We decoded the partition, but not the dot itself
-		return e.ws.InsertPendingDOTWithPartition(ctx, ciphertext, pr.Hash, pr.DOT.PlaintextHeader.DSTVK, pr.DOT.PartitionLabel)
+		return e.ws.InsertPendingDOTWithPartition(ctx, ciphertext, pr.Hash, pr.DOT.PlaintextHeader.DST, pr.DOT.PartitionLabel)
 	}
 	//We did not decode the dot, but we think we may be interested in it
 	//going forward
-	return e.ws.InsertPendingDOT(ctx, ciphertext, pr.Hash, pr.DOT.PlaintextHeader.DSTVK, sidx)
+	return e.ws.InsertPendingDOT(ctx, ciphertext, pr.Hash, pr.DOT.PlaintextHeader.DST, sidx)
 }
 
 type Slots [][]byte
 
 //This will bring up to date new entities that have been deemed interesting
+//as a result of actions since the last invocation (e.g new dots). This should
+//probably be called after every new set of dots processed
 func (e *Engine) PendingTasks(ctx context.Context) error {
+	e.fullScanMu.Lock()
+	defer e.fullScanMu.Unlock()
 	for entity, _ := range e.entitiesRequiringFullScan {
 		entityVK, err := wavecrypto.UnFmtKey(entity)
 		if err != nil {
@@ -67,9 +80,12 @@ func (e *Engine) PendingTasks(ctx context.Context) error {
 			return err
 		}
 	}
+	e.entitiesRequiringFullScan = make(map[string]bool)
 	return nil
 }
 
+//This will bring up to date all entities marked as interesting in the
+//database (a persistent list)
 func (e *Engine) UpdateAllInterestingEntities(ctx context.Context) error {
 	subctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -87,16 +103,18 @@ func (e *Engine) UpdateAllInterestingEntities(ctx context.Context) error {
 }
 
 //For a given DSTVK, bring all the pending dots up to date with any new partition label
-//secrets. This should be called when we suspect this is actually required
-func (e *Engine) processPartitionLabelSecrets(ctx context.Context, dstvk []byte) error {
-	targetIndex, err := e.ws.GetPartitionLabelSecretIndex(ctx, dstvk)
+//secrets. This should be called when we suspect this is actually required. For all
+//the pending dots, we will try decrypt the partition label and if successful, queue
+//it for decryption with the partition key (or decrypt it immediately)
+func (e *Engine) processPartitionLabelSecrets(ctx context.Context, dsthash []byte) error {
+	targetIndex, err := e.ws.GetPartitionLabelSecretIndex(ctx, dsthash)
 	if err != nil {
 		return err
 	}
 	secretCache := make(map[int]*localdb.Secret)
 	subctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	for res := range e.ws.GetPendingDOTs(subctx, dstvk) {
+	for res := range e.ws.GetPendingDOTs(subctx, dsthash) {
 		if res.Err != nil {
 			return res.Err
 		}
@@ -105,7 +123,7 @@ func (e *Engine) processPartitionLabelSecrets(ctx context.Context, dstvk []byte)
 			secret, ok := secretCache[sidx]
 			if !ok {
 				var serr error
-				secret, serr = e.ws.GetPartitionLabelSecret(ctx, dstvk, sidx)
+				secret, serr = e.ws.GetPartitionLabelSecret(ctx, dsthash, sidx)
 				if serr != nil {
 					return serr
 				}
@@ -151,44 +169,9 @@ func (e *Engine) processPartitionLabelSecrets(ctx context.Context, dstvk []byte)
 	}
 }
 
-//The caller must determine that we are actually interested in updating the
-//given entity's pending dots.
-func (e *Engine) UpdateEntityPendingDOTs(ctx context.Context, vk []byte) error {
-
-}
-
-//The caller must determine that we are actually interested in updating the
-//given entity's dots. This pulls from the blockchain if required.
-func (e *Engine) UpdateEntityNewDOTS(ctx context.Context, vk []byte) error {
-	// Update the dots
-	index, err := e.ws.GetEntityDOTIndex(ctx, vk)
-	if err != nil {
-		return err
-	}
-	indexChanged := false
-	for {
-		dotreg, _, err := e.st.RetrieveDOTByVKIndex(ctx, vk, index)
-		if dotreg == nil {
-			//index already points to next (waiting)
-			break
-		}
-		err = e.ProcessNewDOT(ctx, dotreg.Data, dotreg.DstVK)
-		if err != nil {
-			return err
-		}
-
-		index++
-		indexChanged = true
-		if index == dotreg.MaxIndex {
-			break
-		}
-	}
-	if indexChanged {
-		return e.ws.SetEntityDOTIndex(ctx, vk, index)
-	}
-	return nil
-}
-
-func (e *Engine) UpdateEntityMisc(ctx context.Context, vk []byte) error {
-	panic("TODO")
+//This should be run whenever we obtain a new partition secret
+//from an entity
+func (e *Engine) UpdateEntityPendingWithLabelDOTs(ctx context.Context, dsthash []byte) error {
+	//For every pending dot with label
+	//Try find the secret and decrypt
 }

@@ -41,13 +41,13 @@ type Storage interface {
 	GetStateInformation(ctx context.Context) (*StateInformation, error)
 	RetrieveEntity(ctx context.Context, VK []byte) ([]byte, *StateInformation, error)
 	RetrieveEntityField(ctx context.Context, VK []byte, index int) ([]byte, *StateInformation, error)
-	RetrieveDOTByVKIndex(ctx context.Context, DstVK []byte, index int) (*DOTRegistration, *StateInformation, error)
+	RetrieveDOTByEntityIndex(ctx context.Context, DstHash []byte, index int) (*DOTRegistration, *StateInformation, error)
 	RetrieveDOTByHash(ctx context.Context, Hash []byte, Location int) (*DOTRegistration, *StateInformation, error)
 	ResolvePartialAlias(ctx context.Context, domain [32]byte, tld [32]byte) (*AliasRegistration, *StateInformation, error)
 	ResolveAlias(ctx context.Context, subdomain [32]byte, domain [32]byte, tld [32]byte) (*AliasRegistration, *StateInformation, error)
 	InsertEntity(ctx context.Context, controller common.Address, VK []byte, revokable bool, data []byte, signFn SignerFn) (*Transaction, error)
-	InsertDOTOnChain(ctx context.Context, account common.Address, DstVK []byte, data []byte, signFn SignerFn) (*Transaction, error)
-	InsertDOTOffChain(ctx context.Context, account common.Address, DstVK []byte, hash []byte, location uint64, signFn SignerFn) (*Transaction, error)
+	InsertDOTOnChain(ctx context.Context, account common.Address, DstHash []byte, data []byte, signFn SignerFn) (*Transaction, error)
+	InsertDOTOffChain(ctx context.Context, account common.Address, DstHash []byte, hash []byte, location uint64, signFn SignerFn) (*Transaction, error)
 	CreateAlias(ctx context.Context, controller common.Address, subdomain [32]byte, domain [32]byte, tld [32]byte, value []byte, signFn SignerFn) (*Transaction, error)
 	CreateTLD(ctx context.Context, controller common.Address, tld [32]byte, signFn SignerFn) (*Transaction, error)
 	TransactionInfo(ctx context.Context, hash []byte) (*TransactionInfo, error)
@@ -69,7 +69,7 @@ type EntityRegistration struct {
 }
 type DOTRegistration struct {
 	Hash     []byte
-	DstVK    []byte
+	DstHash  []byte
 	MaxIndex int
 	Index    int
 	Data     []byte

@@ -3,11 +3,12 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
-	wavecrypto "github.com/immesys/wave/crypto"
 	"github.com/immesys/wave/dot"
-	"github.com/immesys/wave/localdb"
+	"github.com/immesys/wave/entity"
+	localdb "github.com/immesys/wave/localdb/types"
 	"github.com/immesys/wave/storage"
 )
 
@@ -24,15 +25,16 @@ import (
 
 // When agent first starts, all interesting entities will be updated.
 // after that, updates are triggered by header block blooms
-
+// There is one engine per perspective (a perspective is a controlling entity)
 type Engine struct {
-	ws localdb.WaveState
-	st storage.Storage
+	ctx context.Context
+	ws  localdb.WaveState
+	st  storage.Storage
 	//all the SKs that we have
-	secretEd25519Keys map[string][]byte
-	masterOAQUEKeys   map[string]oaque.MasterKey
+	perspective *entity.Entity
 
 	entitiesRequiringFullScan map[string]bool
+	fullScanMu                sync.Mutex
 }
 
 // type DecryptionContext interface {
@@ -43,53 +45,133 @@ type Engine struct {
 // 	OurSK(vk []byte) []byte
 // }
 
-func (e *Engine) Init() error {
+func NewEngine(ctx context.Context, state localdb.WaveState, bchain storage.Storage, perspective *entity.Entity) (*Engine, error) {
 	var err error
-	e.secretEd25519Keys, err = e.ws.LoadSecretEd25519Keys()
+	rv := Engine{
+		ctx:                       ctx,
+		ws:                        state,
+		st:                        bchain,
+		perspective:               perspective,
+		entitiesRequiringFullScan: make(map[string]bool),
+	}
+	go rv.watchHeaders()
+	return &rv, nil
+}
+
+// For as long as the engine's context is active, watch and process new
+// events on the chain
+func (e *Engine) watchHeaders() {
+	//TODO loop
+	//This is revocations and so forth
+	changesToEntityValidity := [][]byte{} //list of entity hashes
+	changesToDOTValidity := [][]byte{}    //list of dot hashes
+	entitiesReceivingDOTs := [][]byte{}   //list of dst entity hashes
+	//TODO get these
+	//TODO errors here are not impossible (I could imagine a netsplit would
+	//cause state fetch from light client to error) we need to work out how
+	//to handle that
+	for _, revokedEntityHash := range changesToEntityValidity {
+		err := e.updateEntityValidity(e.ctx, revokedEntityHash)
+		if err != nil {
+			panic(fmt.Sprintf("unexpected error updating entity validity: %v", err))
+		}
+	}
+	for _, revokedDOTHash := range changesToDOTValidity {
+		err := e.updateDOTValidity(e.ctx, revokedDOTHash)
+		if err != nil {
+			panic(fmt.Sprintf("unexpected error updating dot validity: %v", err))
+		}
+	}
+	for _, triggeredEntityHash := range entitiesReceivingDOTs {
+		err := e.updateEntityNewDOTs(e.ctx, triggeredEntityHash)
+		if err != nil {
+			panic(fmt.Sprintf("unexpected error updating entity dots: %v", err))
+		}
+	}
+	err := e.PendingTasks(e.ctx)
+	if err != nil {
+		panic(fmt.Sprintf("unexpected error doing pending tasks: %v", err))
+	}
+
+}
+
+//There is reason to believe the given entity may have been revoked or
+//expired, check with storage and take care of it if it has
+func (e *Engine) updateEntityValidity(ctx context.Context, enthash []byte) error {
+	panic("notimp")
+}
+func (e *Engine) updateDOTValidity(ctx context.Context, dothash []byte) error {
+	panic("notimp")
+}
+
+//This looks in the chain for new dots to an entity since we last checked it
+//it is idempotent and will also trigger reprocessing of any other unlocked
+//dots
+func (e *Engine) updateEntityNewDOTs(ctx context.Context, enthash []byte) error {
+	// Update the dots
+	index, err := e.ws.GetEntityDOTIndex(ctx, enthash)
 	if err != nil {
 		return err
 	}
-	e.masterOAQUEKeys, err = e.ws.LoadMasterOAQUEKeys()
-	if err != nil {
-		return err
+	indexChanged := false
+	for {
+		dotreg, _, err := e.st.RetrieveDOTByEntityIndex(ctx, enthash, index)
+		if dotreg == nil {
+			//index already points to next (waiting)
+			break
+		}
+		err = e.processNewDOT(ctx, dotreg.Data, dotreg.DstHash)
+		if err != nil {
+			return err
+		}
+
+		index++
+		indexChanged = true
+		if index == dotreg.MaxIndex {
+			break
+		}
+	}
+	if indexChanged {
+		return e.ws.SetEntityDOTIndex(ctx, enthash, index)
 	}
 	return nil
 }
 
-func (e *Engine) OurOAQUEKey(vk []byte) oaque.MasterKey {
-	return e.masterOAQUEKeys[wavecrypto.FmtKey(vk)]
-}
-func (e *Engine) OAQUEParamsForVK(ctx context.Context, vk []byte) (*oaque.Params, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-	blob, err := e.ws.GetOAQUEParamsForVK(ctx, vk)
-	if err != nil {
-		return nil, err
-	}
-	rv := &oaque.Params{}
-	rv, ok := rv.Unmarshal(blob)
-	if !ok {
-		return nil, fmt.Errorf("failed to unmarshal params object")
-	}
-	return rv, nil
-}
+//
+// func (e *Engine) OurOAQUEKey(vk []byte) oaque.MasterKey {
+// 	return e.masterOAQUEKeys[wavecrypto.FmtKey(vk)]
+// }
+// func (e *Engine) OAQUEParamsForVK(ctx context.Context, vk []byte) (*oaque.Params, error) {
+// 	if ctx.Err() != nil {
+// 		return nil, ctx.Err()
+// 	}
+// 	blob, err := e.ws.GetOAQUEParamsForVK(ctx, vk)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	rv := &oaque.Params{}
+// 	rv, ok := rv.Unmarshal(blob)
+// 	if !ok {
+// 		return nil, fmt.Errorf("failed to unmarshal params object")
+// 	}
+// 	return rv, nil
+// }
 
 //These are only different when restricting the partition label keys
-func (e *Engine) OAQUEKeysForContent(ctx context.Context, vk []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
-	return e.OAQUEKeysFor(ctx, vk, slots, onResult)
+func (e *Engine) OAQUEKeysForContent(ctx context.Context, hash []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
+	return e.OAQUEKeysFor(ctx, hash, slots, onResult)
 }
 
-func (e *Engine) OAQUEKeysForPartitionLabel(ctx context.Context, vk []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
-	return e.OAQUEKeysFor(ctx, vk, slots, onResult)
+func (e *Engine) OAQUEKeysForPartitionLabel(ctx context.Context, hash []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
+	return e.OAQUEKeysFor(ctx, hash, slots, onResult)
 }
 
-func (e *Engine) OAQUEKeysFor(ctx context.Context, vk []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
+func (e *Engine) OAQUEKeysFor(ctx context.Context, hash []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 	var err error
-	oerr := e.ws.OAQUEKeysFor(ctx, vk, slots, func(k []byte) bool {
+	oerr := e.ws.OAQUEKeysFor(ctx, hash, slots, func(k []byte) bool {
 		pk := &oaque.PrivateKey{}
 		var ok bool
 		pk, ok = pk.Unmarshal(k)
@@ -103,10 +185,6 @@ func (e *Engine) OAQUEKeysFor(ctx context.Context, vk []byte, slots [][]byte, on
 		return oerr
 	}
 	return err
-}
-
-func (e *Engine) OurSK(vk []byte) []byte {
-	return e.secretEd25519Keys[wavecrypto.FmtKey(vk)]
 }
 
 // }

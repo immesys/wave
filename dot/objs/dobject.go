@@ -1,6 +1,6 @@
 package objs
 
-//go:generate msgp
+//go:generate msgp -test=false
 type HIBEKEY []byte
 type AESKey []byte
 type Ed25519Signature []byte
@@ -45,15 +45,16 @@ type DOT struct {
 	Content        *DOTContent     `msg:"-"`
 	PartitionLabel [][]byte        `msg:"-"`
 	Inheritance    *InheritanceMap `msg:"-"`
+	Hash           []byte          `msg:"-"`
 }
 
 //This information is all encrypted. It is also signed, so this copy here
 //should be used in preference to the label
 type DOTContent struct {
 	//The originator of the DOT, also the key that signs it
-	SRCVK Ed25519VK `msg:"src"`
+	SRC []byte `msg:"src"`
 	//The recipient of the DOT (duplicatd in label)
-	DSTVK Ed25519VK `msg:"dst"`
+	DST []byte `msg:"dst"`
 	//These are the resources the dot
 	URI string `msg:"uri"`
 	//These are the permissions the dot confers.
@@ -101,8 +102,10 @@ type InheritanceMap struct {
 
 //This information is public
 type PlaintextHeader struct {
-	//Recipient
-	DSTVK []byte `msg:"dst"`
+	//Recipient entity (hash)
+	DST []byte `msg:"dst"`
+	//Revocation object hash
+	RevocationHash []byte `msg:"rvk"`
 	//Signing VK. This is ephemeral
-	SigVK []byte `msg:"sigvk"`
+	SigVK Ed25519VK `msg:"sigvk"`
 }
