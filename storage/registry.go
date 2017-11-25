@@ -14,7 +14,7 @@ import (
 )
 
 // RegistryAPIABI is the input ABI used to generate the binding from.
-const RegistryAPIABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"dotsByHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes\",\"value\":\"0x\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"dstvk\",\"type\":\"bytes32\"},{\"name\":\"hash\",\"type\":\"bytes32\"},{\"name\":\"storageType\",\"type\":\"uint256\"}],\"name\":\"registerOffChainDot\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"dstvk\",\"type\":\"bytes32\"},{\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"registerDot\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"vk\",\"type\":\"bytes32\"},{\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"registerEntity\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"entities\",\"outputs\":[{\"name\":\"controller\",\"type\":\"address\",\"value\":\"0x0000000000000000000000000000000000000000\"},{\"name\":\"data\",\"type\":\"bytes\",\"value\":\"0x\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"dots\",\"outputs\":[{\"name\":\"hash\",\"type\":\"bytes32\",\"value\":\"0x\"},{\"name\":\"storageType\",\"type\":\"uint256\",\"value\":\"0\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]"
+const RegistryAPIABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"registerRevocation\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"dotsByHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes\",\"value\":\"0x\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"dsthash\",\"type\":\"bytes32\"},{\"name\":\"hash\",\"type\":\"bytes32\"},{\"name\":\"storageType\",\"type\":\"uint256\"}],\"name\":\"registerOffChainDot\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"dsthash\",\"type\":\"bytes32\"},{\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"registerDot\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"revocations\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes\",\"value\":\"0x\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"registerEntity\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"entities\",\"outputs\":[{\"name\":\"controller\",\"type\":\"address\",\"value\":\"0x0000000000000000000000000000000000000000\"},{\"name\":\"data\",\"type\":\"bytes\",\"value\":\"0x\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"dots\",\"outputs\":[{\"name\":\"hash\",\"type\":\"bytes32\",\"value\":\"0x\"},{\"name\":\"storageType\",\"type\":\"uint256\",\"value\":\"0\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
 // RegistryAPI is an auto generated Go binding around an Ethereum contract.
 type RegistryAPI struct {
@@ -241,65 +241,112 @@ func (_RegistryAPI *RegistryAPICallerSession) Entities(arg0 [32]byte) (struct {
 	return _RegistryAPI.Contract.Entities(&_RegistryAPI.CallOpts, arg0)
 }
 
-// RegisterDot is a paid mutator transaction binding the contract method 0x6fa36c80.
+// Revocations is a free data retrieval call binding the contract method 0xbbe48780.
 //
-// Solidity: function registerDot(dstvk bytes32, data bytes) returns()
-func (_RegistryAPI *RegistryAPITransactor) RegisterDot(opts *bind.TransactOpts, dstvk [32]byte, data []byte) (*types.Transaction, error) {
-	return _RegistryAPI.contract.Transact(opts, "registerDot", dstvk, data)
+// Solidity: function revocations( bytes32) constant returns(bytes)
+func (_RegistryAPI *RegistryAPICaller) Revocations(opts *bind.CallOpts, arg0 [32]byte) ([]byte, error) {
+	var (
+		ret0 = new([]byte)
+	)
+	out := ret0
+	err := _RegistryAPI.contract.Call(opts, out, "revocations", arg0)
+	return *ret0, err
+}
+
+// Revocations is a free data retrieval call binding the contract method 0xbbe48780.
+//
+// Solidity: function revocations( bytes32) constant returns(bytes)
+func (_RegistryAPI *RegistryAPISession) Revocations(arg0 [32]byte) ([]byte, error) {
+	return _RegistryAPI.Contract.Revocations(&_RegistryAPI.CallOpts, arg0)
+}
+
+// Revocations is a free data retrieval call binding the contract method 0xbbe48780.
+//
+// Solidity: function revocations( bytes32) constant returns(bytes)
+func (_RegistryAPI *RegistryAPICallerSession) Revocations(arg0 [32]byte) ([]byte, error) {
+	return _RegistryAPI.Contract.Revocations(&_RegistryAPI.CallOpts, arg0)
 }
 
 // RegisterDot is a paid mutator transaction binding the contract method 0x6fa36c80.
 //
-// Solidity: function registerDot(dstvk bytes32, data bytes) returns()
-func (_RegistryAPI *RegistryAPISession) RegisterDot(dstvk [32]byte, data []byte) (*types.Transaction, error) {
-	return _RegistryAPI.Contract.RegisterDot(&_RegistryAPI.TransactOpts, dstvk, data)
+// Solidity: function registerDot(dsthash bytes32, data bytes) returns()
+func (_RegistryAPI *RegistryAPITransactor) RegisterDot(opts *bind.TransactOpts, dsthash [32]byte, data []byte) (*types.Transaction, error) {
+	return _RegistryAPI.contract.Transact(opts, "registerDot", dsthash, data)
 }
 
 // RegisterDot is a paid mutator transaction binding the contract method 0x6fa36c80.
 //
-// Solidity: function registerDot(dstvk bytes32, data bytes) returns()
-func (_RegistryAPI *RegistryAPITransactorSession) RegisterDot(dstvk [32]byte, data []byte) (*types.Transaction, error) {
-	return _RegistryAPI.Contract.RegisterDot(&_RegistryAPI.TransactOpts, dstvk, data)
+// Solidity: function registerDot(dsthash bytes32, data bytes) returns()
+func (_RegistryAPI *RegistryAPISession) RegisterDot(dsthash [32]byte, data []byte) (*types.Transaction, error) {
+	return _RegistryAPI.Contract.RegisterDot(&_RegistryAPI.TransactOpts, dsthash, data)
 }
 
-// RegisterEntity is a paid mutator transaction binding the contract method 0xc51f3e41.
+// RegisterDot is a paid mutator transaction binding the contract method 0x6fa36c80.
 //
-// Solidity: function registerEntity(vk bytes32, data bytes) returns()
-func (_RegistryAPI *RegistryAPITransactor) RegisterEntity(opts *bind.TransactOpts, vk [32]byte, data []byte) (*types.Transaction, error) {
-	return _RegistryAPI.contract.Transact(opts, "registerEntity", vk, data)
+// Solidity: function registerDot(dsthash bytes32, data bytes) returns()
+func (_RegistryAPI *RegistryAPITransactorSession) RegisterDot(dsthash [32]byte, data []byte) (*types.Transaction, error) {
+	return _RegistryAPI.Contract.RegisterDot(&_RegistryAPI.TransactOpts, dsthash, data)
 }
 
-// RegisterEntity is a paid mutator transaction binding the contract method 0xc51f3e41.
+// RegisterEntity is a paid mutator transaction binding the contract method 0xc93b1335.
 //
-// Solidity: function registerEntity(vk bytes32, data bytes) returns()
-func (_RegistryAPI *RegistryAPISession) RegisterEntity(vk [32]byte, data []byte) (*types.Transaction, error) {
-	return _RegistryAPI.Contract.RegisterEntity(&_RegistryAPI.TransactOpts, vk, data)
+// Solidity: function registerEntity(data bytes) returns()
+func (_RegistryAPI *RegistryAPITransactor) RegisterEntity(opts *bind.TransactOpts, data []byte) (*types.Transaction, error) {
+	return _RegistryAPI.contract.Transact(opts, "registerEntity", data)
 }
 
-// RegisterEntity is a paid mutator transaction binding the contract method 0xc51f3e41.
+// RegisterEntity is a paid mutator transaction binding the contract method 0xc93b1335.
 //
-// Solidity: function registerEntity(vk bytes32, data bytes) returns()
-func (_RegistryAPI *RegistryAPITransactorSession) RegisterEntity(vk [32]byte, data []byte) (*types.Transaction, error) {
-	return _RegistryAPI.Contract.RegisterEntity(&_RegistryAPI.TransactOpts, vk, data)
+// Solidity: function registerEntity(data bytes) returns()
+func (_RegistryAPI *RegistryAPISession) RegisterEntity(data []byte) (*types.Transaction, error) {
+	return _RegistryAPI.Contract.RegisterEntity(&_RegistryAPI.TransactOpts, data)
 }
 
-// RegisterOffChainDot is a paid mutator transaction binding the contract method 0x427fde4c.
+// RegisterEntity is a paid mutator transaction binding the contract method 0xc93b1335.
 //
-// Solidity: function registerOffChainDot(dstvk bytes32, hash bytes32, storageType uint256) returns()
-func (_RegistryAPI *RegistryAPITransactor) RegisterOffChainDot(opts *bind.TransactOpts, dstvk [32]byte, hash [32]byte, storageType *big.Int) (*types.Transaction, error) {
-	return _RegistryAPI.contract.Transact(opts, "registerOffChainDot", dstvk, hash, storageType)
-}
-
-// RegisterOffChainDot is a paid mutator transaction binding the contract method 0x427fde4c.
-//
-// Solidity: function registerOffChainDot(dstvk bytes32, hash bytes32, storageType uint256) returns()
-func (_RegistryAPI *RegistryAPISession) RegisterOffChainDot(dstvk [32]byte, hash [32]byte, storageType *big.Int) (*types.Transaction, error) {
-	return _RegistryAPI.Contract.RegisterOffChainDot(&_RegistryAPI.TransactOpts, dstvk, hash, storageType)
+// Solidity: function registerEntity(data bytes) returns()
+func (_RegistryAPI *RegistryAPITransactorSession) RegisterEntity(data []byte) (*types.Transaction, error) {
+	return _RegistryAPI.Contract.RegisterEntity(&_RegistryAPI.TransactOpts, data)
 }
 
 // RegisterOffChainDot is a paid mutator transaction binding the contract method 0x427fde4c.
 //
-// Solidity: function registerOffChainDot(dstvk bytes32, hash bytes32, storageType uint256) returns()
-func (_RegistryAPI *RegistryAPITransactorSession) RegisterOffChainDot(dstvk [32]byte, hash [32]byte, storageType *big.Int) (*types.Transaction, error) {
-	return _RegistryAPI.Contract.RegisterOffChainDot(&_RegistryAPI.TransactOpts, dstvk, hash, storageType)
+// Solidity: function registerOffChainDot(dsthash bytes32, hash bytes32, storageType uint256) returns()
+func (_RegistryAPI *RegistryAPITransactor) RegisterOffChainDot(opts *bind.TransactOpts, dsthash [32]byte, hash [32]byte, storageType *big.Int) (*types.Transaction, error) {
+	return _RegistryAPI.contract.Transact(opts, "registerOffChainDot", dsthash, hash, storageType)
+}
+
+// RegisterOffChainDot is a paid mutator transaction binding the contract method 0x427fde4c.
+//
+// Solidity: function registerOffChainDot(dsthash bytes32, hash bytes32, storageType uint256) returns()
+func (_RegistryAPI *RegistryAPISession) RegisterOffChainDot(dsthash [32]byte, hash [32]byte, storageType *big.Int) (*types.Transaction, error) {
+	return _RegistryAPI.Contract.RegisterOffChainDot(&_RegistryAPI.TransactOpts, dsthash, hash, storageType)
+}
+
+// RegisterOffChainDot is a paid mutator transaction binding the contract method 0x427fde4c.
+//
+// Solidity: function registerOffChainDot(dsthash bytes32, hash bytes32, storageType uint256) returns()
+func (_RegistryAPI *RegistryAPITransactorSession) RegisterOffChainDot(dsthash [32]byte, hash [32]byte, storageType *big.Int) (*types.Transaction, error) {
+	return _RegistryAPI.Contract.RegisterOffChainDot(&_RegistryAPI.TransactOpts, dsthash, hash, storageType)
+}
+
+// RegisterRevocation is a paid mutator transaction binding the contract method 0x18c22a6d.
+//
+// Solidity: function registerRevocation(data bytes) returns()
+func (_RegistryAPI *RegistryAPITransactor) RegisterRevocation(opts *bind.TransactOpts, data []byte) (*types.Transaction, error) {
+	return _RegistryAPI.contract.Transact(opts, "registerRevocation", data)
+}
+
+// RegisterRevocation is a paid mutator transaction binding the contract method 0x18c22a6d.
+//
+// Solidity: function registerRevocation(data bytes) returns()
+func (_RegistryAPI *RegistryAPISession) RegisterRevocation(data []byte) (*types.Transaction, error) {
+	return _RegistryAPI.Contract.RegisterRevocation(&_RegistryAPI.TransactOpts, data)
+}
+
+// RegisterRevocation is a paid mutator transaction binding the contract method 0x18c22a6d.
+//
+// Solidity: function registerRevocation(data bytes) returns()
+func (_RegistryAPI *RegistryAPITransactorSession) RegisterRevocation(data []byte) (*types.Transaction, error) {
+	return _RegistryAPI.Contract.RegisterRevocation(&_RegistryAPI.TransactOpts, data)
 }

@@ -1,5 +1,12 @@
 package objs
 
+import (
+	"errors"
+	"time"
+
+	"github.com/immesys/wave/entity"
+)
+
 //go:generate msgp -test=false
 type HIBEKEY []byte
 type AESKey []byte
@@ -42,10 +49,24 @@ type DOT struct {
 	Outersig Ed25519Signature `msg:"osig"`
 
 	//Decrypted version (not transmitted, populated later)
-	Content        *DOTContent     `msg:"-"`
-	PartitionLabel [][]byte        `msg:"-"`
-	Inheritance    *InheritanceMap `msg:"-"`
-	Hash           []byte          `msg:"-"`
+	Content          *DOTContent     `msg:"-"`
+	PartitionLabel   [][]byte        `msg:"-"`
+	Inheritance      *InheritanceMap `msg:"-"`
+	Hash             []byte          `msg:"-"`
+	OriginalEncoding []byte          `msg:"-"`
+	SRC              *entity.Entity  `msg:"-"`
+	DST              *entity.Entity  `msg:"-"`
+}
+
+var ErrEncrypted = errors.New("DOT is still encrypted")
+
+//TODO clean up this separate package thing...
+func (d *DOT) Expired() (bool, error) {
+	if d.Content == nil {
+		return false, ErrEncrypted
+	}
+	expiryTime := time.Unix(0, d.Content.Attributes.Expiry)
+	return expiryTime.Before(time.Now()), nil
 }
 
 //This information is all encrypted. It is also signed, so this copy here
@@ -72,6 +93,7 @@ type DOTContent struct {
 
 //Contains information about the DOT
 type AttributeMap struct {
+	//Nanoseconds since unix epoch
 	Expiry  int64  `msg:"expiry"`
 	Created int64  `msg:"created"`
 	Contact string `msg:"contact"`

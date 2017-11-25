@@ -40,6 +40,10 @@ func NewEntity() *Entity {
 	return &rv
 }
 
+func (e *Entity) Expired() bool {
+	panic("ni")
+}
+
 //Only generate some of the entity, faster for specific applications
 //It does not have a revocation hash nor an entity hash
 func NewPartialEntity(doEd25519 bool, doOaque bool) *Entity {
@@ -111,10 +115,13 @@ func (e *Entity) Curve25519ECDH(vk []byte, nonce []byte, size int) ([]byte, erro
 }
 
 func (e *Entity) GenerateRevocationObject() ([]byte, error) {
-	//A revocation for an entity is a 64 byte object plus a signature
+	//By convention, the revocation for an entity is a 64 byte object
+	//plus a signature
 	//the first 32 bytes are sha3("entity revocation"), the second 32
-	//are the VK. Clearly an entity must not arbitrarily sign things
-	//otherwise it can be fooled into making one of these objects
+	//are the VK.
+	//Formally, anything that hashes to the revocation hash stored in
+	//the entity is a valid revocation, so feel free to change this. I
+	//just thought it would be nice to not have to store the commitment
 	if e.SK == nil {
 		return nil, ErrNoSigningKey
 	}

@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/davecgh/go-spew/spew"
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -21,7 +23,7 @@ const LocationOnChain = Location(1)
 func init() {
 	extrainfoDatabase = make(map[common.Hash]*extrainfo)
 	extrainfoDatabase[common.HexToHash("5e31ddf9f93f71ee232ca25885f39fa8b669f51013c9c01db5e7a2772ef7d69f")] = &extrainfo{
-		RegistryContractAddress: common.HexToAddress("0x4856d19f3721664A0D2c947D733Ed2fc291B38ed"),
+		RegistryContractAddress: common.HexToAddress("0x1742f48953f7c0D14557A078f8d6c3C40D23ED93"),
 		AliasContractAddress:    common.HexToAddress("0xb2a67D61FE2EC4b22C7498036095be7dd8BF126d"),
 	}
 }
@@ -44,23 +46,43 @@ type extrainfo struct {
 }
 type Storage interface {
 	GetStateInformation(ctx context.Context) (*StateInformation, error)
-	RetrieveEntity(ctx context.Context, VK []byte) (*EntityRegistration, *StateInformation, error)
-	//RetrieveEntityField(ctx context.Context, VK []byte, index int) ([]byte, *StateInformation, error)
-	RetrieveDOTByVKIndex(ctx context.Context, DstVK []byte, index int) (*DOTRegistration, *StateInformation, error)
+	RetrieveEntity(ctx context.Context, Hash []byte) (*EntityRegistration, *StateInformation, error)
+	RetrieveDOTByEntityIndex(ctx context.Context, DstHash []byte, index int) (*DOTRegistration, *StateInformation, error)
 	RetrieveDOTByHash(ctx context.Context, hash []byte, location Location) (*DOTRegistration, *StateInformation, error)
+	RetrieveRevocation(ctx context.Context, hash []byte) ([]byte, *StateInformation, error)
 	ResolvePartialAlias(ctx context.Context, domain [32]byte, tld [32]byte) (*AliasRegistration, *StateInformation, error)
 	ResolveAlias(ctx context.Context, subdomain [32]byte, domain [32]byte, tld [32]byte) (*AliasRegistration, *StateInformation, error)
-	InsertEntity(ctx context.Context, controller common.Address, VK []byte, data []byte, signFn SignerFn) (*Transaction, error)
-	InsertDOTOnChain(ctx context.Context, account common.Address, DstVK []byte, data []byte, signFn SignerFn) (*Transaction, error)
-	InsertDOTOffChain(ctx context.Context, account common.Address, DstVK []byte, hash []byte, location uint64, signFn SignerFn) (*Transaction, error)
-
+	InsertEntity(ctx context.Context, controller common.Address, data []byte, signFn SignerFn) (*Transaction, error)
+	InsertDOTOnChain(ctx context.Context, account common.Address, DstHash []byte, data []byte, signFn SignerFn) (*Transaction, error)
+	InsertDOTOffChain(ctx context.Context, account common.Address, DstHash []byte, hash []byte, location uint64, signFn SignerFn) (*Transaction, error)
+	InsertRevocation(ctx context.Context, account common.Address, body []byte, signFn SignerFn) (*Transaction, error)
 	CreateAlias(ctx context.Context, controller common.Address, subdomain [32]byte, domain [32]byte, tld [32]byte, value []byte, signFn SignerFn) (*Transaction, error)
 	CreateTLD(ctx context.Context, controller common.Address, tld [32]byte, signFn SignerFn) (*Transaction, error)
-
+	SubscribeStorageChange(ctx context.Context, ch chan *ChangeEvent) error
 	TransactionInfo(ctx context.Context, hash []byte) (*TransactionInfo, error)
 }
 
+//One weird thing to note, you should pass the SAME slice to each invocation
+//of this call, as it uses the pointer address to find cached stuff
+// type ChangeEvent interface {
+// 	SearchForDOTGrants(dstEntHashes [][]byte) (maybe [][]byte)
+// 	SearchForDOTRevocations(revHashes [][]byte) (maybe [][]byte)
+// 	SearchForEntityRevocations(entHashes [][]byte) (maybe [][]byte)
+// }
+
+type ChangeEvent struct {
+	//Like what sort of event it is and stuff
+	IsDOT        bool
+	IsRevocation bool
+	IsEntity     bool
+
+	//Entity hash, revocation hash or dot hash
+	Hash []byte
+	//For dots only
+	DstHash []byte
+}
 type EthereumStorage struct {
+	ctx         context.Context
 	cl          *ethclient.Client
 	ei          *extrainfo
 	currentHead *big.Int
@@ -68,15 +90,21 @@ type EthereumStorage struct {
 	mu          sync.Mutex
 	regTrans    *RegistryAPITransactor
 	aliasTrans  *AliasAPITransactor
+	subsmu      sync.Mutex
+	//Using map for easy deletion and random iteration
+	subs map[*headerSubscription]bool
+}
+type headerSubscription struct {
+	client chan *ChangeEvent
+	ctx    context.Context
 }
 type EntityRegistration struct {
-	Hash []byte
 	Addr common.Address
 	Data []byte
 }
 type DOTRegistration struct {
 	Hash []byte
-	// Only populated if accessed via RetrieveByVKIndex
+	// Only populated if accessed via RetrieveByEntityIndex
 	MaxIndex int
 	Index    int
 	Location Location
@@ -109,8 +137,9 @@ func NewEthereumStorage(ctx context.Context, ipcaddr string) (*EthereumStorage, 
 
 	}
 	rv := &EthereumStorage{
-		cl: client,
-		ei: extrainfo,
+		ctx: ctx,
+		cl:  client,
+		ei:  extrainfo,
 	}
 	rv.currentHead = big.NewInt(0)
 	block, err := client.BlockByNumber(ctx, nil)
@@ -119,8 +148,8 @@ func NewEthereumStorage(ctx context.Context, ipcaddr string) (*EthereumStorage, 
 	}
 	rv.currentTime = block.Time()
 	rv.currentHead = block.Number()
-	go rv.updateHead()
-
+	rv.updateHead()
+	rv.watchLogs()
 	// NewRegistryAPITransactor creates a new write-only instance of RegistryAPI, bound to a specific deployed contract.
 	regTrans, err := NewRegistryAPITransactor(extrainfo.RegistryContractAddress, client)
 	if err != nil {
@@ -135,21 +164,70 @@ func NewEthereumStorage(ctx context.Context, ipcaddr string) (*EthereumStorage, 
 	rv.aliasTrans = aliasTrans
 	return rv, nil
 }
+func (es *EthereumStorage) SubscribeStorageChange(ctx context.Context, ch chan *ChangeEvent) error {
+	es.subsmu.Lock()
+	es.subs[&headerSubscription{
+		ctx:    ctx,
+		client: ch,
+	}] = true
+	es.subsmu.Unlock()
+	return nil
+}
 func (es *EthereumStorage) updateHead() error {
 	rch := make(chan *types.Header)
 	_, err := es.cl.SubscribeNewHead(context.Background(), rch)
 	if err != nil {
 		return err
 	}
-	for h := range rch {
-		es.mu.Lock()
-		es.currentHead = h.Number
-		es.currentTime = h.Time
-		es.mu.Unlock()
-	}
-	return fmt.Errorf("UpdateHead channel ended")
+	go func() {
+		for h := range rch {
+			es.mu.Lock()
+			es.currentHead = h.Number
+			es.currentTime = h.Time
+			es.mu.Unlock()
+		}
+		panic("current head subscription ended")
+	}()
+	return nil
 }
 
+func (es *EthereumStorage) watchLogs() error {
+	qry := ethereum.FilterQuery{
+		Addresses: []common.Address{es.ei.RegistryContractAddress},
+	}
+	rvch := make(chan types.Log, 100)
+	sub, err := es.cl.SubscribeFilterLogs(es.ctx, qry, rvch)
+	go func() {
+		err := <-sub.Err()
+		panic(err)
+	}()
+	if err != nil {
+		return err
+	}
+	go func() {
+		for l := range rvch {
+			spew.Dump(l)
+		}
+	}()
+	return nil
+}
+
+func (es *EthereumStorage) processSubscribers(s *ChangeEvent) {
+	es.subsmu.Lock()
+	for sub, _ := range es.subs {
+		if sub.ctx.Err() != nil {
+			delete(es.subs, sub)
+		}
+		select {
+		//TODO when we do caching, make the header adapter
+		//refer to a persistent cache
+		case sub.client <- s:
+		case <-sub.ctx.Done():
+			delete(es.subs, sub)
+		}
+	}
+	es.subsmu.Unlock()
+}
 func (es *EthereumStorage) getHead() (*big.Int, *big.Int) {
 	es.mu.Lock()
 	n := es.currentHead
@@ -171,7 +249,7 @@ func (es *EthereumStorage) GetStateInformation(ctx context.Context) (*StateInfor
 	return rv, nil
 }
 
-func (es *EthereumStorage) RetrieveEntity(ctx context.Context, VK []byte) (*EntityRegistration, *StateInformation, error) {
+func (es *EthereumStorage) RetrieveEntity(ctx context.Context, hash []byte) (*EntityRegistration, *StateInformation, error) {
 	blockN, blockT := es.getHead()
 	if blockN == nil || blockT == nil {
 		return nil, nil, fmt.Errorf("Still synchronizing to the chain")
@@ -182,7 +260,7 @@ func (es *EthereumStorage) RetrieveEntity(ctx context.Context, VK []byte) (*Enti
 	}
 	hsh := sha3.NewKeccak256()
 	//The key to the map
-	hsh.Write(VK)
+	hsh.Write(hash)
 	//It's the first slot
 	hsh.Write(make([]byte, 32))
 	sum := hsh.Sum(nil)
@@ -218,8 +296,6 @@ func (es *EthereumStorage) RetrieveEntity(ctx context.Context, VK []byte) (*Enti
 		rvbytes = append(rvbytes, slotcontents...)
 	}
 	rvbytes = rvbytes[:arrlen]
-	rv.VK = make([]byte, 32)
-	copy(rv.VK[:], VK[:])
 	rv.Data = rvbytes
 
 	return &rv, si, nil
@@ -230,22 +306,22 @@ func HashDOT(dat []byte) []byte {
 	hsh.Write(dat)
 	return hsh.Sum(nil)
 }
-func (es *EthereumStorage) RetrieveDOTByVKIndex(ctx context.Context, DstVK []byte, index int) (*DOTRegistration, *StateInformation, error) {
+func (es *EthereumStorage) RetrieveDOTByEntityIndex(ctx context.Context, DstHash []byte, index int) (*DOTRegistration, *StateInformation, error) {
 	blockN, blockT := es.getHead()
 	if blockN == nil || blockT == nil {
 		return nil, nil, fmt.Errorf("Still synchronizing to the chain")
 	}
-	return es.retrieveDOTByVKIndex(ctx, DstVK, index, blockN, blockT)
+	return es.retrieveDOTByEntityIndex(ctx, DstHash, index, blockN, blockT)
 }
 
-func (es *EthereumStorage) retrieveDOTByVKIndex(ctx context.Context, DstVK []byte, index int, blockN *big.Int, blockT *big.Int) (*DOTRegistration, *StateInformation, error) {
+func (es *EthereumStorage) retrieveDOTByEntityIndex(ctx context.Context, DstHash []byte, index int, blockN *big.Int, blockT *big.Int) (*DOTRegistration, *StateInformation, error) {
 	si := &StateInformation{
 		CurrentBlock: blockN.Int64(),
 		CurrentTime:  blockT.Int64(),
 	}
 	hsh := sha3.NewKeccak256()
 	//The key to the map
-	hsh.Write(DstVK)
+	hsh.Write(DstHash)
 	slot := make([]byte, 32)
 	slot[31] = 1
 	hsh.Write(slot)
@@ -298,6 +374,58 @@ func (es *EthereumStorage) retrieveDOTByVKIndex(ctx context.Context, DstVK []byt
 		}
 	}
 	return &rv, si, nil
+}
+
+func (es *EthereumStorage) RetrieveRevocation(ctx context.Context, hash []byte) ([]byte, *StateInformation, error) {
+	blockN, blockT := es.getHead()
+	si := &StateInformation{
+		CurrentBlock: blockN.Int64(),
+		CurrentTime:  blockT.Int64(),
+	}
+	hsh := sha3.NewKeccak256()
+	//The key to the map
+	hsh.Write(hash)
+	slot := make([]byte, 32)
+	slot[31] = 3
+	hsh.Write(slot)
+	//The start of the byte array
+	baseAddr := hsh.Sum(nil)
+	var contents []byte
+	contentsHeader, err := es.cl.StorageAt(ctx, es.ei.RegistryContractAddress, common.BytesToHash(baseAddr), blockN)
+	if err != nil {
+		return nil, nil, err
+	}
+	if contentsHeader[31]%2 == 0 {
+		//Data is less than 32 bytes:
+		arrlen := int(contentsHeader[31]) / 2
+		contents = contentsHeader[:arrlen]
+	} else {
+		chint := new(big.Int).SetBytes(contentsHeader)
+		arrlen := chint.Int64() / 2
+		slots := arrlen / 32
+		hsh = sha3.NewKeccak256()
+		hsh.Write(baseAddr)
+		chint.SetBytes(hsh.Sum(nil))
+		rvbytes := []byte{}
+		//include last half slot
+		for i := 0; i <= int(slots); i++ {
+			slotcontents, err := es.cl.StorageAt(ctx, es.ei.RegistryContractAddress, common.BigToHash(chint), blockN)
+			if err != nil {
+				panic(err)
+			}
+			chint.Add(chint, big.NewInt(1))
+			rvbytes = append(rvbytes, slotcontents...)
+		}
+		contents = rvbytes[:arrlen]
+	}
+
+	hsh = sha3.NewKeccak256()
+	hsh.Write(contents)
+	expected := hsh.Sum(nil)
+	if !bytes.Equal(expected, hash) {
+		panic("somehow invalid revocation got through! tell michael")
+	}
+	return contents, si, nil
 }
 
 func (es *EthereumStorage) RetrieveDOTByHash(ctx context.Context, hash []byte, location Location) (*DOTRegistration, *StateInformation, error) {
@@ -361,65 +489,45 @@ func (es *EthereumStorage) retrieveDOTByHash(ctx context.Context, hash []byte, l
 	return rv, si, nil
 }
 
-//
-// DstVKBytes, err := es.cl.StorageAt(ctx, es.ei.RegistryContractAddress, common.BytesToHash(baseAddr), blockN)
-// if err != nil {
-// 	panic(err)
-// }
-// indexAddr := new(big.Int).SetBytes(baseAddr)
-// indexAddr.Add(indexAddr, big.NewInt(1))
-// IndexBytes, err := es.cl.StorageAt(ctx, es.ei.RegistryContractAddress, common.BigToHash(indexAddr), blockN)
-// if err != nil {
-// 	panic(err)
-// }
-// index := new(big.Int).SetBytes(IndexBytes).Int64()
-// //DOT doesn't exist
-// if bytes.Equal(DstVKBytes, make([]byte, 32)) {
-// 	return nil, si, nil
-// }
-// //=== same procedure
-// return es.retrieveDOTByVKIndex(ctx, DstVKBytes, int(index), blockN, blockT)
-//}
-
 type SignerFn = bind.SignerFn
 type Transaction = types.Transaction
 
-func (es *EthereumStorage) InsertEntity(ctx context.Context, controller common.Address, VK []byte, data []byte, signFn SignerFn) (*Transaction, error) {
+func (es *EthereumStorage) InsertEntity(ctx context.Context, controller common.Address, data []byte, signFn SignerFn) (*Transaction, error) {
 	topts := bind.TransactOpts{
 		From:    controller,
 		Signer:  signFn,
 		Context: ctx,
 	}
 
-	tx, err := es.regTrans.RegisterEntity(&topts, common.BytesToHash(VK), data)
+	tx, err := es.regTrans.RegisterEntity(&topts, data)
 	if err != nil {
 		return nil, err
 	}
 	return tx, nil
 }
 
-func (es *EthereumStorage) InsertDOTOffChain(ctx context.Context, account common.Address, DstVK []byte, hash []byte, location uint64, signFn SignerFn) (*Transaction, error) {
+func (es *EthereumStorage) InsertDOTOffChain(ctx context.Context, account common.Address, DstHash []byte, hash []byte, location uint64, signFn SignerFn) (*Transaction, error) {
 	topts := bind.TransactOpts{
 		From:    account,
 		Signer:  signFn,
 		Context: ctx,
 	}
 
-	tx, err := es.regTrans.RegisterOffChainDot(&topts, common.BytesToHash(DstVK), common.BytesToHash(hash), big.NewInt(int64(location)))
+	tx, err := es.regTrans.RegisterOffChainDot(&topts, common.BytesToHash(DstHash), common.BytesToHash(hash), big.NewInt(int64(location)))
 	if err != nil {
 		return nil, err
 	}
 	return tx, nil
 }
 
-func (es *EthereumStorage) InsertDOTOnChain(ctx context.Context, account common.Address, DstVK []byte, data []byte, signFn SignerFn) (*Transaction, error) {
+func (es *EthereumStorage) InsertDOTOnChain(ctx context.Context, account common.Address, DstHash []byte, data []byte, signFn SignerFn) (*Transaction, error) {
 	topts := bind.TransactOpts{
 		From:    account,
 		Signer:  signFn,
 		Context: ctx,
 	}
 
-	tx, err := es.regTrans.RegisterDot(&topts, common.BytesToHash(DstVK), data)
+	tx, err := es.regTrans.RegisterDot(&topts, common.BytesToHash(DstHash), data)
 	if err != nil {
 		return nil, err
 	}
@@ -446,6 +554,19 @@ func (es *EthereumStorage) CreateTLD(ctx context.Context, controller common.Addr
 		Context: ctx,
 	}
 	tx, err := es.aliasTrans.CreateTLD(&topts, tld)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (es *EthereumStorage) InsertRevocation(ctx context.Context, controller common.Address, data []byte, signFn SignerFn) (*Transaction, error) {
+	topts := bind.TransactOpts{
+		From:    controller,
+		Signer:  signFn,
+		Context: ctx,
+	}
+	tx, err := es.regTrans.RegisterRevocation(&topts, data)
 	if err != nil {
 		return nil, err
 	}

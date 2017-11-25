@@ -24,7 +24,7 @@ func (s *stub) DestEntity() *entity.Entity {
 func (s *stub) SourceEntity() *entity.Entity {
 	return s.source
 }
-func (s *stub) EntityFromHash(h []byte) (*entity.Entity, error) {
+func (s *stub) EntityFromHash(ctx context.Context, h []byte) (*entity.Entity, error) {
 	if bytes.Equal(s.source.Hash, h) {
 		return s.source, nil
 	}
@@ -105,7 +105,7 @@ func TestSerdes(t *testing.T) {
 		panic(err)
 	}
 	_ = representation
-	ddot, err := DecryptDOT(context.Background(), representation, &st)
+	ddot, err := DecryptFullDOT(context.Background(), representation, &st)
 	_ = ddot
 	fmt.Printf("decode error was: %v\n", err)
 	spew.Dump(ddot)

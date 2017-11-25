@@ -13,12 +13,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/immesys/bw2bc/crypto/sha3"
 )
 
-const RPCPath = "/home/immesys/w/go/src/github.com/immesys/wave/chain/datadir/geth.ipc"
-const TestAccountAddressString = "703de98c7e4aa9b7f62046866b527697dc0c901e"
+//const RPCPath = "/home/immesys/w/go/src/github.com/immesys/wave/chain/datadir/geth.ipc"
+const RPCPath = "/home/michael/go/src/github.com/immesys/wave/client/kit/datadir/geth.ipc"
 
-const TestAccount = `{"address":"703de98c7e4aa9b7f62046866b527697dc0c901e","crypto":{"cipher":"aes-128-ctr","ciphertext":"b406ea947786e49a6b551abb5405db243a3a0f187b09a0f04f2633bd883e8f87","cipherparams":{"iv":"4a042b2ed82931c4e4f726bd9dacf384"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"5de958c4f2dea63093549d2a461acc121a06c08183ad541dce3b93159d8f64ea"},"mac":"cf1ca61e1bce908437dab355ee36221dc064686575de6699d289fb63d859da0e"},"id":"21d9ff46-2e2b-42fd-9c06-2dcd4e2ef772","version":3}`
+//const TestAccountAddressString = "703de98c7e4aa9b7f62046866b527697dc0c901e"
+//const TestAccount = `{"address":"703de98c7e4aa9b7f62046866b527697dc0c901e","crypto":{"cipher":"aes-128-ctr","ciphertext":"b406ea947786e49a6b551abb5405db243a3a0f187b09a0f04f2633bd883e8f87","cipherparams":{"iv":"4a042b2ed82931c4e4f726bd9dacf384"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"5de958c4f2dea63093549d2a461acc121a06c08183ad541dce3b93159d8f64ea"},"mac":"cf1ca61e1bce908437dab355ee36221dc064686575de6699d289fb63d859da0e"},"id":"21d9ff46-2e2b-42fd-9c06-2dcd4e2ef772","version":3}`
 
 var es *EthereumStorage
 var storage Storage
@@ -48,20 +50,17 @@ func TestDOT(t *testing.T) {
 	rand.Read(arbdata)
 	arbdata2 := make([]byte, 512)
 	rand.Read(arbdata2)
-	dstvk := make([]byte, 32)
-	rand.Read(dstvk)
+	dsthash := make([]byte, 32)
+	rand.Read(dsthash)
 	expectedHash := HashDOT(arbdata)
-	//fmt.Printf("the dstvk is %x\n", dstvk)
-	//fmt.Printf("the expected hash1 is %x\n", expectedHash)
 	expectedHash2 := HashDOT(arbdata2)
-	//fmt.Printf("the dstvk is %x\n", dstvk)
-	//fmt.Printf("the expected hash2 is %x\n", expectedHash2)
+
 	authmu.Lock()
-	trans, err := storage.InsertDOTOnChain(context.Background(), TestAccountAddress, dstvk, arbdata, auth.Signer)
+	trans, err := storage.InsertDOTOnChain(context.Background(), TestAccountAddress, dsthash, arbdata, auth.Signer)
 	if err != nil {
 		t.Fatalf("Got insert error: %v", err)
 	}
-	trans2, err := storage.InsertDOTOnChain(context.Background(), TestAccountAddress, dstvk, arbdata2, auth.Signer)
+	trans2, err := storage.InsertDOTOnChain(context.Background(), TestAccountAddress, dsthash, arbdata2, auth.Signer)
 	if err != nil {
 		t.Fatalf("Got insert error: %v", err)
 	}
@@ -84,7 +83,7 @@ func TestDOT(t *testing.T) {
 	if !tinfo2.Successful {
 		t.Fatalf("transaction not successful")
 	}
-	DotEntry, si, err := storage.RetrieveDOTByVKIndex(context.Background(), dstvk, 0)
+	DotEntry, si, err := storage.RetrieveDOTByEntityIndex(context.Background(), dsthash, 0)
 	if err != nil {
 		t.Fatalf("Got retrieve dot by vki error: %v", err)
 	}
@@ -109,7 +108,7 @@ func TestDOT(t *testing.T) {
 	if !bytes.Equal(DotEntry.Data, arbdata) {
 		t.Fatal("Data did not match")
 	}
-	DotEntry, si, err = storage.RetrieveDOTByVKIndex(context.Background(), dstvk, 1)
+	DotEntry, si, err = storage.RetrieveDOTByEntityIndex(context.Background(), dsthash, 1)
 	if err != nil {
 		t.Fatalf("Got retrieve dot by vki error: %v", err)
 	}
@@ -136,7 +135,7 @@ func TestDOT(t *testing.T) {
 	}
 
 	// While we are here test nonexistant dot index
-	DotEntry, si, err = storage.RetrieveDOTByVKIndex(context.Background(), dstvk, 2)
+	DotEntry, si, err = storage.RetrieveDOTByEntityIndex(context.Background(), dsthash, 2)
 	if err != nil {
 		t.Fatalf("Got retrieve dot by vki error: %v", err)
 	}
@@ -175,15 +174,77 @@ func TestDOT(t *testing.T) {
 	}
 }
 
+func TestNonexistantRevocation(t *testing.T) {
+	t.Parallel()
+	rhash := make([]byte, 32)
+	rand.Read(rhash)
+	//Try retrieving revocation
+	rdata, stateinfo, err := storage.RetrieveRevocation(context.Background(), rhash)
+	if err != nil {
+		t.Fatalf("got retrieve revocation error: %v\n")
+	}
+	if stateinfo == nil {
+		t.Fatalf("expected non nil state info")
+	}
+	if rdata != nil {
+		t.Fatalf("expected nil rdata rv")
+	}
+}
+func TestRevocation(t *testing.T) {
+	t.Parallel()
+	lengths := []int{0, 31, 32, 300}
+	for _, l := range lengths {
+		t.Run(fmt.Sprintf("length_%d", l), func(t *testing.T) {
+			subtestRevocationX(t, l)
+		})
+	}
+}
+func subtestRevocationX(t *testing.T, sz int) {
+	t.Parallel()
+	arbdata := make([]byte, sz)
+	rand.Read(arbdata)
+	hsh := sha3.NewKeccak256()
+	hsh.Write(arbdata)
+	rhash := hsh.Sum(nil)
+	authmu.Lock()
+	trans, err := storage.InsertRevocation(context.Background(), TestAccountAddress, arbdata, auth.Signer)
+	if err != nil {
+		t.Fatalf("Got insert error: %v", err)
+	}
+	authmu.Unlock()
+	time.Sleep(40 * time.Second)
+	thash := trans.Hash()
+	tinfo, err := storage.TransactionInfo(context.Background(), thash[:])
+	if err != nil {
+		t.Fatalf("Got tinfo error: %v", err)
+	}
+	if !tinfo.Successful {
+		t.Fatalf("Transaction did not seem to process")
+	}
+
+	//Try retrieving revocation
+	rdata, stateinfo, err := storage.RetrieveRevocation(context.Background(), rhash)
+	if err != nil {
+		t.Fatalf("got retrieve entity error: %v\n")
+	}
+	if stateinfo == nil {
+		t.Fatalf("expected non nil state info")
+	}
+	if !bytes.Equal(rdata, arbdata) {
+		t.Fatalf("returned content is wrong")
+	}
+}
 func TestEntity(t *testing.T) {
 	t.Parallel()
 	//Arbitrary data
 	arbdata := make([]byte, 512)
 	rand.Read(arbdata)
-	vk := make([]byte, 32)
-	rand.Read(vk)
+	hsh := sha3.NewKeccak256()
+	hsh.Write(arbdata)
+	entHash := hsh.Sum(nil)
+
 	authmu.Lock()
-	trans, err := storage.InsertEntity(context.Background(), TestAccountAddress, vk, arbdata, auth.Signer)
+	trans, err := storage.InsertEntity(context.Background(), TestAccountAddress, arbdata, auth.Signer)
 	if err != nil {
 		t.Fatalf("Got insert error: %v", err)
 	}
@@ -199,15 +260,12 @@ func TestEntity(t *testing.T) {
 	}
 
 	//Try retrieving entoty
-	entityEntry, stateinfo, err := storage.RetrieveEntity(context.Background(), vk)
+	entityEntry, stateinfo, err := storage.RetrieveEntity(context.Background(), entHash)
 	if err != nil {
 		t.Fatalf("got retrieve entity error: %v\n")
 	}
 	if stateinfo == nil {
 		t.Fatalf("expected non nil state info")
-	}
-	if !bytes.Equal(entityEntry.VK, vk) {
-		t.Fatalf("returned VK is wrong")
 	}
 	if !bytes.Equal(entityEntry.Data, arbdata) {
 		t.Fatalf("returned content is wrong")
@@ -248,7 +306,7 @@ func TestNonexistantDOTByEntityIndex(t *testing.T) {
 	t.Parallel()
 	vk := make([]byte, 32)
 	rand.Read(vk)
-	de, si, err := storage.RetrieveDOTByVKIndex(context.Background(), vk, 1)
+	de, si, err := storage.RetrieveDOTByEntityIndex(context.Background(), vk, 1)
 	if de != nil {
 		t.Fatalf("Expected nil de rv")
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
 	"github.com/immesys/wave/dot"
+	"github.com/immesys/wave/entity"
 )
 
 //What do we need to store
@@ -70,9 +71,9 @@ type LowLevelStorage interface {
 }
 
 type PendingDOTResult struct {
-	Err        error
-	Ciphertext []byte
-	Hash       []byte
+	Err  error
+	Dot  *dot.DOT
+	Hash []byte
 	//Only for pending without partition
 	SecretIndex *int
 }
@@ -86,8 +87,8 @@ type Secret struct {
 }
 
 type InterestingEntityResult struct {
-	VK  []byte
-	Err error
+	Hash []byte
+	Err  error
 }
 
 //Retrieving dots:
@@ -105,41 +106,69 @@ type WaveState interface {
 
 	//An entity that should be inspected
 	//Pipeline is IGNORED->INTERESTING
-	InsertInterestingEntity(ctx context.Context, hash []byte) error
-	GetInterestingEntities(ctx context.Context) chan InterestingEntityResult
+	//InsertInterestingEntity(ctx context.Context, hash []byte) error
+
+	//Perspective functions
+	MoveEntityInterestingP(ctx context.Context, hash []byte, dotIndex int) error
+	GetInterestingEntitiesP(ctx context.Context) chan InterestingEntityResult
+	//GetEntityDOTIndex(ctx context.Context, dst []byte) (int, error)
+	//SetEntityDOTIndex(ctx context.Context, dst []byte, index int) error
+
+	//This will also call InsertOAQUEKeysFor but will add it to the secret log for the VK
+	//TODO don't add it to the secret log if we already have it
+	InsertPartitionLabelSecretP(ctx context.Context, dst []byte, ciphertext []byte, partition [][]byte) error
+	GetPartitionLabelSecretP(ctx context.Context, dst []byte, index int) (*Secret, error)
+
+	OAQUEKeysForP(ctx context.Context, dst []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error
+	//TODO this must be idempotenty, like don't add in a secret if we have a more
+	//powerful one already
+	InsertOAQUEKeysForP(ctx context.Context, dst []byte, slots [][]byte, k *oaque.PrivateKey) error
+
+	MoveDotPendingP(ctx context.Context, dt *dot.DOT, secretIndex int) error
+	//Assume dot already inserted into pending, but update the secretIndex
+	UpdateDotPendingP(ctx context.Context, dt *dot.DOT, secretIndex int) error
+	MoveDotLabelledP(ctx context.Context, dt *dot.DOT) error
+	MoveDotActiveP(ctx context.Context, dt *dot.DOT) error
+	MoveDotExpiredP(ctx context.Context, dt *dot.DOT) error
+	MoveDotEntRevokedP(ctx context.Context, dt *dot.DOT) error
+	MoveDotMalformedP(ctx context.Context, hash []byte) error
+	GetLabelledDotsP(ctx context.Context, dst []byte, partition [][]byte) chan PendingDOTResult
+	//If possible, only return pending dots with a secret index less than siLT
+	GetPendingDotsP(ctx context.Context, dst []byte, siLT int) chan PendingDOTResult
+	GetPartitionLabelSecretIndexP(ctx context.Context, dst []byte) (int, error)
+	//SetPartitionLabelSecretIndexP(ctx context.Context, dst []byte, index int) error
+	GetEntityDotIndexP(ctx context.Context, hsh []byte) (dotIndex int, err error)
+	SetEntityDotIndexP(ctx context.Context, hsh []byte, dotIndex int) error
+
+	//SetPendingDotSecretIndex(ctx context.Context, dothash []byte, dst []byte, secretindex int) error
+	//Global (non perspective) functions
+	MoveEntityRevokedG(ctx context.Context, ent *entity.Entity) error
+	MoveEntityExpiredG(ctx context.Context, ent *entity.Entity) error
+	MoveDotRevokedG(ctx context.Context, dot *dot.DOT) error
+	GetEntityByHashG(ctx context.Context, hsh []byte) (*entity.Entity, error)
 
 	//Fully decoded DOT
-	InsertDOT(ctx context.Context, dt *dot.DOT) error
+	//InsertDOT(ctx context.Context, dt *dot.DOT) error
 
 	//Not decoded, but we know the ID of the decryption key
-	InsertPendingDOTWithPartition(ctx context.Context, ciphertext []byte, dothash []byte, dst []byte, partition [][]byte) error
-	RemovePendingDOTWithPartition(ctx context.Context, dothash []byte, dst []byte) error
+	//InsertPendingDOTWithPartition(ctx context.Context, ciphertext []byte, dothash []byte, dst []byte, partition [][]byte) error
+	//RemovePendingDOTWithPartition(ctx context.Context, dothash []byte, dst []byte) error
 
 	//Returns all the dots that match the given partition
-	GetPendingDOTsWithPartition(ctx context.Context, dst []byte, partition [][]byte) chan PendingDOTResult
 
 	//Get the max number of partition label
-	GetPartitionLabelSecretIndex(ctx context.Context, dst []byte) (int, error)
 
 	//Not decoded, but we think we would want to try decode it in future
 	// The secret index is the index of the last secret we used to try decode the dot's partition
-	InsertPendingDOT(ctx context.Context, ciphertext []byte, dothash []byte, dst []byte, secretindex int) error
-	UpdatePendingDOTSecretIndex(ctx context.Context, dothash []byte, dst []byte, secretindex int) error
-	RemovePendingDOT(ctx context.Context, dothash []byte, dst []byte) error
+	//InsertPendingDOT(ctx context.Context, ciphertext []byte, dothash []byte, dst []byte, secretindex int) error
+
+	//RemovePendingDOT(ctx context.Context, dothash []byte, dst []byte) error
 
 	//If you return a result with err != nil it must be the last in the channel
 	//If the context is cancelled you must close the channel (and not deadlock)
-	GetPendingDOTs(ctx context.Context, dst []byte) chan PendingDOTResult
 
-	//This will also call InsertOAQUEKeysFor but will add it to the secret log for the VK
-	InsertPartitionLabelSecret(ctx context.Context, dst []byte, ciphertext []byte, partition [][]byte) error
-	GetPartitionLabelSecret(ctx context.Context, dst []byte, index int) (*Secret, error)
+	//GetOAQUEParamsForEntity(ctx context.Context, dst []byte) ([]byte, error)
 
-	GetEntityDOTIndex(ctx context.Context, dst []byte) (int, error)
-	SetEntityDOTIndex(ctx context.Context, dst []byte, index int) error
-	GetOAQUEParamsForEntity(ctx context.Context, dst []byte) ([]byte, error)
-	OAQUEKeysFor(ctx context.Context, dst []byte, slots [][]byte, onResult func(k []byte) bool) error
-	InsertOAQUEKeysFor(ctx context.Context, dst []byte, slots [][]byte, key []byte) error
 }
 
 //

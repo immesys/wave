@@ -247,7 +247,7 @@ func GTToSecretKey(gt *bn256.GT) [32]byte {
 }
 
 type DecryptionContext interface {
-	EntityFromHash(hash []byte) (*entity.Entity, error)
+	EntityFromHash(ctx context.Context, hash []byte) (*entity.Entity, error)
 	//OurOAQUEKey(vk []byte) oaque.MasterKey
 	//OurSK(vk []byte) []byte
 
@@ -305,32 +305,27 @@ type DecryptionResult struct {
 	PartitionDecrypted bool
 }
 
-//We can either
-//- succeed in decryting dot (never need to decrypt again)
-//- fail to decrypt:
-//  - dot is invalid (never need to look again)
-//  - missing a key (look again whenever we get another dot from DST)
-//  -
-func DecryptDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*DecryptionResult, error) {
+func UnpackDOT(ctx context.Context, blob []byte) (*DecryptionResult, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	//TODO include dot hash in result
-	//First, deserialize the top level
 	dot := &objs.DOT{}
 	dotHash := sha3.NewKeccak256()
 	dotHash.Write(blob)
 	dot.Hash = dotHash.Sum(nil)
+	dot.OriginalEncoding = blob
 	remainder, err := dot.UnmarshalMsg(blob)
 	if err != nil {
 		return &DecryptionResult{
 			BadOrMalformed: true,
+			Hash:           dot.Hash,
 			Msg:            fmt.Sprintf("Failed to unmarshal DOT: %v", err),
 		}, nil
 	}
 	if len(remainder) != 0 {
 		return &DecryptionResult{
 			BadOrMalformed: true,
+			Hash:           dot.Hash,
 			Msg:            fmt.Sprintf("Failed to unmarshal DOT: leftover bytes", err),
 		}, nil
 	}
@@ -339,10 +334,20 @@ func DecryptDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*Decr
 	if dot.PlaintextHeader == nil || len(dot.PlaintextHeader.DST) != 32 || len(dot.PlaintextHeader.SigVK) != 32 {
 		return &DecryptionResult{
 			BadOrMalformed: true,
+			Hash:           dot.Hash,
 			Msg:            fmt.Sprintf("PlaintextHeader malformed"),
 		}, nil
 	}
-	dst, err := dctx.EntityFromHash(dot.PlaintextHeader.DST)
+	return &DecryptionResult{
+		DOT:  dot,
+		Hash: dot.Hash,
+	}, nil
+}
+func DecryptLabel(ctx context.Context, dot *DOT, dctx DecryptionContext) (*DecryptionResult, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	dst, err := dctx.EntityFromHash(ctx, dot.PlaintextHeader.DST)
 	//If the error is not nil, something bad happened
 	if err != nil {
 		return nil, err
@@ -356,6 +361,7 @@ func DecryptDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*Decr
 			Msg:                "failed to resolve DST entity",
 		}, nil
 	}
+	dot.DST = dst
 
 	//TODO sanitize the rest of the dot
 	masterkey := dst.MasterKey
@@ -402,7 +408,10 @@ func DecryptDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*Decr
 		foundLabel = true
 	} else {
 		//Try all the private keys we have for this VK. There is no heirarchy
-		//so no point extending keys
+		//so no point extending keys. Be super mindful of the fact that we
+		//try ALL the keys the decryption context gives us. In Engine the
+		//dctx is constructed to only give us keys we have not tried before
+		//but the interface doesn't enforce that.
 		partitionslots := make([][]byte, params.OAQUESlots)
 		partitionslots[0] = []byte(OAQUEMetaSlotPartitionLabel)
 		allprivatekeys := []*oaque.PrivateKey{}
@@ -427,6 +436,7 @@ func DecryptDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*Decr
 		return &DecryptionResult{
 			PartitionDecrypted: false,
 			DOT:                dot,
+			Hash:               dot.Hash,
 			Msg:                "failed to decrypt partition label",
 		}, nil
 	}
@@ -435,12 +445,29 @@ func DecryptDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*Decr
 	if len(dot.PartitionLabel) != params.OAQUESlots {
 		return &DecryptionResult{
 			BadOrMalformed: true,
+			Hash:           dot.Hash,
 			Msg:            fmt.Sprintf("bad number of partition slots"),
 		}, nil
 	}
 
-	//Ok now we have the partition label, lets try decode the content using that label
+	return &DecryptionResult{
+		PartitionDecrypted: true,
+		DOT:                dot,
+		Hash:               dot.Hash,
+		Msg:                "",
+	}, nil
+
+}
+func DecryptContent(ctx context.Context, dot *DOT, dctx DecryptionContext) (*DecryptionResult, error) {
+
+	//TODO sanitize the rest of the dot
+	masterkey := dot.DST.MasterKey
+	oaqueParamsForVK := dot.DST.Params
+	if oaqueParamsForVK == nil {
+		return nil, fmt.Errorf("expected non-nil oaque params")
+	}
 	var sharedPrivateKey *oaque.PrivateKey
+	var err error
 	if masterkey != nil {
 		//Just generate it ourselves
 		attrMap := slotsToAttrMap(dot.PartitionLabel)
@@ -452,7 +479,7 @@ func DecryptDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*Decr
 	} else {
 		//We need to get this from our pool of keys
 		var sharedPrivateKey *oaque.PrivateKey
-		err = dctx.OAQUEKeysForContent(ctx, dst.VK, dot.PartitionLabel, func(k *oaque.PrivateKey) bool {
+		err = dctx.OAQUEKeysForContent(ctx, dot.DST.Hash, dot.PartitionLabel, func(k *oaque.PrivateKey) bool {
 			sharedPrivateKey = k
 			return false
 		})
@@ -515,6 +542,227 @@ func DecryptDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*Decr
 		}, nil
 	}
 
+	//TODO validation ,eg src==dst must fail some permissions etc etc
+	return &DecryptionResult{
+		FullyDecrypted:     true,
+		PartitionDecrypted: true,
+		DOT:                dot,
+		Msg:                "success",
+	}, nil
+}
+
+//We can either
+//- succeed in decryting dot (never need to decrypt again)
+//- fail to decrypt:
+//  - dot is invalid (never need to look again)
+//  - missing a key (look again whenever we get another dot from DST)
+//  -
+func DecryptFullDOT(ctx context.Context, blob []byte, dctx DecryptionContext) (*DecryptionResult, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	//PART ONE unpacking
+	dot := &objs.DOT{}
+	dotHash := sha3.NewKeccak256()
+	dotHash.Write(blob)
+	dot.Hash = dotHash.Sum(nil)
+	remainder, err := dot.UnmarshalMsg(blob)
+	if err != nil {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            fmt.Sprintf("Failed to unmarshal DOT: %v", err),
+		}, nil
+	}
+	if len(remainder) != 0 {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            fmt.Sprintf("Failed to unmarshal DOT: leftover bytes", err),
+		}, nil
+	}
+	//Sanitize DOT
+	//PlaintextHeader
+	if dot.PlaintextHeader == nil || len(dot.PlaintextHeader.DST) != 32 || len(dot.PlaintextHeader.SigVK) != 32 {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            fmt.Sprintf("PlaintextHeader malformed"),
+		}, nil
+	}
+	//PART TWO labelling
+	dst, err := dctx.EntityFromHash(ctx, dot.PlaintextHeader.DST)
+	//If the error is not nil, something bad happened
+	if err != nil {
+		return nil, err
+	}
+	//If the dst is nil, it means we could not resolve the entity
+	//we treat this as not being able to decrypt the dot
+	if dst == nil {
+		return &DecryptionResult{
+			PartitionDecrypted: false,
+			DOT:                dot,
+			Msg:                "failed to resolve DST entity",
+		}, nil
+	}
+
+	//TODO sanitize the rest of the dot
+	masterkey := dst.MasterKey
+	oaqueParamsForDst := dst.Params
+	if oaqueParamsForDst == nil {
+		return nil, fmt.Errorf("expected non-nil oaque params")
+	}
+	foundLabel := false
+	if masterkey != nil {
+		//This DOT is to one of our entities because we have the master key
+		ecdhSecret, err := dst.Curve25519ECDH(dot.PlaintextHeader.SigVK, []byte("partlabel"), 16+12)
+		if err != nil {
+			return nil, err
+		}
+		directAESK := ecdhSecret[:16]
+		directNonce := ecdhSecret[16:]
+		partLabelPool, ok := aesGCMDecrypt(directAESK, dot.EncryptedDirectPartLabelKey, directNonce)
+		if !ok {
+			//the ECDH derived secret for the direct partition label was incorrect.
+			//this should not happen, so the dot must be malicious
+			return &DecryptionResult{
+				BadOrMalformed: true,
+				Msg:            fmt.Sprintf("Failed to get ECDH secret for direct partition label"),
+			}, nil
+		}
+		partLabelAESK := partLabelPool[:16]
+		partLabelNonce := partLabelPool[16:]
+		encodedPartition, ok := aesGCMDecrypt(partLabelAESK, dot.EncryptedPartitionLabel, partLabelNonce)
+		if !ok {
+			return &DecryptionResult{
+				BadOrMalformed: true,
+				Msg:            fmt.Sprintf("DOT granter lied about part label direct key"),
+			}, nil
+		}
+		partition := objs.PartitionLabel{}
+		lo, err := partition.UnmarshalMsg(encodedPartition)
+		if len(lo) != 0 || err != nil || len(partition) != params.OAQUESlots {
+			return &DecryptionResult{
+				BadOrMalformed: true,
+				Msg:            fmt.Sprintf("Bad partition label format"),
+			}, nil
+		}
+		dot.PartitionLabel = partition
+		foundLabel = true
+	} else {
+		//Try all the private keys we have for this VK. There is no heirarchy
+		//so no point extending keys
+		partitionslots := make([][]byte, params.OAQUESlots)
+		partitionslots[0] = []byte(OAQUEMetaSlotPartitionLabel)
+		allprivatekeys := []*oaque.PrivateKey{}
+		err := dctx.OAQUEKeysForPartitionLabel(ctx, dst.Hash, partitionslots, func(k *oaque.PrivateKey) bool {
+			allprivatekeys = append(allprivatekeys, k)
+			return true
+		})
+		if err != nil {
+			return nil, err
+		}
+		//TODO we could maybe just try the keys inside the callback above rather
+		for _, pk := range allprivatekeys {
+			partition, ok := tryDecryptPartitionWithKey(dot, oaqueParamsForDst, pk)
+			if ok {
+				dot.PartitionLabel = partition
+				foundLabel = true
+				break
+			}
+		}
+	}
+	if !foundLabel {
+		return &DecryptionResult{
+			PartitionDecrypted: false,
+			DOT:                dot,
+			Msg:                "failed to decrypt partition label",
+		}, nil
+	}
+
+	//Check the partition label is okay
+	if len(dot.PartitionLabel) != params.OAQUESlots {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            fmt.Sprintf("bad number of partition slots"),
+		}, nil
+	}
+
+	// PART THREE content
+	//Ok now we have the partition label, lets try decode the content using that label
+	var sharedPrivateKey *oaque.PrivateKey
+	if masterkey != nil {
+		//Just generate it ourselves
+		attrMap := slotsToAttrMap(dot.PartitionLabel)
+		sharedPrivateKey, err = oaque.KeyGen(nil, oaqueParamsForDst, masterkey, attrMap)
+		if err != nil {
+			//This is an error because it should not happen
+			return nil, fmt.Errorf("Could not generate content key: %v", err)
+		}
+	} else {
+		//We need to get this from our pool of keys
+		var sharedPrivateKey *oaque.PrivateKey
+		err = dctx.OAQUEKeysForContent(ctx, dst.Hash, dot.PartitionLabel, func(k *oaque.PrivateKey) bool {
+			sharedPrivateKey = k
+			return false
+		})
+		if err != nil {
+			return nil, err
+		}
+		if sharedPrivateKey == nil {
+			return &DecryptionResult{
+				PartitionDecrypted: true,
+				FullyDecrypted:     false,
+				DOT:                dot,
+				Msg:                "failed to decrypt content",
+			}, nil
+		}
+	}
+	ciphertext := oaque.Ciphertext{}
+	ok := ciphertext.Unmarshal(dot.DelegationKeyhole)
+	if !ok {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            "could not unmarshal delegation key ciphertext",
+		}, nil
+	}
+	sharedGroupEl := oaque.Decrypt(sharedPrivateKey, &ciphertext)
+	sharedPool := cryptutils.GTToSecretKey(sharedGroupEl, make([]byte, 16+16+12+12))
+	contentAESK := sharedPool[0:16]
+	inheritanceAESK := sharedPool[16:32]
+	contentNonce := sharedPool[32:44]
+	inheritanceNonce := sharedPool[44:56]
+	contentMsgPack, ok := aesGCMDecrypt(contentAESK, dot.EncryptedContent, contentNonce)
+	if !ok {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            "could not decrypt content with matching key",
+		}, nil
+	}
+	inheritanceMsgPack, ok := aesGCMDecrypt(inheritanceAESK, dot.EncryptedInheritance, inheritanceNonce)
+	if !ok {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            "could not decrypt inheritance with matching key",
+		}, nil
+	}
+
+	dcontent := objs.DOTContent{}
+	extra, err := dcontent.UnmarshalMsg(contentMsgPack)
+	if err != nil || len(extra) != 0 {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            "could not unmarshal DOT content",
+		}, nil
+	}
+	dot.Content = &dcontent
+	dinheritance := objs.InheritanceMap{}
+	extra, err = dinheritance.UnmarshalMsg(inheritanceMsgPack)
+	if err != nil || len(extra) != 0 {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            "DOT inheritance is invalid",
+		}, nil
+	}
+
+	//TODO validation ,eg src==dst must fail some permissions etc etc
 	return &DecryptionResult{
 		FullyDecrypted:     true,
 		PartitionDecrypted: true,
