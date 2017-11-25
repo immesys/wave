@@ -6,7 +6,6 @@ contract Registry {
   struct Entity {
     address controller;
     bytes data;
-    bool revokable;
   }
 
   struct DotPointer {
@@ -20,42 +19,26 @@ contract Registry {
   // SLOT 0 VK -> primary content
   mapping(bytes32 => Entity) public entities;
 
-  // SLOT 1 VK -> field changes
-  // mapping(bytes32 => bytes[]) fieldChange;
-
-  // SLOT 2 VK -> attestations
-  //mapping(bytes32 => bytes[]) fieldAttestations;
-
-  // SLOT 1 VK -> revocation status
-  mapping(bytes32 => bool) entityRevoked;
-
-  // Slot 2 DST VK -> dot pointer
+  // Slot 1 DST VK -> dot pointer
   mapping(bytes32 => DotPointer[]) public dots;
 
-  // Slot 3 Dot Hash -> content (on chain)
+  // Slot 2 Dot Hash -> content (on chain)
   mapping(bytes32 => bytes) public dotsByHash;
 
-  function registerEntity(bytes32 vk, bool revokable, bytes data) public {
+  function registerEntity(bytes32 vk, bytes data) public {
     //Entity must not already exist
     require(entities[vk].controller == 0);
     require(data.length > 96);
     //Set the controller
     entities[vk].controller = msg.sender;
     entities[vk].data = data;
-    entities[vk].revokable = revokable;
   }
-
-//  function registerFieldChange(bytes32 vk, bytes data) public {
+//
+//  function registerModification(bytes32 vk) public {
 //    require(msg.sender == entities[vk].controller);
-//    require(data.length > 64);
-//    fieldChange[vk].push(data);
+//    require(entities[vk].revokable);
+//    entityRevoked[vk] = true;
 //  }
-
-  function registerRevocation(bytes32 vk) public {
-    require(msg.sender == entities[vk].controller);
-    require(entities[vk].revokable);
-    entityRevoked[vk] = true;
-  }
 
   //Attestation must be "accepted" by the VK by publishing it
 //  function registerAttestation(bytes32 vk, bytes data) public {

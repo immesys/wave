@@ -43,7 +43,7 @@ contract AliasRegistry {
   }
 
   function GetSubdomain(bytes32 tld, bytes32 domain, bytes32 subdomain) constant public returns (bytes v) {
-    return toplevels[tld].domains[domain].subdomains[subdomain]
+    return toplevels[tld].domains[domain].subdomains[subdomain];
   }
 
 }
