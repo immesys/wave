@@ -5,6 +5,7 @@ package objs
 // DO NOT EDIT
 
 import (
+	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -622,6 +623,11 @@ func (z *DOTContent) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
+		case "ns":
+			z.NS, err = dc.ReadBytes(z.NS)
+			if err != nil {
+				return
+			}
 		case "uri":
 			z.URI, err = dc.ReadString()
 			if err != nil {
@@ -690,9 +696,9 @@ func (z *DOTContent) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DOTContent) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 7
+	// map header, size 8
 	// write "src"
-	err = en.Append(0x87, 0xa3, 0x73, 0x72, 0x63)
+	err = en.Append(0x88, 0xa3, 0x73, 0x72, 0x63)
 	if err != nil {
 		return err
 	}
@@ -706,6 +712,15 @@ func (z *DOTContent) EncodeMsg(en *msgp.Writer) (err error) {
 		return err
 	}
 	err = en.WriteBytes(z.DST)
+	if err != nil {
+		return
+	}
+	// write "ns"
+	err = en.Append(0xa2, 0x6e, 0x73)
+	if err != nil {
+		return err
+	}
+	err = en.WriteBytes(z.NS)
 	if err != nil {
 		return
 	}
@@ -773,13 +788,16 @@ func (z *DOTContent) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DOTContent) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 7
+	// map header, size 8
 	// string "src"
-	o = append(o, 0x87, 0xa3, 0x73, 0x72, 0x63)
+	o = append(o, 0x88, 0xa3, 0x73, 0x72, 0x63)
 	o = msgp.AppendBytes(o, z.SRC)
 	// string "dst"
 	o = append(o, 0xa3, 0x64, 0x73, 0x74)
 	o = msgp.AppendBytes(o, z.DST)
+	// string "ns"
+	o = append(o, 0xa2, 0x6e, 0x73)
+	o = msgp.AppendBytes(o, z.NS)
 	// string "uri"
 	o = append(o, 0xa3, 0x75, 0x72, 0x69)
 	o = msgp.AppendString(o, z.URI)
@@ -831,6 +849,11 @@ func (z *DOTContent) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 		case "dst":
 			z.DST, bts, err = msgp.ReadBytesBytes(bts, z.DST)
+			if err != nil {
+				return
+			}
+		case "ns":
+			z.NS, bts, err = msgp.ReadBytesBytes(bts, z.NS)
 			if err != nil {
 				return
 			}
@@ -903,7 +926,7 @@ func (z *DOTContent) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DOTContent) Msgsize() (s int) {
-	s = 1 + 4 + msgp.BytesPrefixSize + len(z.SRC) + 4 + msgp.BytesPrefixSize + len(z.DST) + 4 + msgp.StringPrefixSize + len(z.URI) + 6 + msgp.ArrayHeaderSize
+	s = 1 + 4 + msgp.BytesPrefixSize + len(z.SRC) + 4 + msgp.BytesPrefixSize + len(z.DST) + 3 + msgp.BytesPrefixSize + len(z.NS) + 4 + msgp.StringPrefixSize + len(z.URI) + 6 + msgp.ArrayHeaderSize
 	for zpks := range z.Permissions {
 		s += msgp.StringPrefixSize + len(z.Permissions[zpks])
 	}
@@ -1068,46 +1091,60 @@ func (z HIBEKEY) Msgsize() (s int) {
 func (z *InheritanceMap) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
-	var zjpj uint32
-	zjpj, err = dc.ReadMapHeader()
+	var zzpf uint32
+	zzpf, err = dc.ReadMapHeader()
 	if err != nil {
 		return
 	}
-	for zjpj > 0 {
-		zjpj--
+	for zzpf > 0 {
+		zzpf--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "partitionLabelKey":
-			{
-				var zzpf []byte
-				zzpf, err = dc.ReadBytes([]byte(z.PartitionLabelKey))
-				z.PartitionLabelKey = OAQUEKey(zzpf)
-			}
-			if err != nil {
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					return
+				}
+				z.PartitionLabelKey = nil
+			} else {
+				if z.PartitionLabelKey == nil {
+					z.PartitionLabelKey = new(oaque.PrivateKey)
+				}
+				err = z.PartitionLabelKey.DecodeMsg(dc)
+				if err != nil {
+					return
+				}
 			}
 		case "delegationKey":
-			{
-				var zrfe []byte
-				zrfe, err = dc.ReadBytes([]byte(z.DelegationKey))
-				z.DelegationKey = OAQUEKey(zrfe)
-			}
-			if err != nil {
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					return
+				}
+				z.DelegationKey = nil
+			} else {
+				if z.DelegationKey == nil {
+					z.DelegationKey = new(oaque.PrivateKey)
+				}
+				err = z.DelegationKey.DecodeMsg(dc)
+				if err != nil {
+					return
+				}
 			}
 		case "delegationPartition":
-			var zgmo uint32
-			zgmo, err = dc.ReadArrayHeader()
+			var zrfe uint32
+			zrfe, err = dc.ReadArrayHeader()
 			if err != nil {
 				return
 			}
-			if cap(z.DelegationPartition) >= int(zgmo) {
-				z.DelegationPartition = (z.DelegationPartition)[:zgmo]
+			if cap(z.DelegationPartition) >= int(zrfe) {
+				z.DelegationPartition = (z.DelegationPartition)[:zrfe]
 			} else {
-				z.DelegationPartition = make([][]byte, zgmo)
+				z.DelegationPartition = make([][]byte, zrfe)
 			}
 			for zywj := range z.DelegationPartition {
 				z.DelegationPartition[zywj], err = dc.ReadBytes(z.DelegationPartition[zywj])
@@ -1115,14 +1152,38 @@ func (z *InheritanceMap) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-		case "e2ee":
-			{
-				var ztaf []byte
-				ztaf, err = dc.ReadBytes([]byte(z.E2EE))
-				z.E2EE = OAQUEKey(ztaf)
-			}
+		case "E2EESlots":
+			var zgmo uint32
+			zgmo, err = dc.ReadArrayHeader()
 			if err != nil {
 				return
+			}
+			if cap(z.E2EESlots) >= int(zgmo) {
+				z.E2EESlots = (z.E2EESlots)[:zgmo]
+			} else {
+				z.E2EESlots = make([][]byte, zgmo)
+			}
+			for zjpj := range z.E2EESlots {
+				z.E2EESlots[zjpj], err = dc.ReadBytes(z.E2EESlots[zjpj])
+				if err != nil {
+					return
+				}
+			}
+		case "e2ee":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					return
+				}
+				z.E2EE = nil
+			} else {
+				if z.E2EE == nil {
+					z.E2EE = new(oaque.PrivateKey)
+				}
+				err = z.E2EE.DecodeMsg(dc)
+				if err != nil {
+					return
+				}
 			}
 		default:
 			err = dc.Skip()
@@ -1136,24 +1197,38 @@ func (z *InheritanceMap) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *InheritanceMap) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+	// map header, size 5
 	// write "partitionLabelKey"
-	err = en.Append(0x84, 0xb1, 0x70, 0x61, 0x72, 0x74, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x4b, 0x65, 0x79)
+	err = en.Append(0x85, 0xb1, 0x70, 0x61, 0x72, 0x74, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x4b, 0x65, 0x79)
 	if err != nil {
 		return err
 	}
-	err = en.WriteBytes([]byte(z.PartitionLabelKey))
-	if err != nil {
-		return
+	if z.PartitionLabelKey == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.PartitionLabelKey.EncodeMsg(en)
+		if err != nil {
+			return
+		}
 	}
 	// write "delegationKey"
 	err = en.Append(0xad, 0x64, 0x65, 0x6c, 0x65, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4b, 0x65, 0x79)
 	if err != nil {
 		return err
 	}
-	err = en.WriteBytes([]byte(z.DelegationKey))
-	if err != nil {
-		return
+	if z.DelegationKey == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.DelegationKey.EncodeMsg(en)
+		if err != nil {
+			return
+		}
 	}
 	// write "delegationPartition"
 	err = en.Append(0xb3, 0x64, 0x65, 0x6c, 0x65, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x50, 0x61, 0x72, 0x74, 0x69, 0x74, 0x69, 0x6f, 0x6e)
@@ -1170,14 +1245,36 @@ func (z *InheritanceMap) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
+	// write "E2EESlots"
+	err = en.Append(0xa9, 0x45, 0x32, 0x45, 0x45, 0x53, 0x6c, 0x6f, 0x74, 0x73)
+	if err != nil {
+		return err
+	}
+	err = en.WriteArrayHeader(uint32(len(z.E2EESlots)))
+	if err != nil {
+		return
+	}
+	for zjpj := range z.E2EESlots {
+		err = en.WriteBytes(z.E2EESlots[zjpj])
+		if err != nil {
+			return
+		}
+	}
 	// write "e2ee"
 	err = en.Append(0xa4, 0x65, 0x32, 0x65, 0x65)
 	if err != nil {
 		return err
 	}
-	err = en.WriteBytes([]byte(z.E2EE))
-	if err != nil {
-		return
+	if z.E2EE == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.E2EE.EncodeMsg(en)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -1185,22 +1282,49 @@ func (z *InheritanceMap) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *InheritanceMap) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 5
 	// string "partitionLabelKey"
-	o = append(o, 0x84, 0xb1, 0x70, 0x61, 0x72, 0x74, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x4b, 0x65, 0x79)
-	o = msgp.AppendBytes(o, []byte(z.PartitionLabelKey))
+	o = append(o, 0x85, 0xb1, 0x70, 0x61, 0x72, 0x74, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x4b, 0x65, 0x79)
+	if z.PartitionLabelKey == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.PartitionLabelKey.MarshalMsg(o)
+		if err != nil {
+			return
+		}
+	}
 	// string "delegationKey"
 	o = append(o, 0xad, 0x64, 0x65, 0x6c, 0x65, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4b, 0x65, 0x79)
-	o = msgp.AppendBytes(o, []byte(z.DelegationKey))
+	if z.DelegationKey == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.DelegationKey.MarshalMsg(o)
+		if err != nil {
+			return
+		}
+	}
 	// string "delegationPartition"
 	o = append(o, 0xb3, 0x64, 0x65, 0x6c, 0x65, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x50, 0x61, 0x72, 0x74, 0x69, 0x74, 0x69, 0x6f, 0x6e)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.DelegationPartition)))
 	for zywj := range z.DelegationPartition {
 		o = msgp.AppendBytes(o, z.DelegationPartition[zywj])
 	}
+	// string "E2EESlots"
+	o = append(o, 0xa9, 0x45, 0x32, 0x45, 0x45, 0x53, 0x6c, 0x6f, 0x74, 0x73)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.E2EESlots)))
+	for zjpj := range z.E2EESlots {
+		o = msgp.AppendBytes(o, z.E2EESlots[zjpj])
+	}
 	// string "e2ee"
 	o = append(o, 0xa4, 0x65, 0x32, 0x65, 0x65)
-	o = msgp.AppendBytes(o, []byte(z.E2EE))
+	if z.E2EE == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.E2EE.MarshalMsg(o)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
@@ -1208,46 +1332,60 @@ func (z *InheritanceMap) MarshalMsg(b []byte) (o []byte, err error) {
 func (z *InheritanceMap) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
-	var zeth uint32
-	zeth, bts, err = msgp.ReadMapHeaderBytes(bts)
+	var ztaf uint32
+	ztaf, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
-	for zeth > 0 {
-		zeth--
+	for ztaf > 0 {
+		ztaf--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "partitionLabelKey":
-			{
-				var zsbz []byte
-				zsbz, bts, err = msgp.ReadBytesBytes(bts, []byte(z.PartitionLabelKey))
-				z.PartitionLabelKey = OAQUEKey(zsbz)
-			}
-			if err != nil {
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.PartitionLabelKey = nil
+			} else {
+				if z.PartitionLabelKey == nil {
+					z.PartitionLabelKey = new(oaque.PrivateKey)
+				}
+				bts, err = z.PartitionLabelKey.UnmarshalMsg(bts)
+				if err != nil {
+					return
+				}
 			}
 		case "delegationKey":
-			{
-				var zrjx []byte
-				zrjx, bts, err = msgp.ReadBytesBytes(bts, []byte(z.DelegationKey))
-				z.DelegationKey = OAQUEKey(zrjx)
-			}
-			if err != nil {
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.DelegationKey = nil
+			} else {
+				if z.DelegationKey == nil {
+					z.DelegationKey = new(oaque.PrivateKey)
+				}
+				bts, err = z.DelegationKey.UnmarshalMsg(bts)
+				if err != nil {
+					return
+				}
 			}
 		case "delegationPartition":
-			var zawn uint32
-			zawn, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			var zeth uint32
+			zeth, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				return
 			}
-			if cap(z.DelegationPartition) >= int(zawn) {
-				z.DelegationPartition = (z.DelegationPartition)[:zawn]
+			if cap(z.DelegationPartition) >= int(zeth) {
+				z.DelegationPartition = (z.DelegationPartition)[:zeth]
 			} else {
-				z.DelegationPartition = make([][]byte, zawn)
+				z.DelegationPartition = make([][]byte, zeth)
 			}
 			for zywj := range z.DelegationPartition {
 				z.DelegationPartition[zywj], bts, err = msgp.ReadBytesBytes(bts, z.DelegationPartition[zywj])
@@ -1255,14 +1393,38 @@ func (z *InheritanceMap) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-		case "e2ee":
-			{
-				var zwel []byte
-				zwel, bts, err = msgp.ReadBytesBytes(bts, []byte(z.E2EE))
-				z.E2EE = OAQUEKey(zwel)
-			}
+		case "E2EESlots":
+			var zsbz uint32
+			zsbz, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				return
+			}
+			if cap(z.E2EESlots) >= int(zsbz) {
+				z.E2EESlots = (z.E2EESlots)[:zsbz]
+			} else {
+				z.E2EESlots = make([][]byte, zsbz)
+			}
+			for zjpj := range z.E2EESlots {
+				z.E2EESlots[zjpj], bts, err = msgp.ReadBytesBytes(bts, z.E2EESlots[zjpj])
+				if err != nil {
+					return
+				}
+			}
+		case "e2ee":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.E2EE = nil
+			} else {
+				if z.E2EE == nil {
+					z.E2EE = new(oaque.PrivateKey)
+				}
+				bts, err = z.E2EE.UnmarshalMsg(bts)
+				if err != nil {
+					return
+				}
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -1277,20 +1439,41 @@ func (z *InheritanceMap) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *InheritanceMap) Msgsize() (s int) {
-	s = 1 + 18 + msgp.BytesPrefixSize + len([]byte(z.PartitionLabelKey)) + 14 + msgp.BytesPrefixSize + len([]byte(z.DelegationKey)) + 20 + msgp.ArrayHeaderSize
+	s = 1 + 18
+	if z.PartitionLabelKey == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.PartitionLabelKey.Msgsize()
+	}
+	s += 14
+	if z.DelegationKey == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.DelegationKey.Msgsize()
+	}
+	s += 20 + msgp.ArrayHeaderSize
 	for zywj := range z.DelegationPartition {
 		s += msgp.BytesPrefixSize + len(z.DelegationPartition[zywj])
 	}
-	s += 5 + msgp.BytesPrefixSize + len([]byte(z.E2EE))
+	s += 10 + msgp.ArrayHeaderSize
+	for zjpj := range z.E2EESlots {
+		s += msgp.BytesPrefixSize + len(z.E2EESlots[zjpj])
+	}
+	s += 5
+	if z.E2EE == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.E2EE.Msgsize()
+	}
 	return
 }
 
 // DecodeMsg implements msgp.Decodable
 func (z *OAQUEKey) DecodeMsg(dc *msgp.Reader) (err error) {
 	{
-		var zrbe []byte
-		zrbe, err = dc.ReadBytes([]byte((*z)))
-		(*z) = OAQUEKey(zrbe)
+		var zrjx []byte
+		zrjx, err = dc.ReadBytes([]byte((*z)))
+		(*z) = OAQUEKey(zrjx)
 	}
 	if err != nil {
 		return
@@ -1317,9 +1500,9 @@ func (z OAQUEKey) MarshalMsg(b []byte) (o []byte, err error) {
 // UnmarshalMsg implements msgp.Unmarshaler
 func (z *OAQUEKey) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	{
-		var zmfd []byte
-		zmfd, bts, err = msgp.ReadBytesBytes(bts, []byte((*z)))
-		(*z) = OAQUEKey(zmfd)
+		var zawn []byte
+		zawn, bts, err = msgp.ReadBytesBytes(bts, []byte((*z)))
+		(*z) = OAQUEKey(zawn)
 	}
 	if err != nil {
 		return
@@ -1336,18 +1519,18 @@ func (z OAQUEKey) Msgsize() (s int) {
 
 // DecodeMsg implements msgp.Decodable
 func (z *PartitionLabel) DecodeMsg(dc *msgp.Reader) (err error) {
-	var zbal uint32
-	zbal, err = dc.ReadArrayHeader()
+	var zmfd uint32
+	zmfd, err = dc.ReadArrayHeader()
 	if err != nil {
 		return
 	}
-	if cap((*z)) >= int(zbal) {
-		(*z) = (*z)[:zbal]
+	if cap((*z)) >= int(zmfd) {
+		(*z) = (*z)[:zmfd]
 	} else {
-		(*z) = make(PartitionLabel, zbal)
+		(*z) = make(PartitionLabel, zmfd)
 	}
-	for zelx := range *z {
-		(*z)[zelx], err = dc.ReadBytes((*z)[zelx])
+	for zrbe := range *z {
+		(*z)[zrbe], err = dc.ReadBytes((*z)[zrbe])
 		if err != nil {
 			return
 		}
@@ -1361,8 +1544,8 @@ func (z PartitionLabel) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	for zjqz := range z {
-		err = en.WriteBytes(z[zjqz])
+	for zzdc := range z {
+		err = en.WriteBytes(z[zzdc])
 		if err != nil {
 			return
 		}
@@ -1374,26 +1557,26 @@ func (z PartitionLabel) EncodeMsg(en *msgp.Writer) (err error) {
 func (z PartitionLabel) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	o = msgp.AppendArrayHeader(o, uint32(len(z)))
-	for zjqz := range z {
-		o = msgp.AppendBytes(o, z[zjqz])
+	for zzdc := range z {
+		o = msgp.AppendBytes(o, z[zzdc])
 	}
 	return
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
 func (z *PartitionLabel) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	var ztmt uint32
-	ztmt, bts, err = msgp.ReadArrayHeaderBytes(bts)
+	var zbal uint32
+	zbal, bts, err = msgp.ReadArrayHeaderBytes(bts)
 	if err != nil {
 		return
 	}
-	if cap((*z)) >= int(ztmt) {
-		(*z) = (*z)[:ztmt]
+	if cap((*z)) >= int(zbal) {
+		(*z) = (*z)[:zbal]
 	} else {
-		(*z) = make(PartitionLabel, ztmt)
+		(*z) = make(PartitionLabel, zbal)
 	}
-	for zkct := range *z {
-		(*z)[zkct], bts, err = msgp.ReadBytesBytes(bts, (*z)[zkct])
+	for zelx := range *z {
+		(*z)[zelx], bts, err = msgp.ReadBytesBytes(bts, (*z)[zelx])
 		if err != nil {
 			return
 		}
@@ -1405,8 +1588,8 @@ func (z *PartitionLabel) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z PartitionLabel) Msgsize() (s int) {
 	s = msgp.ArrayHeaderSize
-	for ztco := range z {
-		s += msgp.BytesPrefixSize + len(z[ztco])
+	for zjqz := range z {
+		s += msgp.BytesPrefixSize + len(z[zjqz])
 	}
 	return
 }
@@ -1415,13 +1598,13 @@ func (z PartitionLabel) Msgsize() (s int) {
 func (z *PlaintextHeader) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
-	var zana uint32
-	zana, err = dc.ReadMapHeader()
+	var zkct uint32
+	zkct, err = dc.ReadMapHeader()
 	if err != nil {
 		return
 	}
-	for zana > 0 {
-		zana--
+	for zkct > 0 {
+		zkct--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
 			return
@@ -1439,9 +1622,9 @@ func (z *PlaintextHeader) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 		case "sigvk":
 			{
-				var ztyy []byte
-				ztyy, err = dc.ReadBytes([]byte(z.SigVK))
-				z.SigVK = Ed25519VK(ztyy)
+				var ztmt []byte
+				ztmt, err = dc.ReadBytes([]byte(z.SigVK))
+				z.SigVK = Ed25519VK(ztmt)
 			}
 			if err != nil {
 				return
@@ -1509,13 +1692,13 @@ func (z *PlaintextHeader) MarshalMsg(b []byte) (o []byte, err error) {
 func (z *PlaintextHeader) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
-	var zinl uint32
-	zinl, bts, err = msgp.ReadMapHeaderBytes(bts)
+	var ztco uint32
+	ztco, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
-	for zinl > 0 {
-		zinl--
+	for ztco > 0 {
+		ztco--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
 			return
@@ -1533,9 +1716,9 @@ func (z *PlaintextHeader) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 		case "sigvk":
 			{
-				var zare []byte
-				zare, bts, err = msgp.ReadBytesBytes(bts, []byte(z.SigVK))
-				z.SigVK = Ed25519VK(zare)
+				var zana []byte
+				zana, bts, err = msgp.ReadBytesBytes(bts, []byte(z.SigVK))
+				z.SigVK = Ed25519VK(zana)
 			}
 			if err != nil {
 				return

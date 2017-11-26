@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"sync"
 
 	"github.com/immesys/wave/dot"
 	"github.com/immesys/wave/entity"
@@ -51,21 +50,21 @@ func (e *Engine) moveInterestingDotsToPending(dest *entity.Entity) (changed int,
 
 //These two functions need to tie in to subscribers of revocations as well
 func (e *Engine) moveDotToRevoked(dot *dot.DOT) error {
-	panic("ni") //TODO notify subscribers
+	//panic("ni") //TODO notify subscribers
 	return e.ws.MoveDotRevokedG(e.ctx, dot)
 }
 func (e *Engine) moveEntityToRevoked(ent *entity.Entity) error {
-	panic("ni") //TODO notify subscribers
+	//panic("ni") //TODO notify subscribers
 	return e.ws.MoveEntityRevokedG(e.ctx, ent)
 }
 
 //These two functions need to tie in to subscribers of revocations as well
 func (e *Engine) moveDotToExpired(dot *dot.DOT) error {
-	panic("ni") //TODO notify subscribers
+	//panic("ni") //TODO notify subscribers
 	return e.ws.MoveDotExpiredP(e.ctx, dot)
 }
 func (e *Engine) moveEntityToExpired(ctx context.Context, ent *entity.Entity) error {
-	panic("ni") //TODO notify subscribers
+	//panic("ni") //TODO notify subscribers
 	return e.ws.MoveEntityExpiredG(ctx, ent)
 }
 
@@ -117,20 +116,16 @@ func (e *Engine) movePendingToLabelledAndActive(dest *entity.Entity) (err error)
 			//dot transitions into labelled or active, and we must do so
 			//while holding the mutex on the dst hash to ensure no new
 			//keys that could potentially decode the dot race with this test
-			arrHash := entity.ArrayHash(decodeResult.DOT.PlaintextHeader.DST)
-			if e.partitionMutex[arrHash] == nil {
-				e.partitionMutex[arrHash] = new(sync.Mutex)
-			}
-			e.partitionMutex[arrHash].Lock()
+			e.partitionMutex.Lock()
 			fullDecodeResult, err := dot.DecryptContent(e.ctx, decodeResult.DOT, dctx)
 
 			if err != nil {
-				e.partitionMutex[arrHash].Unlock()
+				e.partitionMutex.Unlock()
 				return err
 			}
 			if fullDecodeResult.FullyDecrypted {
 				//Lock no longer needed, because its not going into the labelled queue
-				e.partitionMutex[arrHash].Unlock()
+				e.partitionMutex.Unlock()
 				//This must go into active
 				if err := e.insertActiveDot(fullDecodeResult.DOT); err != nil {
 					return err
@@ -139,7 +134,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *entity.Entity) (err error)
 				//This dot is labelled. When new secrets appear, they will be tested
 				//against it
 				err := e.ws.MoveDotLabelledP(e.ctx, decodeResult.DOT)
-				e.partitionMutex[arrHash].Unlock()
+				e.partitionMutex.Unlock()
 				if err != nil {
 					return err
 				}
@@ -156,46 +151,122 @@ func (e *Engine) movePendingToLabelledAndActive(dest *entity.Entity) (err error)
 }
 
 //Returns a map of source entities to the number of dots they have granted
-func (e *Engine) moveLabelledToActiveAndInsertKey(dest *entity.Entity, key *localdb.Secret) (err error) {
-	//I don't think this is an explicit state transition
-	//it either happens that pending goes straight to active
-	//or labelled gets moved to active by the addition of a new key
+// func (e *Engine) moveLabelledToActiveAndInsertKey(dest *entity.Entity, key *localdb.Secret) (err error) {
+// 	//Before we insert the key, we need to ensure we process all labelled dots
+// 	//that it might match (under mutex)
+// 	if !key.IsContentKey {
+// 		panic("huh?")
+// 	}
+// 	arrHash := dest.ArrayHash()
+// 	if e.partitionMutex[arrHash] == nil {
+// 		e.partitionMutex[arrHash] = new(sync.Mutex)
+// 	}
+// 	e.partitionMutex[arrHash].Lock()
+// 	defer e.partitionMutex[arrHash].Unlock()
+// 	ctx, cancel := context.WithCancel(e.ctx)
+// 	defer cancel()
+// 	for dt := range e.ws.GetLabelledDotsP(ctx, dest.Hash, key.Slots) {
+// 		//TODO decrypt and process
+// 		//No need to pass list of label keys to use, label is already
+// 		//decrypted
+// 		dctx := NewEngineDecryptionContext(e, nil)
+// 		fullDecodeResult, err := dot.DecryptContent(e.ctx, dt.Dot, dctx)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		if fullDecodeResult.FullyDecrypted {
+// 			if err := e.insertActiveDot(fullDecodeResult.DOT); err != nil {
+// 				return err
+// 			}
+// 		} else {
+// 			panic("we expected the dot to decrypt with the given key")
+// 		}
+// 	}
+// 	//Okay all dots have been processed, no new ones have been inserted
+// 	//because we hold the mutex. Insert the new key and release the mutex
+// 	return e.ws.InsertOAQUEKeysForP(ctx, dest.Hash, key.Slots, key.Key)
+// }
 
+//This function inserts an OQAUE content key and returns the labelled dots
+//that were decrypted by it that were granted to ENT
+//the key obviously comes FROM ENT (so the SRC of a dot)
+func (e *Engine) insertKeyAndUnlockLabelled(ent *entity.Entity, key *localdb.Secret) (map[[32]byte]*dot.DOT, error) {
+	//the rule is: this key must be compared agaisnt all labelled dots and inserted
+	//in the database before any further labelled dots can be inserted (no racing)
+	//i.e lock, compare labelled, collate list of new active,
+	//move old labelled to active, insert key, unlock, return new active for key processing
+	//we don't insert the new actives because they too contain keys so must be handled carefully
 	//Before we insert the key, we need to ensure we process all labelled dots
 	//that it might match (under mutex)
 	if !key.IsContentKey {
 		panic("huh?")
 	}
-	arrHash := dest.ArrayHash()
-	if e.partitionMutex[arrHash] == nil {
-		e.partitionMutex[arrHash] = new(sync.Mutex)
-	}
-	e.partitionMutex[arrHash].Lock()
-	defer e.partitionMutex[arrHash].Unlock()
+	rv := make(map[[32]byte]*dot.DOT)
+	e.partitionMutex.Lock()
+	defer e.partitionMutex.Unlock()
 	ctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
-	for dt := range e.ws.GetLabelledDotsP(ctx, dest.Hash, key.Slots) {
+	for dt := range e.ws.GetLabelledDotsP(ctx, ent.Hash, key.Slots) {
 		//TODO decrypt and process
 		//No need to pass list of label keys to use, label is already
 		//decrypted
 		dctx := NewEngineDecryptionContext(e, nil)
 		fullDecodeResult, err := dot.DecryptContent(e.ctx, dt.Dot, dctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if fullDecodeResult.FullyDecrypted {
-			if err := e.insertActiveDot(fullDecodeResult.DOT); err != nil {
-				return err
+			//add it to the RV
+			rv[fullDecodeResult.DOT.ArrayHash()] = fullDecodeResult.DOT
+			err := e.moveDotToActiveWithoutProcessingKeys(fullDecodeResult.DOT)
+			if err != nil {
+				return nil, err
 			}
 		} else {
 			panic("we expected the dot to decrypt with the given key")
 		}
 	}
-	//Okay all dots have been processed, no new ones have been inserted
+	//Okay all labelled dots have been processed, no new ones have been inserted
 	//because we hold the mutex. Insert the new key and release the mutex
-	return e.ws.InsertOAQUEKeysForP(ctx, dest.Hash, key.Slots, key.Key)
+	err := e.ws.InsertOAQUEKeysForP(ctx, ent.Hash, key.Slots, key.Key)
+	if err != nil {
+		return nil, err
+	}
+	return rv, nil
 }
 
+//As we move dots to labelled, we get keys. This tries to be a little efficient
+//in not trying the exact same key more than once
+func (e *Engine) recursiveInsertKeyAndMoveLabelled(ent *entity.Entity, newkey *localdb.Secret) error {
+	keysToProcess := make(map[[32]byte]*localdb.Secret)
+	keysToProcess[newkey.Hash()] = newkey
+	for len(keysToProcess) > 0 {
+		for h, key := range keysToProcess {
+			delete(keysToProcess, h)
+			newDots, err := e.insertKeyAndUnlockLabelled(ent, key)
+			if err != nil {
+				return err
+			}
+			for _, d := range newDots {
+				secret := &localdb.Secret{
+					IsContentKey: true,
+					Slots:        d.Inheritance.DelegationPartition,
+					Key:          d.Inheritance.DelegationKey,
+				}
+				keysToProcess[secret.Hash()] = secret
+			}
+		}
+	}
+	return nil
+}
+func (e *Engine) moveDotToActiveWithoutProcessingKeys(d *dot.DOT) error {
+	return e.ws.MoveDotActiveP(e.ctx, d)
+}
+
+//This particular code path also moves dots from labelled to active
+//that are decoded as a result of this dot being added to the system
+//it should not be called while the partition mutex for the SRC
+//of the dot is held
 func (e *Engine) insertActiveDot(d *dot.DOT) error {
 	okay, err := e.checkDotAndSave(d)
 	if err != nil {
@@ -205,12 +276,32 @@ func (e *Engine) insertActiveDot(d *dot.DOT) error {
 		//checkdot will handle the repercussions, we can just return
 		return nil
 	}
-	//This must also queue for resync the granting entity
-	err = e.markEntityInterestingAndQueueForSync(d.SRC.Hash)
+
+	//Process the label keys
+	_, err = e.ws.InsertPartitionLabelKeyP(e.ctx, d.SRC.Hash, d.Content.NS, d.Inheritance.PartitionLabelKey)
 	if err != nil {
 		return err
 	}
-	return e.ws.MoveDotActiveP(e.ctx, d)
+
+	//Process the content keys
+	secret := localdb.Secret{
+		IsContentKey: true,
+		Slots:        d.Inheritance.DelegationPartition,
+		Key:          d.Inheritance.DelegationKey,
+	}
+	err = e.recursiveInsertKeyAndMoveLabelled(d.SRC, &secret)
+	if err != nil {
+		return err
+	}
+	err = e.ws.MoveDotActiveP(e.ctx, d)
+	if err != nil {
+		return err
+	}
+
+	//This must also queue for resync the granting entity. This will take care of the
+	//new dots that can move from pending to labelled (and we just took care of
+	//the ones alreay in labelled that moved to active)
+	return e.markEntityInterestingAndQueueForSync(d.SRC.Hash)
 }
 
 //Learned OOB or something

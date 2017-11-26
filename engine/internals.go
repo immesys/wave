@@ -38,22 +38,35 @@ type Engine struct {
 	//we don't resync, so these operations must NOT happen concurrently
 	//or be forgotten about.
 	//map of string entity hash to mutex
-	partitionMutex map[[32]byte]*sync.Mutex
+	//I would have wanted to partition this by hash or something
+	//so there are multiple locks, but we don't know the hash of the
+	//source until we decrypt it so we can't lock on it :p
+	partitionMutex sync.Mutex
 
 	//The queue of entities that need to be synced
 	resyncQueue chan [32]byte
+
+	//For sync status
+	totalMutex sync.Mutex
+
+	//This channel is closed whenever the two totals are equal
+	//and replaced whenever they become nonequal again
+	//only read it while golting totalMutex
+	totalEqual          chan struct{}
+	totalSyncRequests   int64
+	totalCompletedSyncs int64
 }
 
 func NewEngine(ctx context.Context, state localdb.WaveState, bchain storage.Storage, perspective *entity.Entity) (*Engine, error) {
 	subctx, cancel := context.WithCancel(ctx)
 	var err error
 	rv := Engine{
-		ctx:            subctx,
-		ctxcancel:      cancel,
-		ws:             state,
-		st:             bchain,
-		perspective:    perspective,
-		partitionMutex: make(map[[32]byte]*sync.Mutex),
+		ctx:         subctx,
+		ctxcancel:   cancel,
+		ws:          state,
+		st:          bchain,
+		perspective: perspective,
+		totalEqual:  make(chan struct{}),
 		//TODO make buffered. Unbuffered for now to find deadlocks
 		resyncQueue: make(chan [32]byte),
 	}

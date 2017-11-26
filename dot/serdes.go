@@ -7,14 +7,12 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"vuvuzela.io/crypto/bn256"
 
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/cryptutils"
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
-	wavecrypto "github.com/immesys/wave/crypto"
 	"github.com/immesys/wave/dot/objs"
 	"github.com/immesys/wave/entity"
 	"github.com/immesys/wave/params"
@@ -35,20 +33,20 @@ const OAQUEMetaSlotResource = "resource"
 
 //Some DOTS do not have a namespace. If it does, return it
 //otherwise return "",false
-func dotNamespace(dot objs.DOT) ([]byte, error) {
-	idx := strings.Index(dot.Content.URI, "/")
-	if idx < 0 {
-		fmt.Printf("no slash found\n")
-		return nil, nil
-	}
-	fmt.Printf("thingy is %q", dot.Content.URI[:idx])
-	ns, err := wavecrypto.UnFmtKey(dot.Content.URI[:idx])
-	if err != nil {
-		fmt.Printf("unfmt error: %v\n", err)
-		return nil, err
-	}
-	return ns, nil
-}
+// func dotNamespace(dot objs.DOT) ([]byte, error) {
+// 	idx := strings.Index(dot.Content.URI, "/")
+// 	if idx < 0 {
+// 		fmt.Printf("no slash found\n")
+// 		return nil, nil
+// 	}
+// 	fmt.Printf("thingy is %q", dot.Content.URI[:idx])
+// 	ns, err := wavecrypto.UnFmtKey(dot.Content.URI[:idx])
+// 	if err != nil {
+// 		fmt.Printf("unfmt error: %v\n", err)
+// 		return nil, err
+// 	}
+// 	return ns, nil
+// }
 
 func slotsToAttrMap(id [][]byte) oaque.AttributeList {
 	rv := make(map[oaque.AttributeIndex]*big.Int)
@@ -155,10 +153,7 @@ func EncryptDOT(dot objs.DOT, ectx EncryptionContext) ([]byte, error) {
 	//Encrypt the partition label (the ID used to encrypt content and inheritance)
 	//This is encrypted under OAQUE[DSTVK](partition, <namespace>) if a namespace is present
 	//otherwise OAQUE[DSTVK](partition, "*")
-	ns, err := dotNamespace(dot)
-	if err != nil {
-		return nil, fmt.Errorf("dot URI is invalid: %v", err)
-	}
+	ns := dot.Content.NS
 	dstparams := ectx.DestEntity().Params
 	//The ID to encrypt the partition label with
 	var idForPartition [][]byte

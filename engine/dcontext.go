@@ -45,7 +45,7 @@ func (dc *EngineDecryptionContext) OAQUEKeysFor(ctx context.Context, hash []byte
 		return ctx.Err()
 	}
 	//The given context is not the engine context, so we need to add the perspective to it
-	subctx := context.WithValue(ctx, perspectiveKey, dc.e.perspective)
+	subctx := context.WithValue(ctx, PerspectiveKey, dc.e.perspective)
 	var err error
 	oerr := dc.e.ws.OAQUEKeysForP(subctx, hash, slots, func(k *oaque.PrivateKey) bool {
 		return onResult(k)

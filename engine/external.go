@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/immesys/wave/dot"
 	"github.com/immesys/wave/entity"
@@ -79,7 +80,7 @@ func (e *Engine) InsertDOT(ctx context.Context, encodedDOT []byte) error {
 func (e *Engine) LookupDOTSFrom(ctx context.Context, entityHash []byte, filter *Filter) (chan *LookupResult, chan error) {
 	//The external context does not have our perspective, but we want it so the caller
 	//can cancel
-	subctx, cancel := context.WithCancel(context.WithValue(ctx, perspectiveKey, e.perspective))
+	subctx, cancel := context.WithCancel(context.WithValue(ctx, PerspectiveKey, e.perspective))
 	lff := localdb.LookupFromFilter(*filter)
 	rv := make(chan *LookupResult, 10)
 	rve := make(chan error, 1)
@@ -116,6 +117,39 @@ func (e *Engine) LookupDOTSFrom(ctx context.Context, entityHash []byte, filter *
 	return rv, rve
 }
 
+type SyncStatus struct {
+	WaitSyncEmpty       chan struct{}
+	CurrentBlock        int64
+	CurrentTime         int64
+	TotalSyncRequests   int64
+	TotalCompletedSyncs int64
+}
+
+func (e *Engine) SyncStatus(ctx context.Context) (*SyncStatus, error) {
+	si, err := e.st.GetStateInformation(ctx)
+	if err != nil {
+		return nil, err
+	}
+	e.totalMutex.Lock()
+	sq := e.totalEqual
+	e.totalMutex.Unlock()
+	return &SyncStatus{
+		WaitSyncEmpty:       sq,
+		CurrentBlock:        si.CurrentBlock,
+		CurrentTime:         si.CurrentTime,
+		TotalSyncRequests:   atomic.LoadInt64(&e.totalSyncRequests),
+		TotalCompletedSyncs: atomic.LoadInt64(&e.totalCompletedSyncs),
+	}, nil
+}
+
+//The returned channel will be closed the next time the sync queue is empty
+func (e *Engine) WaitForEmptySyncQueue() chan struct{} {
+	e.totalMutex.Lock()
+	rv := e.totalEqual
+	e.totalMutex.Unlock()
+	return rv
+}
+
 //We should have a function that allows applications to tap into perspective changes
 //for the purposes of alerts and so on (also avoiding polling)
 func (e *Engine) SubscribePerspectiveChanges(ctx context.Context, someAdditionStuff string) {
@@ -142,7 +176,8 @@ func (e *Engine) LookupDotNoPerspective(ctx context.Context, hash []byte, aesk [
 		return nil, nil, nil
 	}
 	//decode it using aesk
-	dres, err := dot.DecryptDOTWithAESK(ctx, dotreg.Data, aesk)
+	dctx := NewEngineDecryptionContext(e, nil)
+	dres, err := dot.DecryptDOTWithAESK(ctx, dotreg.Data, aesk, dctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -160,7 +195,16 @@ func (e *Engine) LookupDotNoPerspective(ctx context.Context, hash []byte, aesk [
 }
 
 func (e *Engine) LookupDotInPerspective(ctx context.Context, hash []byte) (*dot.DOT, *Validity, error) {
-	panic("ni")
+	subctx := context.WithValue(ctx, PerspectiveKey, e.perspective)
+	dot, err := e.ws.GetDotP(subctx, hash)
+	if err != nil {
+		return nil, nil, err
+	}
+	val, err := e.CheckDot(ctx, dot)
+	if err != nil {
+		return nil, nil, err
+	}
+	return dot, val, nil
 }
 
 //Unlike checkDot, this should not touch the DB, it is a read-only operation

@@ -39,6 +39,12 @@ type Secret struct {
 	Key          *oaque.PrivateKey
 }
 
+//Permits equality comparisons
+//TODO we should move this out of here lol
+func (s *Secret) Hash() [32]byte {
+	panic("ni")
+}
+
 type InterestingEntityResult struct {
 	Hash []byte
 	Err  error
@@ -62,6 +68,13 @@ type LookupFromFilter struct {
 	Namespace *string
 }
 
+type State struct {
+	ValidActive bool
+	Expired     bool
+	Revoked     bool
+	EntRevoked  bool
+}
+
 type WaveState interface {
 
 	//Perspective functions
@@ -75,11 +88,12 @@ type WaveState interface {
 	GetInterestingByRevocationHashP(ctx context.Context, rvkhash []byte) chan ReverseLookupResult
 
 	GetPartitionLabelKeyP(ctx context.Context, dst []byte, index int) (*Secret, error)
+	InsertPartitionLabelKeyP(ctx context.Context, from []byte, namespace []byte, key *oaque.PrivateKey) (new bool, err error)
 
 	OAQUEKeysForP(ctx context.Context, dst []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error
 	//TODO this must be idempotenty, like don't add in a secret if we have a more
 	//powerful one already
-	InsertOAQUEKeysForP(ctx context.Context, dst []byte, slots [][]byte, k *oaque.PrivateKey) error
+	InsertOAQUEKeysForP(ctx context.Context, from []byte, slots [][]byte, k *oaque.PrivateKey) error
 
 	MoveDotPendingP(ctx context.Context, dt *dot.DOT, labelKeyIndex int) error
 	//Assume dot already inserted into pending, but update the labelKeyIndex
@@ -93,7 +107,7 @@ type WaveState interface {
 	//If possible, only return pending dots with a secret index less than siLT
 	GetPendingDotsP(ctx context.Context, dst []byte, lkiLT int) chan PendingDOTResult
 	GetPartitionLabelKeyIndexP(ctx context.Context, dst []byte) (int, error)
-
+	GetDotP(ctx context.Context, hash []byte) (d *dot.DOT, err error)
 	GetActiveDotsFromP(ctx context.Context, src []byte, filter *LookupFromFilter) chan LookupFromResult
 	GetEntityDotIndexP(ctx context.Context, hsh []byte) (dotIndex int, err error)
 	SetEntityDotIndexP(ctx context.Context, hsh []byte, dotIndex int) error

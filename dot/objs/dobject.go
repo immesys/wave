@@ -4,10 +4,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
 	"github.com/immesys/wave/entity"
 )
 
-//go:generate msgp -test=false
+//go:generate msgp -tests=false
 type HIBEKEY []byte
 type AESKey []byte
 type Ed25519Signature []byte
@@ -70,6 +71,14 @@ func (d *DOT) Expired() (bool, error) {
 	return expiryTime.Before(time.Now()), nil
 }
 
+func (d *DOT) HasContent() bool {
+	return d.Content != nil
+}
+
+func (d *DOT) ArrayHash() [32]byte {
+	panic("ni")
+}
+
 //This information is all encrypted. It is also signed, so this copy here
 //should be used in preference to the label
 type DOTContent struct {
@@ -77,6 +86,8 @@ type DOTContent struct {
 	SRC []byte `msg:"src"`
 	//The recipient of the DOT (duplicatd in label)
 	DST []byte `msg:"dst"`
+	//The namespace. Can be nil to mean global
+	NS []byte `msg:"ns"`
 	//These are the resources the dot
 	URI string `msg:"uri"`
 	//These are the permissions the dot confers.
@@ -109,10 +120,10 @@ type PartitionLabel [][]byte
 type InheritanceMap struct {
 	//This key allows the inheritor to read the partition labels of dots
 	//granted to SRCVK under the same namespace
-	PartitionLabelKey OAQUEKey `msg:"partitionLabelKey"`
+	PartitionLabelKey *oaque.PrivateKey `msg:"partitionLabelKey"`
 	//This key allows the inheritor to decrypt dots granted to
 	//SRCVK with a partition at or below DelegationPartition
-	DelegationKey OAQUEKey `msg:"delegationKey"`
+	DelegationKey *oaque.PrivateKey `msg:"delegationKey"`
 	//This is the partition key being delegated (the ID for DelegationKey).
 	//In general this would
 	//be the same as the partition that the dot is encrypted under, but
@@ -120,7 +131,8 @@ type InheritanceMap struct {
 	DelegationPartition [][]byte `msg:"delegationPartition"`
 	//This is for end-to-end encryption, the ID should be obvious from
 	//the permissions in the content of the dot
-	E2EE OAQUEKey `msg:"e2ee"`
+	E2EESlots [][]byte
+	E2EE      *oaque.PrivateKey `msg:"e2ee"`
 }
 
 //This information is public

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"sync/atomic"
 
 	"github.com/immesys/wave/entity"
 )
@@ -33,6 +34,13 @@ func (e *Engine) markEntityInterestingAndQueueForSync(dest []byte) error {
 func (e *Engine) queueEntityForSync(dest []byte) error {
 	//Like above but skip the mark interesting part
 	//(we know we think its interesting already)
+	e.totalMutex.Lock()
+	if e.totalSyncRequests == e.totalCompletedSyncs {
+		//We are about to be unequal, replace the channel
+		e.totalEqual = make(chan struct{})
+	}
+	e.totalSyncRequests++
+	e.totalMutex.Unlock()
 	e.resyncQueue <- entity.ArrayHash(dest)
 	return nil
 }
@@ -52,7 +60,17 @@ func (e *Engine) syncLoop() {
 		for {
 			select {
 			case ent := <-e.resyncQueue:
-				queue[ent] = true
+				if queue[ent] {
+					//This entity is already queued, so we can
+					//consider this request as handled but because
+					//we know there is something in the map we know
+					//the two counts can't be equal
+					e.totalMutex.Lock()
+					e.totalCompletedSyncs++
+					e.totalMutex.Unlock()
+				} else {
+					queue[ent] = true
+				}
 			case <-syncup:
 				//At this point, we know a sync loop has finished.
 				//therefore we have either read everything that will
@@ -91,8 +109,13 @@ func (e *Engine) syncLoop() {
 	for {
 		//at the top of the loop, we own the map
 		var ent [32]byte
+		ok := false
 		for ent, _ = range queue {
+			ok = true
 			break
+		}
+		if !ok {
+			panic("we expected at least one element?")
 		}
 		delete(queue, ent)
 		//We have our element, tell the reader to start
@@ -105,6 +128,17 @@ func (e *Engine) syncLoop() {
 		if err != nil {
 			panic(err)
 		}
+		e.totalMutex.Lock()
+		e.totalCompletedSyncs++
+		if e.totalCompletedSyncs > e.totalSyncRequests {
+			panic("completed > requested")
+		}
+		if e.totalCompletedSyncs == e.totalSyncRequests {
+			//they are equal, close the channel to notify ppl
+			close(e.totalEqual)
+		}
+		e.totalMutex.Unlock()
+		atomic.AddInt64(&e.totalCompletedSyncs, 1)
 		//Do the sync of the entity
 		syncup <- true //tell the reader to stop
 		<-syncdown     //wait for the queue to be empty
@@ -133,6 +167,11 @@ func (e *Engine) synchronizeEntity(ctx context.Context, dest *entity.Entity) (er
 func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 	subctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	//We artificially put a fake request in here so that the done channel
+	//will not be closed until we are done enqueueing all interesting entities
+	e.totalMutex.Lock()
+	e.totalSyncRequests++
+	e.totalMutex.Unlock()
 	for res := range e.ws.GetInterestingEntitiesP(subctx) {
 		if res.Err != nil {
 			return res.Err
@@ -146,12 +185,18 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 			return err
 		}
 	}
-	e.waitForAllSyncToFinish(ctx)
-	return nil
-}
 
-//When adding dots and whatnot, the sync is asynchronous. This
-//will wait until the sync queue is empty and then return
-func (e *Engine) waitForAllSyncToFinish(ctx context.Context) {
-	panic("ni")
+	//Now we have to remove our fake request, but we may actually have to
+	//handle them being equal now too
+	e.totalMutex.Lock()
+	e.totalSyncRequests--
+	if e.totalCompletedSyncs > e.totalSyncRequests {
+		panic("completed > requested")
+	}
+	if e.totalCompletedSyncs == e.totalSyncRequests {
+		//they are equal, close the channel to notify ppl
+		close(e.totalEqual)
+	}
+	e.totalMutex.Unlock()
+	return nil
 }
