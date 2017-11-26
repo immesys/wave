@@ -28,6 +28,7 @@ type EncryptionContext interface {
 	Auditors() [][]byte
 }
 
+const AESKeyholeSize = 16 + 12
 const OAQUEMetaSlotPartitionLabel = "partitionLabel"
 const OAQUEMetaSlotPartition = "partition"
 const OAQUEMetaSlotResource = "resource"
@@ -305,6 +306,55 @@ type DecryptionResult struct {
 	PartitionDecrypted bool
 }
 
+//Note that a bad or malformed response here is not an indication that the dot
+//is bad, it might be that the AESK is wrong. Don't kill the dot
+func DecryptDOTWithAESK(ctx context.Context, blob []byte, AESK []byte, dctx DecryptionContext) (*DecryptionResult, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	ures, err := UnpackDOT(ctx, blob)
+	if err != nil {
+		return nil, err
+	}
+	if ures.BadOrMalformed {
+		return ures, nil
+	}
+	dot := ures.DOT
+	aesk := AESK[:16]
+	nonce := AESK[16:]
+	dcontent, msg, err := decryptContent(dot.EncryptedContent, aesk, nonce)
+	if err != nil {
+		return nil, err
+	}
+	if dcontent == nil {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            msg,
+		}, nil
+	}
+	dot.Content = dcontent
+	src, err := dctx.EntityFromHash(ctx, dot.Content.SRC)
+	if err != nil || src == nil {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            "could not resolve src entity",
+		}, nil
+	}
+	dst, err := dctx.EntityFromHash(ctx, dot.Content.DST)
+	if err != nil || dst == nil {
+		return &DecryptionResult{
+			BadOrMalformed: true,
+			Msg:            "could not resolve dst entity",
+		}, nil
+	}
+	dot.SRC = src
+	dot.DST = dst
+	return &DecryptionResult{
+		DOT:            dot,
+		FullyDecrypted: true,
+	}, nil
+}
+
 func UnpackDOT(ctx context.Context, blob []byte) (*DecryptionResult, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -342,6 +392,18 @@ func UnpackDOT(ctx context.Context, blob []byte) (*DecryptionResult, error) {
 		DOT:  dot,
 		Hash: dot.Hash,
 	}, nil
+}
+func decryptContent(ciphertext []byte, aesk []byte, nonce []byte) (*objs.DOTContent, string, error) {
+	contentMsgPack, ok := aesGCMDecrypt(aesk, ciphertext, nonce)
+	if !ok {
+		return nil, "could not decrypt dot with correct key", nil
+	}
+	dcontent := &objs.DOTContent{}
+	extra, err := dcontent.UnmarshalMsg(contentMsgPack)
+	if err != nil || len(extra) != 0 {
+		return nil, "could not unmarshal DOT content", nil
+	}
+	return dcontent, "", nil
 }
 func DecryptLabel(ctx context.Context, dot *DOT, dctx DecryptionContext) (*DecryptionResult, error) {
 	if ctx.Err() != nil {
@@ -509,13 +571,17 @@ func DecryptContent(ctx context.Context, dot *DOT, dctx DecryptionContext) (*Dec
 	inheritanceAESK := sharedPool[16:32]
 	contentNonce := sharedPool[32:44]
 	inheritanceNonce := sharedPool[44:56]
-	contentMsgPack, ok := aesGCMDecrypt(contentAESK, dot.EncryptedContent, contentNonce)
-	if !ok {
+	dcontent, msg, err := decryptContent(dot.EncryptedContent, contentAESK, contentNonce)
+	if err != nil {
+		return nil, err
+	}
+	if dcontent == nil {
 		return &DecryptionResult{
 			BadOrMalformed: true,
-			Msg:            "could not decrypt content with matching key",
+			Msg:            msg,
 		}, nil
 	}
+
 	inheritanceMsgPack, ok := aesGCMDecrypt(inheritanceAESK, dot.EncryptedInheritance, inheritanceNonce)
 	if !ok {
 		return &DecryptionResult{
@@ -524,17 +590,13 @@ func DecryptContent(ctx context.Context, dot *DOT, dctx DecryptionContext) (*Dec
 		}, nil
 	}
 
-	dcontent := objs.DOTContent{}
-	extra, err := dcontent.UnmarshalMsg(contentMsgPack)
-	if err != nil || len(extra) != 0 {
-		return &DecryptionResult{
-			BadOrMalformed: true,
-			Msg:            "could not unmarshal DOT content",
-		}, nil
-	}
-	dot.Content = &dcontent
+	dot.Content = dcontent
+	//This must be sent along with the proof
+	dot.AESContentKeyhole = make([]byte, 0, AESKeyholeSize)
+	dot.AESContentKeyhole = append(dot.AESContentKeyhole, contentAESK...)
+	dot.AESContentKeyhole = append(dot.AESContentKeyhole, contentNonce...)
 	dinheritance := objs.InheritanceMap{}
-	extra, err = dinheritance.UnmarshalMsg(inheritanceMsgPack)
+	extra, err := dinheritance.UnmarshalMsg(inheritanceMsgPack)
 	if err != nil || len(extra) != 0 {
 		return &DecryptionResult{
 			BadOrMalformed: true,

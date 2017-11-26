@@ -2,9 +2,12 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/immesys/wave/dot"
 	"github.com/immesys/wave/entity"
+	localdb "github.com/immesys/wave/localdb/types"
+	"github.com/immesys/wave/storage"
 )
 
 //functions that the engine needs from above
@@ -34,16 +37,28 @@ entity becomes interesting
 type Validity struct {
 	//Like if revoked / expired / entExpired etc
 	//shared between entity and dot
+	Valid     bool
+	Revoked   bool
+	Expired   bool
+	Malformed bool
+	//Only for dots
+	SrcInvalid bool
+	DstInvalid bool
 }
 
 type Filter struct {
 	//Like namespace and permissions and stuff
 	//backend might be able to index some of it
 	//also validity
+	Valid *bool
+	//"*" for global
+	Namespace *string
 }
 
 type LookupResult struct {
 	//The dot but also its validity
+	DOT      *dot.DOT
+	Validity *Validity
 }
 
 // received proof:
@@ -53,14 +68,52 @@ type LookupResult struct {
 
 //External function: insert a DOT learned out of band
 func (e *Engine) InsertDOT(ctx context.Context, encodedDOT []byte) error {
-	panic("ni")
+	//this must go into pending even if decryptable
+	//to avoid racing with the labelled->active stuff
+	return e.insertPendingDotBlob(encodedDOT, true)
 }
 
 //External function: get dots granted from an entity on a namespace.
 //global grants will also be returned. The returned channel must be consumed
 //completely, or the context must be cancelled
 func (e *Engine) LookupDOTSFrom(ctx context.Context, entityHash []byte, filter *Filter) (chan *LookupResult, chan error) {
-	panic("ni")
+	//The external context does not have our perspective, but we want it so the caller
+	//can cancel
+	subctx, cancel := context.WithCancel(context.WithValue(ctx, perspectiveKey, e.perspective))
+	lff := localdb.LookupFromFilter(*filter)
+	rv := make(chan *LookupResult, 10)
+	rve := make(chan error, 1)
+	go func() error {
+		defer cancel()
+		fin := func(e error) error {
+			rve <- e
+			close(rv)
+			close(rve)
+			return e
+		}
+		for res := range e.ws.GetActiveDotsFromP(subctx, entityHash, &lff) {
+			if subctx.Err() != nil {
+				return fin(subctx.Err())
+			}
+			if res.Err != nil {
+				return fin(res.Err)
+			}
+			validity, err := e.CheckDot(subctx, res.Dot)
+			if err != nil {
+				return fin(err)
+			}
+			select {
+			case rv <- &LookupResult{
+				DOT:      res.Dot,
+				Validity: validity,
+			}:
+			case <-subctx.Done():
+				return fin(subctx.Err())
+			}
+		}
+		return fin(nil)
+	}()
+	return rv, rve
 }
 
 //We should have a function that allows applications to tap into perspective changes
@@ -77,16 +130,118 @@ func (e *Engine) SubscribeRevocations(ctx context.Context, interesting [][]byte)
 
 //This should try find and decrypt a dot given the hash and aesk. No information from our
 //perspective (active entity) is used
-func (e *Engine) LookupDotNoPerspective(ctx context.Context, hash []byte, aesk []byte, location int64) (*dot.DOT, *Validity, error) {
-	panic("ni")
+func (e *Engine) LookupDotNoPerspective(ctx context.Context, hash []byte, aesk []byte, location storage.Location) (*dot.DOT, *Validity, error) {
+	if len(aesk) != dot.AESKeyholeSize {
+		return nil, nil, fmt.Errorf("invalid AES Keyhole parameter")
+	}
+	dotreg, _, err := e.st.RetrieveDOTByHash(ctx, hash, location)
+	if err != nil {
+		return nil, nil, err
+	}
+	if dotreg == nil {
+		return nil, nil, nil
+	}
+	//decode it using aesk
+	dres, err := dot.DecryptDOTWithAESK(ctx, dotreg.Data, aesk)
+	if err != nil {
+		return nil, nil, err
+	}
+	if dres.BadOrMalformed {
+		return nil, &Validity{
+			Valid:     false,
+			Malformed: true,
+		}, nil
+	}
+	validity, err := e.CheckDot(ctx, dres.DOT)
+	if err != nil {
+		return nil, nil, err
+	}
+	return dres.DOT, validity, nil
 }
 
 func (e *Engine) LookupDotInPerspective(ctx context.Context, hash []byte) (*dot.DOT, *Validity, error) {
 	panic("ni")
 }
 
+//Unlike checkDot, this should not touch the DB, it is a read-only operation
+func (e *Engine) CheckDot(ctx context.Context, d *dot.DOT) (*Validity, error) {
+	srcokay, err := e.CheckEntity(ctx, d.SRC)
+	if err != nil {
+		return nil, err
+	}
+	dstokay, err := e.CheckEntity(ctx, d.DST)
+	if err != nil {
+		return nil, err
+	}
+	expired, err := d.Expired()
+	if err != nil {
+		return nil, err
+	}
+	revoked, err := e.IsRevoked(e.ctx, d.PlaintextHeader.RevocationHash)
+	if err != nil {
+		return nil, err
+	}
+
+	if !srcokay.Valid {
+		return &Validity{
+			Valid:      false,
+			SrcInvalid: true,
+		}, nil
+	}
+	if !dstokay.Valid {
+		return &Validity{
+			Valid:      false,
+			DstInvalid: true,
+		}, nil
+	}
+
+	if revoked {
+		return &Validity{
+			Valid:   false,
+			Revoked: true,
+		}, nil
+	}
+	if expired {
+		return &Validity{
+			Valid:   false,
+			Expired: true,
+		}, nil
+	}
+	return &Validity{Valid: true}, nil
+}
+func (e *Engine) CheckEntity(ctx context.Context, ent *entity.Entity) (*Validity, error) {
+	if ent.Expired() {
+		return &Validity{Valid: false, Expired: true}, nil
+	}
+	revoked, err := e.IsRevoked(e.ctx, ent.RevocationHash)
+	if err != nil {
+		return nil, err
+	}
+	if revoked {
+		return &Validity{Valid: false, Revoked: true}, nil
+	}
+	return &Validity{Valid: true}, nil
+}
+
 func (e *Engine) LookupEntity(ctx context.Context, hash []byte) (*entity.Entity, *Validity, error) {
-	panic("ni")
+	//TODO this should do some caching
+	reg, _, err := e.st.RetrieveEntity(ctx, hash)
+	if err != nil {
+		return nil, nil, err
+	}
+	if reg == nil {
+		return nil, nil, nil
+	}
+	ent, err := entity.UnpackEntity(reg.Data)
+	if err != nil {
+		//NOT TRAGIC
+		return nil, &Validity{Valid: false, Malformed: true}, nil
+	}
+	validity, err := e.CheckEntity(ctx, ent)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ent, validity, nil
 }
 
 //TODO this function should do some caching

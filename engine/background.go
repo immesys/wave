@@ -26,12 +26,22 @@ func (e *Engine) handleStorageEvent(change *storage.ChangeEvent) {
 func (e *Engine) handleRevocation(ctx context.Context, rvkhash []byte) error {
 	//Need to work out which entity / dot this is and then
 	//call checkDot or checkEntity on that
-	panic("ni")
-}
-
-//The caller (who is time sensitive) would like to call
-//RecursiveSynchronizeEntity on this entity if we are
-//interested in it
-func (e *Engine) enqueueEntityResyncIfInteresting(ctx context.Context, enthash []byte) error {
-	panic("ni")
+	//Remember that technically you can have multiple objects with the same
+	//revocation hash
+	subctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	for res := range e.ws.GetInterestingByRevocationHashP(subctx, rvkhash) {
+		if res.IsDOT {
+			_, err := e.checkPendingDotAndSave(res.Dot)
+			if err != nil {
+				return err
+			}
+		} else {
+			_, err := e.checkEntityAndSave(res.Entity)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

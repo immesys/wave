@@ -33,6 +33,7 @@ func (dc *EngineDecryptionContext) OAQUEKeysForContent(ctx context.Context, hash
 //If we have already tried some keys, we don't want to try them again
 func (dc *EngineDecryptionContext) OAQUEKeysForPartitionLabel(ctx context.Context, hash []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
 	//TODO use secret cache
+	//If secret cache is nil, don't use it
 	return dc.OAQUEKeysFor(ctx, hash, slots, onResult)
 }
 

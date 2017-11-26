@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"sync"
 
 	"github.com/immesys/wave/entity"
 	localdb "github.com/immesys/wave/localdb/types"
@@ -29,17 +30,32 @@ type Engine struct {
 	ws          localdb.WaveState
 	st          storage.Storage
 	perspective *entity.Entity
+
+	//If a dot enters labelled, it must be tested against all keys
+	//to ensure none of them match before entering labelled.
+	//Similarly, if a new content key is added, it must be tested
+	//against all labelled dots before being added.
+	//we don't resync, so these operations must NOT happen concurrently
+	//or be forgotten about.
+	//map of string entity hash to mutex
+	partitionMutex map[[32]byte]*sync.Mutex
+
+	//The queue of entities that need to be synced
+	resyncQueue chan [32]byte
 }
 
 func NewEngine(ctx context.Context, state localdb.WaveState, bchain storage.Storage, perspective *entity.Entity) (*Engine, error) {
 	subctx, cancel := context.WithCancel(ctx)
 	var err error
 	rv := Engine{
-		ctx:         subctx,
-		ctxcancel:   cancel,
-		ws:          state,
-		st:          bchain,
-		perspective: perspective,
+		ctx:            subctx,
+		ctxcancel:      cancel,
+		ws:             state,
+		st:             bchain,
+		perspective:    perspective,
+		partitionMutex: make(map[[32]byte]*sync.Mutex),
+		//TODO make buffered. Unbuffered for now to find deadlocks
+		resyncQueue: make(chan [32]byte),
 	}
 
 	//This function must only return once it knows that it has started watching

@@ -49,13 +49,14 @@ type DOT struct {
 	Outersig Ed25519Signature `msg:"osig"`
 
 	//Decrypted version (not transmitted, populated later)
-	Content          *DOTContent     `msg:"-"`
-	PartitionLabel   [][]byte        `msg:"-"`
-	Inheritance      *InheritanceMap `msg:"-"`
-	Hash             []byte          `msg:"-"`
-	OriginalEncoding []byte          `msg:"-"`
-	SRC              *entity.Entity  `msg:"-"`
-	DST              *entity.Entity  `msg:"-"`
+	Content           *DOTContent     `msg:"-"`
+	PartitionLabel    [][]byte        `msg:"-"`
+	Inheritance       *InheritanceMap `msg:"-"`
+	Hash              []byte          `msg:"-"`
+	OriginalEncoding  []byte          `msg:"-"`
+	SRC               *entity.Entity  `msg:"-"`
+	DST               *entity.Entity  `msg:"-"`
+	AESContentKeyhole []byte          `msg:"-"`
 }
 
 var ErrEncrypted = errors.New("DOT is still encrypted")

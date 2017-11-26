@@ -2,8 +2,10 @@ package entity
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
@@ -14,6 +16,15 @@ import (
 
 type Entity objs.Entity
 type EntityHash = objs.EntityHash
+
+func FmtHash(hash []byte) string {
+	return base64.URLEncoding.EncodeToString(hash)
+}
+func ArrayHash(hash []byte) [32]byte {
+	rv := [32]byte{}
+	copy(rv[:], hash)
+	return rv
+}
 
 //Generate a new random entity
 func NewEntity() *Entity {
@@ -41,6 +52,13 @@ func NewEntity() *Entity {
 }
 
 func (e *Entity) Expired() bool {
+	expiryTime := time.Unix(0, e.Expiry)
+	return expiryTime.Before(time.Now())
+}
+
+//This function WILL return an error in the "normal" case of an
+//entity failing to unpack
+func UnpackEntity(blob []byte) (*Entity, error) {
 	panic("ni")
 }
 
@@ -161,4 +179,8 @@ func (e *Entity) StringHash() string {
 		panic("StringHash() called on entity with no Hash")
 	}
 	return wavecrypto.FmtHash(e.Hash)
+}
+
+func (e *Entity) ArrayHash() [32]byte {
+	return ArrayHash(e.Hash)
 }

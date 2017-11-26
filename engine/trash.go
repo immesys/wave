@@ -3,6 +3,45 @@
 package engine
 
 
+//An entity that should be inspected
+//Pipeline is IGNORED->INTERESTING
+//InsertInterestingEntity(ctx context.Context, hash []byte) error
+//GetEntityDOTIndex(ctx context.Context, dst []byte) (int, error)
+//SetEntityDOTIndex(ctx context.Context, dst []byte, index int) error
+
+//This will also call InsertOAQUEKeysFor but will add it to the secret log for the VK
+//TODO don't add it to the secret log if we already have it
+//TODO these signature sucks, update when we do higher levels
+//InsertPartitionLabelKeyP(ctx context.Context, dst []byte, ciphertext []byte, partition [][]byte) error
+//InsertContentKeyP(ctx context.Context, dst []byte, ciphertext []byte, partition [][]byte) error
+
+
+
+//
+// func (e *Engine) RecursiveSynchronizeEntity(ctx context.Context, dest *entity.Entity) (err error) {
+// 	then := time.Now()
+// 	toprocess, err := e.synchronizeEntity(ctx, dest)
+// 	//For all sources, synchronize them too
+// 	for len(toprocess) > 0 {
+// 		for src, _ := range toprocess {
+// 			additional, err := e.synchronizeEntity(ctx, src)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			for k, v := range additional {
+// 				toprocess[k] += v
+// 			}
+// 			delete(toprocess, src)
+// 		}
+// 	}
+// 	now := time.Now()
+// 	delta := now.Sub(then)
+// 	if delta > 1*time.Millisecond {
+// 		fmt.Printf("RecursiveSync: %s\n", delta)
+// 	}
+// 	return nil
+// }
+
 //TODO loop
 // todo we need to use the new features in storage, but first
 // we need a list of our interesting entities (for dot rcpt) and
