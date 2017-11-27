@@ -23,3 +23,6 @@ var PerspectiveKey engineContextKey = "perspective"
 //top level, when a client connects and gives their perspective entity
 //we need to get an engine from cache or create a new engine
 //and start it resyncing. Once that is done the client can use the agent
+
+// top level we need to write a builder for dots
+// bear in mind how it will work with an api

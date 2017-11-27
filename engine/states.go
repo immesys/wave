@@ -16,9 +16,12 @@ import (
 //These functions return the number of changes to facilitate efficient looping
 func (e *Engine) moveInterestingDotsToPending(dest *entity.Entity) (changed int, err error) {
 	// Update the dots
-	index, err := e.ws.GetEntityDotIndexP(e.ctx, dest.Hash)
+	okay, index, err := e.ws.GetEntityDotIndexP(e.ctx, dest.Hash)
 	if err != nil {
 		return 0, err
+	}
+	if !okay {
+		panic("interestingToPending unknown entity")
 	}
 	indexChanged := false
 	numChanged := 0
@@ -69,9 +72,12 @@ func (e *Engine) moveEntityToExpired(ctx context.Context, ent *entity.Entity) er
 }
 
 func (e *Engine) movePendingToLabelledAndActive(dest *entity.Entity) (err error) {
-	targetIndex, err := e.ws.GetPartitionLabelKeyIndexP(e.ctx, dest.Hash)
+	okay, targetIndex, err := e.ws.GetEntityPartitionLabelKeyIndexP(e.ctx, dest.Hash)
 	if err != nil {
 		return err
+	}
+	if !okay {
+		panic("LKI on unknown entity?")
 	}
 	secretCache := make(map[int]*localdb.Secret)
 	subctx, cancel := context.WithCancel(e.ctx)
@@ -282,6 +288,10 @@ func (e *Engine) insertActiveDot(d *dot.DOT) error {
 	if err != nil {
 		return err
 	}
+	_, err = e.ws.InsertPartitionLabelKeyP(e.ctx, d.SRC.Hash, nil, d.Inheritance.GlobalLabelKey)
+	if err != nil {
+		return err
+	}
 
 	//Process the content keys
 	secret := localdb.Secret{
@@ -301,7 +311,7 @@ func (e *Engine) insertActiveDot(d *dot.DOT) error {
 	//This must also queue for resync the granting entity. This will take care of the
 	//new dots that can move from pending to labelled (and we just took care of
 	//the ones alreay in labelled that moved to active)
-	return e.markEntityInterestingAndQueueForSync(d.SRC.Hash)
+	return e.markEntityInterestingAndQueueForSync(d.SRC)
 }
 
 //Learned OOB or something

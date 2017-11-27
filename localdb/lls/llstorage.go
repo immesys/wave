@@ -16,7 +16,7 @@ type lls struct {
 var _ localdb.LowLevelStorage = &lls{}
 
 func NewLowLevelStorage(dbpath string) (localdb.LowLevelStorage, error) {
-	db, err := leveldb.OpenFile("path/to/db", nil)
+	db, err := leveldb.OpenFile(dbpath, nil)
 	if err != nil {
 		return nil, err
 	}

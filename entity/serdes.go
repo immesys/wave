@@ -10,12 +10,8 @@ import (
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	wavecrypto "github.com/immesys/wave/crypto"
-	"github.com/immesys/wave/entity/objs"
 	"github.com/immesys/wave/params"
 )
-
-type Entity objs.Entity
-type EntityHash = objs.EntityHash
 
 func FmtHash(hash []byte) string {
 	return base64.URLEncoding.EncodeToString(hash)
@@ -24,6 +20,10 @@ func ArrayHash(hash []byte) [32]byte {
 	rv := [32]byte{}
 	copy(rv[:], hash)
 	return rv
+}
+
+func (e *Entity) External() *ExternalEntity {
+	panic("ni")
 }
 
 //Generate a new random entity
@@ -47,7 +47,7 @@ func NewEntity() *Entity {
 	serialization, err := rv.SerializePublic()
 	entityHash := sha3.NewKeccak256()
 	entityHash.Write(serialization)
-	rv.Hash = EntityHash(entityHash.Sum(nil))
+	rv.Hash = entityHash.Sum(nil)
 	return &rv
 }
 
@@ -160,8 +160,7 @@ func (e *Entity) GenerateRevocationObject() ([]byte, error) {
 
 //Serialize this entity with secrets included
 func (e *Entity) SerializePrivate() ([]byte, error) {
-	x := objs.Entity(*e)
-	return x.MarshalMsg(nil)
+	return e.MarshalMsg(nil)
 }
 
 //Serialize the public form of this entity
@@ -170,8 +169,7 @@ func (e *Entity) SerializePublic() ([]byte, error) {
 	copy.VK = e.VK
 	copy.Params = e.Params
 	copy.RevocationHash = nil
-	x := objs.Entity(copy)
-	return x.MarshalMsg(nil)
+	return copy.MarshalMsg(nil)
 }
 
 func (e *Entity) StringHash() string {

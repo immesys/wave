@@ -22,12 +22,12 @@ func (e *Engine) enqueueEntityResyncIfInteresting(ctx context.Context, enthash [
 }
 
 //This function should be quick. Processing should happen elsewhere
-func (e *Engine) markEntityInterestingAndQueueForSync(dest []byte) error {
-	err := e.ws.MoveEntityInterestingP(e.ctx, dest, 0)
+func (e *Engine) markEntityInterestingAndQueueForSync(dest *entity.Entity) error {
+	err := e.ws.MoveEntityInterestingP(e.ctx, dest)
 	if err != nil {
 		return err
 	}
-	return e.queueEntityForSync(dest)
+	return e.queueEntityForSync(dest.Hash)
 }
 
 //This function should be quick. Processing should happen elsewhere

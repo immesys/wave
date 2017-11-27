@@ -354,26 +354,30 @@ func UnpackDOT(ctx context.Context, blob []byte) (*DecryptionResult, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	dot := &objs.DOT{}
+	edot := &objs.ExternalDOT{}
 	dotHash := sha3.NewKeccak256()
 	dotHash.Write(blob)
-	dot.Hash = dotHash.Sum(nil)
-	dot.OriginalEncoding = blob
-	remainder, err := dot.UnmarshalMsg(blob)
+	hash := dotHash.Sum(nil)
+	remainder, err := edot.UnmarshalMsg(blob)
 	if err != nil {
 		return &DecryptionResult{
 			BadOrMalformed: true,
-			Hash:           dot.Hash,
+			Hash:           hash,
 			Msg:            fmt.Sprintf("Failed to unmarshal DOT: %v", err),
 		}, nil
 	}
 	if len(remainder) != 0 {
 		return &DecryptionResult{
 			BadOrMalformed: true,
-			Hash:           dot.Hash,
+			Hash:           hash,
 			Msg:            fmt.Sprintf("Failed to unmarshal DOT: leftover bytes", err),
 		}, nil
 	}
+
+	dot := edot.Internal()
+	dot.Hash = hash
+	dot.OriginalEncoding = blob
+
 	//Sanitize DOT
 	//PlaintextHeader
 	if dot.PlaintextHeader == nil || len(dot.PlaintextHeader.DST) != 32 || len(dot.PlaintextHeader.SigVK) != 32 {

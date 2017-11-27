@@ -23,7 +23,7 @@ type OAQUEKey []byte
 //The actual partition ID is OQUE [ partition_label, namespace ]
 
 //This is a DOT as it appears on the wire
-type DOT struct {
+type ExternalDOT struct {
 	//Public information about the DOT
 	PlaintextHeader *PlaintextHeader `msg:"header"`
 	//Encrypted using AES128(ContentKey)
@@ -48,16 +48,52 @@ type DOT struct {
 
 	//Ensures whole-representation of DOT is not modified
 	Outersig Ed25519Signature `msg:"osig"`
+}
+
+//This is the version used within the program
+type DOT struct {
+	//Public information about the DOT
+	PlaintextHeader *PlaintextHeader
+	//Encrypted using AES128(ContentKey)
+	EncryptedContent []byte
+	//Encrypted using AES128(InheritanceKey)
+	EncryptedInheritance []byte
+
+	//Encrypted using AES128(PartitionLabelKey), contains the OAQUE ID for delegation keyhole
+	EncryptedPartitionLabel []byte
+	//This is an OAQUE ciphertext requriing DSTVK[partition_label, namespace]
+	EncryptedPartitionLabelKey []byte
+	//This is an Ed25519 ciphertext requiring DstVK
+	EncryptedDirectPartLabelKey []byte
+
+	//This, when ulocked with OQAUE(DSTVK, "partition", Partition) contains the AES
+	//keys for both the content and the inheritance
+	DelegationKeyhole []byte
+
+	//Encrypted using AES128(ECDH(SigningKey, Auditor)) the GCM allows you
+	//to check
+	ContentAuditorKeyholes [][]byte
+
+	//Ensures whole-representation of DOT is not modified
+	Outersig Ed25519Signature
 
 	//Decrypted version (not transmitted, populated later)
-	Content           *DOTContent     `msg:"-"`
-	PartitionLabel    [][]byte        `msg:"-"`
-	Inheritance       *InheritanceMap `msg:"-"`
-	Hash              []byte          `msg:"-"`
-	OriginalEncoding  []byte          `msg:"-"`
-	SRC               *entity.Entity  `msg:"-"`
-	DST               *entity.Entity  `msg:"-"`
-	AESContentKeyhole []byte          `msg:"-"`
+	Content           *DOTContent
+	PartitionLabel    [][]byte
+	Inheritance       *InheritanceMap
+	Hash              []byte
+	OriginalEncoding  []byte
+	SRC               *entity.Entity
+	DST               *entity.Entity
+	AESContentKeyhole []byte
+}
+
+func (ed *ExternalDOT) Internal() *DOT {
+	panic("ni")
+}
+
+func (d *DOT) External() *ExternalDOT {
+	panic("ni")
 }
 
 var ErrEncrypted = errors.New("DOT is still encrypted")
@@ -121,6 +157,8 @@ type InheritanceMap struct {
 	//This key allows the inheritor to read the partition labels of dots
 	//granted to SRCVK under the same namespace
 	PartitionLabelKey *oaque.PrivateKey `msg:"partitionLabelKey"`
+	//Used to decrypt dots granted on no namespace
+	GlobalLabelKey *oaque.PrivateKey `msg:"globalLabelKey"`
 	//This key allows the inheritor to decrypt dots granted to
 	//SRCVK with a partition at or below DelegationPartition
 	DelegationKey *oaque.PrivateKey `msg:"delegationKey"`

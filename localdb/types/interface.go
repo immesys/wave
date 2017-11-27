@@ -65,7 +65,8 @@ type LookupFromResult struct {
 
 type LookupFromFilter struct {
 	Valid     *bool
-	Namespace *string
+	Namespace []byte
+	GlobalNS  *bool
 }
 
 type State struct {
@@ -78,7 +79,12 @@ type State struct {
 type WaveState interface {
 
 	//Perspective functions
-	MoveEntityInterestingP(ctx context.Context, hash []byte, dotIndex int) error
+
+	//This is idempotent, an entity in any state other than unknown will
+	//be ignored by this function
+	MoveEntityInterestingP(ctx context.Context, ent *entity.Entity) error
+	//This does not return revoked or expired entities, even though the
+	//function above considers them "interesting"
 	GetInterestingEntitiesP(ctx context.Context) chan InterestingEntityResult
 	IsEntityInterestingP(ctx context.Context, hash []byte) (bool, error)
 
@@ -106,10 +112,10 @@ type WaveState interface {
 	GetLabelledDotsP(ctx context.Context, dst []byte, partition [][]byte) chan PendingDOTResult
 	//If possible, only return pending dots with a secret index less than siLT
 	GetPendingDotsP(ctx context.Context, dst []byte, lkiLT int) chan PendingDOTResult
-	GetPartitionLabelKeyIndexP(ctx context.Context, dst []byte) (int, error)
+	GetEntityPartitionLabelKeyIndexP(ctx context.Context, enthash []byte) (bool, int, error)
 	GetDotP(ctx context.Context, hash []byte) (d *dot.DOT, err error)
 	GetActiveDotsFromP(ctx context.Context, src []byte, filter *LookupFromFilter) chan LookupFromResult
-	GetEntityDotIndexP(ctx context.Context, hsh []byte) (dotIndex int, err error)
+	GetEntityDotIndexP(ctx context.Context, hsh []byte) (okay bool, dotIndex int, err error)
 	SetEntityDotIndexP(ctx context.Context, hsh []byte, dotIndex int) error
 
 	//Global (non perspective) functions

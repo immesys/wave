@@ -51,9 +51,9 @@ type Filter struct {
 	//Like namespace and permissions and stuff
 	//backend might be able to index some of it
 	//also validity
-	Valid *bool
-	//"*" for global
-	Namespace *string
+	Valid     *bool
+	Namespace []byte
+	GlobalNS  *bool
 }
 
 type LookupResult struct {
