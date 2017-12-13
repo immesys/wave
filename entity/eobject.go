@@ -16,10 +16,14 @@ type ExternalEntity struct {
 	RevocationHash []byte `msg:"rhash"`
 	//The expiry date (seconds since the unix epoch utc. negative means no expiry)
 	Expiry int64 `msg:"expiry"`
+	//Just some entropy to control the entity's hash (12 bytes)
+	Nonce []byte `msg:"n"`
 }
 
 type Entity struct {
 	//== Public content
+	//Just some entropy to control the entity's hash (12 bytes)
+	Nonce []byte
 	//The public verifying key
 	VK []byte
 	//The public OAQUE parameters
