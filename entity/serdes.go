@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	wavecrypto "github.com/immesys/wave/crypto"
 	"github.com/immesys/wave/params"
-	"github.com/immesys/wave/storage"
 )
 
 func FmtHash(hash []byte) string {
@@ -28,7 +27,7 @@ func (e *Entity) External() *ExternalEntity {
 }
 
 //Generate a new random entity
-func NewEntity(location storage.Location) *Entity {
+func NewEntity(location string) *Entity {
 	rv := Entity{}
 	var err error
 	rv.Params, rv.MasterKey, err = oaque.Setup(rand.Reader, params.OAQUESlots)
@@ -36,7 +35,7 @@ func NewEntity(location storage.Location) *Entity {
 		panic(err)
 	}
 	rv.SK, rv.VK = wavecrypto.GenerateKeypair()
-
+	rv.PrimaryLocation = location
 	rvk, err := rv.GenerateRevocationObject()
 	if err != nil {
 		panic(err)

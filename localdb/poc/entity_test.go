@@ -11,6 +11,7 @@ import (
 	"github.com/immesys/wave/entity"
 	"github.com/immesys/wave/localdb/lls"
 	"github.com/immesys/wave/localdb/types"
+	"github.com/immesys/wave/params"
 )
 
 var db types.WaveState
@@ -25,13 +26,13 @@ func init() {
 	db = NewPOC(llsdb)
 }
 func getPctx() context.Context {
-	perspective := entity.NewEntity()
+	perspective := entity.NewEntity(params.LocationUC)
 	ctx := context.WithValue(context.Background(), engine.PerspectiveKey, perspective)
 	return ctx
 }
 func TestStoreLoadEntity(t *testing.T) {
 	ctx := getPctx()
-	ent := entity.NewEntity()
+	ent := entity.NewEntity(params.LocationUC)
 	firstSer, err := ent.SerializePrivate()
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +56,7 @@ func TestStoreLoadEntity(t *testing.T) {
 
 func TestEntityDotIndex(t *testing.T) {
 	ctx := getPctx()
-	ent := entity.NewEntity()
+	ent := entity.NewEntity(params.LocationUC)
 	err := db.MoveEntityInterestingP(ctx, ent)
 	if err != nil {
 		t.Fatal(err)
@@ -127,7 +128,7 @@ func TestNonExistingEntityInteresting(t *testing.T) {
 
 func TestInterestingEntity(t *testing.T) {
 	ctx := getPctx()
-	ent := entity.NewEntity()
+	ent := entity.NewEntity(params.LocationUC)
 	err := db.MoveEntityInterestingP(ctx, ent)
 	if err != nil {
 		t.Fatal(err)
@@ -145,7 +146,7 @@ func TestInterestingEntitySequence(t *testing.T) {
 	ctx := getPctx()
 	dataset := make(map[[32]byte]*entity.Entity)
 	for i := 0; i < 100; i++ {
-		ent := entity.NewEntity()
+		ent := entity.NewEntity(params.LocationUC)
 		dataset[ent.ArrayHash()] = ent
 		err := db.MoveEntityInterestingP(ctx, ent)
 		if err != nil {
@@ -169,7 +170,7 @@ func TestInterestingEntitySequence(t *testing.T) {
 }
 func TestEntityByRevocation(t *testing.T) {
 	ctx := getPctx()
-	ent := entity.NewEntity()
+	ent := entity.NewEntity(params.LocationUC)
 	firstSer, err := ent.SerializePrivate()
 	if err != nil {
 		t.Fatal(err)

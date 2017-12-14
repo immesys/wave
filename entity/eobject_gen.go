@@ -25,6 +25,11 @@ func (z *Entity) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "PrimaryLocation":
+			z.PrimaryLocation, err = dc.ReadString()
+			if err != nil {
+				return
+			}
 		case "VK":
 			z.VK, err = dc.ReadBytes(z.VK)
 			if err != nil {
@@ -94,9 +99,18 @@ func (z *Entity) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *Entity) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 7
+	// map header, size 8
+	// write "PrimaryLocation"
+	err = en.Append(0x88, 0xaf, 0x50, 0x72, 0x69, 0x6d, 0x61, 0x72, 0x79, 0x4c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e)
+	if err != nil {
+		return err
+	}
+	err = en.WriteString(z.PrimaryLocation)
+	if err != nil {
+		return
+	}
 	// write "VK"
-	err = en.Append(0x87, 0xa2, 0x56, 0x4b)
+	err = en.Append(0xa2, 0x56, 0x4b)
 	if err != nil {
 		return err
 	}
@@ -178,9 +192,12 @@ func (z *Entity) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *Entity) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 7
+	// map header, size 8
+	// string "PrimaryLocation"
+	o = append(o, 0x88, 0xaf, 0x50, 0x72, 0x69, 0x6d, 0x61, 0x72, 0x79, 0x4c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e)
+	o = msgp.AppendString(o, z.PrimaryLocation)
 	// string "VK"
-	o = append(o, 0x87, 0xa2, 0x56, 0x4b)
+	o = append(o, 0xa2, 0x56, 0x4b)
 	o = msgp.AppendBytes(o, z.VK)
 	// string "Params"
 	o = append(o, 0xa6, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x73)
@@ -233,6 +250,11 @@ func (z *Entity) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "PrimaryLocation":
+			z.PrimaryLocation, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				return
+			}
 		case "VK":
 			z.VK, bts, err = msgp.ReadBytesBytes(bts, z.VK)
 			if err != nil {
@@ -303,7 +325,7 @@ func (z *Entity) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *Entity) Msgsize() (s int) {
-	s = 1 + 3 + msgp.BytesPrefixSize + len(z.VK) + 7
+	s = 1 + 16 + msgp.StringPrefixSize + len(z.PrimaryLocation) + 3 + msgp.BytesPrefixSize + len(z.VK) + 7
 	if z.Params == nil {
 		s += msgp.NilSize
 	} else {

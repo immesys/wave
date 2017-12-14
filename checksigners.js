@@ -1,4 +1,6 @@
 
+
+function checksigners() {
 var lat = eth.getBlock("latest")
 
 
@@ -12,4 +14,6 @@ for (var bn = lat.number - 100; bn < lat.number; bn++) {
   var c = clique.getSnapshotAtHash(bl.hash)
   var signer = c.recents[bn]
   res[signer] += 1
+}
+return res
 }

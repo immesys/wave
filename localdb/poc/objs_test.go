@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/immesys/wave/entity"
+	"github.com/immesys/wave/params"
 )
 
 func TestEntityState(t *testing.T) {
 	es := &EntityState{
-		Entity:           entity.NewEntity(),
+		Entity:           entity.NewEntity(params.LocationUC),
 		State:            5,
 		DotIndex:         7,
 		MaxLabelKeyIndex: 10,
