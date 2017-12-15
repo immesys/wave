@@ -1,0 +1,201 @@
+WAVE-Schema DEFINITIONS AUTOMATIC TAGS ::=
+BEGIN
+
+  DeclarationOfTrust ::= SEQUENCE {
+      -- "1" for now
+      version INTEGER,
+
+      -- the recipient of the DOT
+      subject EntityHash,
+
+      -- an object that would indicate the DOT is revoked
+      revocation SEQUENCE {
+        revocationCommitment RevocationCommitment,
+        canonicalLocations SEQUENCE OF Location
+      },
+
+      -- plaintext extensions
+      publicExtensions SEQUENCE OF Extension,
+
+      -- The result of decrypting value using the given algorithm and
+      -- parameters should be a DOTBody object. The contents of the
+      -- DOTBody object are allowed to differ depending on context
+      -- of the decryption (for example the secrets field may be null)
+      body SEQUENCE {
+        algorithm OBJECT IDENTIFIER,
+        parameters ANY DEFINED BY algorithm OPTIONAL,
+        value OCTET STRING
+      },
+
+      -- A signature over the entire encoded dot. The algorithm
+      -- and key used to generate this are specified in the body
+      -- and must match what is specified here
+      outerSignature SEQUENCE {
+        algorithm OBJECT IDENTIFIER,
+        verifyingKey OCTET STRING,
+        parameters ANY DEFINED BY algorithm OPTIONAL,
+        value OCTET STRING
+      }
+  }
+
+  -- Irrespective of the algorithm used to encrypt the body, this
+  -- is the object it contains
+  DOTBody ::= SEQUENCE {
+    forProver SEQUENCE {
+      extensions SEQUENCE OF Extension
+    },
+
+    forVerifier DOTVerifierBody
+
+  }
+
+  DOTVerifierBody ::= SEQUENCE {
+    -- the creator of the DOT
+    attester EntityHash,
+    -- the recipient of the trust
+    subject EntityHash,
+    -- the policy domain. If omitted, the policy is global
+    namespace EntityHash OPTIONAL,
+    -- when is this trust valid
+    validity SEQUENCE {
+      notBefore UTCTime,
+      notAfter UTCTime
+    },
+    -- this ensures that the outer layer (plaintext fields)
+    -- has not been tampered with. The nature of this key
+    outerSignatureParameters SEQUENCE {
+      algorithm OBJECT IDENTIFIER,
+      parameters ANY DEFINED BY algorithm OPTIONAL,
+      key OCTET STRING
+    },
+
+    -- the nature of the trust
+    policy SEQUENCE {
+      scheme OBJECT IDENTIFIER,
+      -- DER encoding of ASN.1 value identified by scheme
+      value OCTET STRING
+    },
+
+    extensions SEQUENCE OF Extension,
+
+    -- signature over the ephemeral public key used for the
+    -- outer signature
+    innerSignature SEQUENCE {
+      algorithm OBJECT IDENTIFIER,
+      parameters ANY DEFINED BY algorithm OPTIONAL,
+      value OCTET STRING
+    }
+  }
+
+  Location ::= SEQUENCE {
+    scheme OBJECT IDENTIFIER,
+    value OCTET STRING
+  }
+
+  Extension ::= SEQUENCE {
+    extnID OBJECT IDENTIFIER,
+    critical BOOLEAN DEFAULT FALSE,
+    -- DER encoding of ASN.1 value identified by extnID
+    value OCTET STRING
+  }
+  EntityHash ::= SEQUENCE {
+    scheme OBJECT IDENTIFIER,
+    hash OCTET STRING
+  }
+
+  RevocationCommitment ::= SEQUENCE {
+    scheme OBJECT IDENTIFIER,
+    parameters ANY DEFINED BY scheme OPTIONAL,
+    value OCTET STRING
+  }
+
+  Entity ::= SEQUENCE {
+
+  }
+
+  wave-id OBJECT IDENTIFIER ::= { 1 3 6 1 4 1 5000 }
+
+  wave-schemes OBJECT IDENTIFIER ::= { wave-id 2 }
+  entity-hash-id  OBJECT IDENTIFIER ::= { wave-schemes 1 }
+  revocation-scheme-id  OBJECT IDENTIFIER ::= { wave-schemes 2 }
+  body-scheme-id  OBJECT IDENTIFIER ::= { wave-schemes 3 }
+  location-scheme-id OBJECT IDENTIFIER ::= { wave-schemes 4 }
+
+  -- Objects defined by the reference crypto scheme
+  -- WAVE Reference 1 (WR1)
+
+  -- keccak256, not sha3, for interoperability with ethereum / swarm
+  entity-hash-keccak-256 OBJECT IDENTIFIER ::=  { entity-hash-id 1 }
+  -- this means that any object hashing to the same hash is considered
+  -- as a revocation of the given DOT or Entity
+  revocation-scheme-keccak-256 OBJECT IDENTIFIER ::= { revocation-scheme-id 1 }
+  -- this means the body of the dot is encrypted using OAQUE
+  body-scheme-oaque-bn256 OBJECT IDENTIFIER ::=  { body-scheme-id 1 }
+
+  -- this means the location is defined by a URL
+  location-scheme-url OBJECT IDENTIFIER ::= { location-scheme-id 1 }
+  -- this means the location is defined by an ethereum block chain
+  location-scheme-ethereum OBJECT IDENTIFIER ::= { location-scheme-id 2 }
+
+  -- this object will be DER encoded and present in the location.value scheme
+  -- when the scheme is location-scheme-url
+  LocationURL ::= SEQUENCE {
+    value UTF8String
+  }
+
+  -- this object will be DER encoded and present in the location.value scheme
+  -- when the scheme is location-scheme-ethereum
+  LocationEthereum ::= SEQUENCE {
+    chainID INTEGER,
+    contractAddress INTEGER
+  }
+
+  WR1BodyCiphertext ::= SEQUENCE {
+    -- content: WR1VerifierBody DER encoded
+    -- encryption algorithm: AES128
+    -- key: verifierBodyKey
+    verifierBodyCiphertext OCTET STRING,
+
+    -- content: WR1ProverBody DER encoded
+    -- encryption algorithm: AES128
+    -- key: proverBodyKey
+    proverBodyCiphertext OCTET STRING,
+
+    -- content WR1Envelope DER encoded
+    -- encryption algorithm: AES128
+    -- key: envelopeKey
+    envelopeCiphertext OCTET STRING,
+
+    -- content evelopeBodyKey
+    -- encryption algorithm: IBE-bn256 in subject system
+    -- id: envelopeID (namespace)
+    envelopeKey-ibe-bn256 OCTET STRING,
+
+    -- content envelopeBodyKey
+    -- encryption algorithm: AES128
+    -- key: ECDH (outer signature key, subject key)
+    -- this permits reading the envelope if you are the direct
+    -- recipient, even without knowing the namespace
+    envelopeKey-curve25519 OCTET STRING
+  }
+
+  WR1Envelope ::= SEQUENCE {
+    -- content: verifierBodyKey
+    -- encryption algorithm: oaque-bn256 in subject system
+    -- encryption id: Partition
+    verifierBodyKey-oaque OCTET STRING,
+
+    -- the ID for the verifierBodyKey-oaque ciphertext
+    partition SEQUENCE OF OCTET STRING
+  }
+
+  WR1ProverBody ::= SEQUENCE {
+    extensions SEQUENCE OF Extension
+  }
+
+  WR1VerifierBody ::= SEQUENCE {
+    dotVerifierBody DOTVerifierBody
+  }
+
+
+END
