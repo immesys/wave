@@ -1,112 +1,123 @@
-WAVE-Schema DEFINITIONS AUTOMATIC TAGS ::=
+WAVE-Schema DEFINITIONS::=
 BEGIN
 
   DeclarationOfTrust ::= SEQUENCE {
       -- "1" for now
-      version INTEGER,
+      version [0] IMPLICIT INTEGER,
 
       -- the recipient of the DOT
-      subject EntityHash,
+      subject [1] IMPLICIT EntityHash,
 
       -- an object that would indicate the DOT is revoked
-      revocation SEQUENCE {
-        revocationCommitment RevocationCommitment,
-        canonicalLocations SEQUENCE OF Location
-      },
+      revocationCommitment [2] IMPLICIT RevocationCommitment,
 
       -- plaintext extensions
-      publicExtensions SEQUENCE OF Extension,
+      publicExtensions [3] IMPLICIT SEQUENCE OF Extension,
 
       -- The result of decrypting value using the given algorithm and
       -- parameters should be a DOTBody object. The contents of the
       -- DOTBody object are allowed to differ depending on context
       -- of the decryption (for example the secrets field may be null)
-      body SEQUENCE {
-        algorithm OBJECT IDENTIFIER,
-        parameters ANY DEFINED BY algorithm OPTIONAL,
-        value OCTET STRING
-      },
+      body [4] IMPLICIT DOTBodyCiphertext,
 
       -- A signature over the entire encoded dot. The algorithm
       -- and key used to generate this are specified in the body
       -- and must match what is specified here
-      outerSignature SEQUENCE {
-        algorithm OBJECT IDENTIFIER,
-        verifyingKey OCTET STRING,
-        parameters ANY DEFINED BY algorithm OPTIONAL,
-        value OCTET STRING
-      }
+      outerSignature [5] IMPLICIT OuterSignature
+  }
+
+  OuterSignature ::= SEQUENCE {
+    algorithm [0] IMPLICIT OBJECT IDENTIFIER,
+    verifyingKey [1] IMPLICIT OCTET STRING,
+    parameters [2] EXPLICIT ANY DEFINED BY algorithm OPTIONAL,
+    value [3] IMPLICIT OCTET STRING
+  }
+
+  DOTBodyCiphertext ::= SEQUENCE {
+    algorithm [0] IMPLICIT OBJECT IDENTIFIER,
+    parameters [1] EXPLICIT ANY DEFINED BY algorithm OPTIONAL,
+    value [2] IMPLICIT OCTET STRING
   }
 
   -- Irrespective of the algorithm used to encrypt the body, this
   -- is the object it contains
   DOTBody ::= SEQUENCE {
-    forProver SEQUENCE {
-      extensions SEQUENCE OF Extension
-    },
+    forProver [0] IMPLICIT DOTProverBody,
 
-    forVerifier DOTVerifierBody
+    forVerifier [1] IMPLICIT DOTVerifierBody
 
+  }
+  DOTProverBody ::= SEQUENCE {
+    -- private extensions for the prover
+    extensions [0] IMPLICIT SEQUENCE OF Extension
   }
 
   DOTVerifierBody ::= SEQUENCE {
     -- the creator of the DOT
-    attester EntityHash,
+    attester [0] IMPLICIT EntityHash,
     -- the recipient of the trust
-    subject EntityHash,
+    subject [1] IMPLICIT EntityHash,
     -- the policy domain. If omitted, the policy is global
-    namespace EntityHash OPTIONAL,
+    namespace [2] IMPLICIT EntityHash OPTIONAL,
     -- when is this trust valid
-    validity SEQUENCE {
-      notBefore UTCTime,
-      notAfter UTCTime
+    validity [3] IMPLICIT SEQUENCE {
+      notBefore [0] IMPLICIT UTCTime,
+      notAfter [1] IMPLICIT UTCTime
     },
     -- this ensures that the outer layer (plaintext fields)
     -- has not been tampered with. The nature of this key
-    outerSignatureParameters SEQUENCE {
-      algorithm OBJECT IDENTIFIER,
-      parameters ANY DEFINED BY algorithm OPTIONAL,
-      key OCTET STRING
-    },
+    outerSignatureParameters [4] IMPLICIT OuterSignatureParameters,
 
     -- the nature of the trust
-    policy SEQUENCE {
-      scheme OBJECT IDENTIFIER,
-      -- DER encoding of ASN.1 value identified by scheme
-      value OCTET STRING
-    },
+    policy [5] IMPLICIT Policy,
 
-    extensions SEQUENCE OF Extension,
+    -- any private extensions for the verifier
+    extensions [6] IMPLICIT SEQUENCE OF Extension,
 
     -- signature over the ephemeral public key used for the
     -- outer signature
-    innerSignature SEQUENCE {
-      algorithm OBJECT IDENTIFIER,
-      parameters ANY DEFINED BY algorithm OPTIONAL,
-      value OCTET STRING
-    }
+    innerSignature [7] IMPLICIT InnerSignature
+  }
+
+  Policy ::= SEQUENCE {
+      scheme [0] IMPLICIT OBJECT IDENTIFIER,
+      -- DER encoding of ASN.1 value identified by scheme
+      value [1] IMPLICIT OCTET STRING
+  }
+
+  OuterSignatureParameters ::= SEQUENCE {
+      algorithm [0] IMPLICIT OBJECT IDENTIFIER,
+      parameters [1] EXPLICIT ANY DEFINED BY algorithm OPTIONAL,
+      key [2] IMPLICIT OCTET STRING
+  }
+
+  InnerSignature ::= SEQUENCE {
+      algorithm [0] IMPLICIT OBJECT IDENTIFIER,
+      parameters [1] EXPLICIT ANY DEFINED BY algorithm OPTIONAL,
+      value [2] IMPLICIT OCTET STRING
   }
 
   Location ::= SEQUENCE {
-    scheme OBJECT IDENTIFIER,
-    value OCTET STRING
+    scheme [0] IMPLICIT OBJECT IDENTIFIER,
+    value [1] IMPLICIT OCTET STRING
   }
 
   Extension ::= SEQUENCE {
-    extnID OBJECT IDENTIFIER,
-    critical BOOLEAN DEFAULT FALSE,
+    extnID [0] IMPLICIT OBJECT IDENTIFIER,
+    critical [1] IMPLICIT BOOLEAN DEFAULT FALSE,
     -- DER encoding of ASN.1 value identified by extnID
-    value OCTET STRING
+    value [2] IMPLICIT OCTET STRING
   }
   EntityHash ::= SEQUENCE {
-    scheme OBJECT IDENTIFIER,
-    hash OCTET STRING
+    scheme [0] IMPLICIT OBJECT IDENTIFIER,
+    hash [1] IMPLICIT OCTET STRING
   }
 
   RevocationCommitment ::= SEQUENCE {
-    scheme OBJECT IDENTIFIER,
-    parameters ANY DEFINED BY scheme OPTIONAL,
-    value OCTET STRING
+    canonicalLocations [0] IMPLICIT SEQUENCE OF Location,
+    scheme [1] IMPLICIT OBJECT IDENTIFIER,
+    parameters [2] EXPLICIT ANY DEFINED BY scheme OPTIONAL,
+    value [3] IMPLICIT OCTET STRING
   }
 
   Entity ::= SEQUENCE {
@@ -140,61 +151,61 @@ BEGIN
   -- this object will be DER encoded and present in the location.value scheme
   -- when the scheme is location-scheme-url
   LocationURL ::= SEQUENCE {
-    value UTF8String
+    value [0] IMPLICIT UTF8String
   }
 
   -- this object will be DER encoded and present in the location.value scheme
   -- when the scheme is location-scheme-ethereum
   LocationEthereum ::= SEQUENCE {
-    chainID INTEGER,
-    contractAddress INTEGER
+    chainID [0] IMPLICIT INTEGER,
+    contractAddress [1] IMPLICIT INTEGER
   }
 
   WR1BodyCiphertext ::= SEQUENCE {
     -- content: WR1VerifierBody DER encoded
     -- encryption algorithm: AES128
     -- key: verifierBodyKey
-    verifierBodyCiphertext OCTET STRING,
+    verifierBodyCiphertext [0] IMPLICIT OCTET STRING,
 
     -- content: WR1ProverBody DER encoded
     -- encryption algorithm: AES128
     -- key: proverBodyKey
-    proverBodyCiphertext OCTET STRING,
+    proverBodyCiphertext [1] IMPLICIT OCTET STRING,
 
     -- content WR1Envelope DER encoded
     -- encryption algorithm: AES128
     -- key: envelopeKey
-    envelopeCiphertext OCTET STRING,
+    envelopeCiphertext [2] IMPLICIT OCTET STRING,
 
     -- content evelopeBodyKey
     -- encryption algorithm: IBE-bn256 in subject system
     -- id: envelopeID (namespace)
-    envelopeKey-ibe-bn256 OCTET STRING,
+    envelopeKey-ibe-bn256 [3] IMPLICIT OCTET STRING,
 
     -- content envelopeBodyKey
     -- encryption algorithm: AES128
     -- key: ECDH (outer signature key, subject key)
     -- this permits reading the envelope if you are the direct
     -- recipient, even without knowing the namespace
-    envelopeKey-curve25519 OCTET STRING
+    envelopeKey-curve25519 [4] IMPLICIT OCTET STRING
   }
 
   WR1Envelope ::= SEQUENCE {
     -- content: verifierBodyKey
     -- encryption algorithm: oaque-bn256 in subject system
     -- encryption id: Partition
-    verifierBodyKey-oaque OCTET STRING,
+    verifierBodyKey-oaque [0] IMPLICIT OCTET STRING,
 
     -- the ID for the verifierBodyKey-oaque ciphertext
-    partition SEQUENCE OF OCTET STRING
+    partition [1] IMPLICIT SEQUENCE OF OCTET STRING
   }
 
   WR1ProverBody ::= SEQUENCE {
-    extensions SEQUENCE OF Extension
+    extensions [0] IMPLICIT SEQUENCE OF Extension
   }
 
   WR1VerifierBody ::= SEQUENCE {
-    dotVerifierBody DOTVerifierBody
+    dotVerifierBody [0] IMPLICIT DOTVerifierBody
   }
 
 
