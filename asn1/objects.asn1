@@ -1,72 +1,90 @@
 WAVE-Schema DEFINITIONS AUTOMATIC TAGS ::=
 BEGIN
 
-  DeclarationOfTrust ::= SEQUENCE {
-      -- "1" for now
-      version INTEGER,
+  WaveAttestation ::= SEQUENCE {
+      -- this enables blind decoding of wave objects
+      waveObjectVersion OBJECT IDENTIFIER,
 
-      -- the recipient of the DOT
+      -- the subject of the attestation, who is receiving permissions or
+      -- having a property attested to
       subject EntityHash,
 
-      -- an object that would indicate the DOT is revoked
-      revocation SEQUENCE {
-        revocationCommitment RevocationCommitment,
-        canonicalLocations SEQUENCE OF Location
-      },
+      -- how this attestation revoked
+      revocations SEQUENCE OF RevocationOption,
 
-      -- plaintext extensions
+      -- extensions that are visible without any decryption of the
+      -- attestation
       publicExtensions SEQUENCE OF Extension,
 
-      -- The result of decrypting value using the given algorithm and
-      -- parameters should be a DOTBody object. The contents of the
-      -- DOTBody object are allowed to differ depending on context
-      -- of the decryption (for example the secrets field may be null)
+      -- The main content of the attestation SHOULD be encrypted using
+      -- a scheme that permits provers and verifiers to decrypt it but
+      -- nobody else. The result of decrypting this MUST be an
+      -- AttestationBody object but depending on the context of the
+      -- decryption (e.g prover vs verifier) the contents of that
+      -- AttestationBody object may differ.
       body SEQUENCE {
-        algorithm OBJECT IDENTIFIER,
-        parameters ANY DEFINED BY algorithm OPTIONAL,
+        attestationBodyScheme OBJECT IDENTIFIER,
+        parameters ANY DEFINED BY attestationBodyScheme OPTIONAL,
         value OCTET STRING
       },
 
-      -- A signature over the entire encoded dot. The algorithm
-      -- and key used to generate this are specified in the body
-      -- and must match what is specified here
+      -- The attestation is signed with an ephemeral signing key generated
+      -- for a single use (or another signature scheme suitable for single
+      -- use is permitted). The fingerprint of this signature scheme and
+      -- its parameters is put inside the AttestationBody so that if this
+      -- outer layer is modified, this can be detected after decrypting the
+      -- attestation, but we also do not reveal the real verifying key of
+      -- the source entity except to those who can decrypt the Attestation.
+      -- The Value field must be set to the algorithm's NULL value (likely
+      -- a zero length string) when calculating the signature.
       outerSignature SEQUENCE {
-        algorithm OBJECT IDENTIFIER,
-        verifyingKey OCTET STRING,
-        parameters ANY DEFINED BY algorithm OPTIONAL,
+        outerSignatureScheme OBJECT IDENTIFIER,
+        parameters ANY DEFINED BY outerSignatureScheme OPTIONAL,
         value OCTET STRING
       }
   }
 
   -- Irrespective of the algorithm used to encrypt the body, this
   -- is the object it contains
-  DOTBody ::= SEQUENCE {
+  AttestationBody ::= SEQUENCE {
+    -- These are fields that contain information that should be
+    -- visible to the subject of the Attestation (and perhaps
+    -- chained attestation subjects) but should not be visible to those
+    -- verifying this attestation as part of a proof.
     forProver SEQUENCE {
       extensions SEQUENCE OF Extension
     },
 
-    forVerifier DOTVerifierBody
+    -- These are fields visible to both prover and verifier
+    forVerifier AttestationVerifierBody
 
   }
 
-  DOTVerifierBody ::= SEQUENCE {
+
+  -- These are fields visible to both prover and verifier
+  AttestationVerifierBody ::= SEQUENCE {
     -- the creator of the DOT
     attester EntityHash,
-    -- the recipient of the trust
+    -- the subject of the attestation
     subject EntityHash,
-    -- the policy domain. If omitted, the policy is global
-    namespace EntityHash OPTIONAL,
+    -- the policy domain. If omitted, the policy is global. A policy domain
+    -- is an Entity that represents the scope of the attestation. The exact
+    -- semantics are specific to the scheme
+    -- TODO then I think we should just omit this and put it inside the policy
+    -- domain EntityHash OPTIONAL,
+
     -- when is this trust valid
     validity SEQUENCE {
       notBefore UTCTime,
       notAfter UTCTime
     },
     -- this ensures that the outer layer (plaintext fields)
-    -- has not been tampered with. The nature of this key
-    outerSignatureParameters SEQUENCE {
-      algorithm OBJECT IDENTIFIER,
-      parameters ANY DEFINED BY algorithm OPTIONAL,
-      key OCTET STRING
+    -- has not been tampered with. The fingerprint is calculated
+    -- using the given algorithm over the outerSignature fields (sans the value)
+    outerSignatureBinding SEQUENCE {
+      outerSignatureBindingScheme OBJECT IDENTIFIER,
+      parameters ANY DEFINED BY outerSignatureBindingScheme OPTIONAL,
+      value OCTET STRING
     },
 
     -- the nature of the trust
@@ -76,19 +94,20 @@ BEGIN
       value OCTET STRING
     },
 
+    -- extensions for use by the verifier
     extensions SEQUENCE OF Extension,
 
     -- signature over the ephemeral public key used for the
     -- outer signature
     innerSignature SEQUENCE {
-      algorithm OBJECT IDENTIFIER,
-      parameters ANY DEFINED BY algorithm OPTIONAL,
+      innerSignatureScheme OBJECT IDENTIFIER,
+      parameters ANY DEFINED BY innerSignatureScheme OPTIONAL,
       value OCTET STRING
     }
   }
 
   Location ::= SEQUENCE {
-    scheme OBJECT IDENTIFIER,
+    locationScheme OBJECT IDENTIFIER,
     value OCTET STRING
   }
 
@@ -99,103 +118,116 @@ BEGIN
     value OCTET STRING
   }
   EntityHash ::= SEQUENCE {
-    scheme OBJECT IDENTIFIER,
-    hash OCTET STRING
+    entityHashScheme OBJECT IDENTIFIER,
+    parameters ANY DEFINED BY entityHashScheme OPTIONAL,
+    value OCTET STRING
   }
-
-  RevocationCommitment ::= SEQUENCE {
-    scheme OBJECT IDENTIFIER,
-    parameters ANY DEFINED BY scheme OPTIONAL,
+  AttestationHash ::= SEQUENCE {
+    attestationHashScheme OBJECT IDENTIFIER,
+    parameters ANY DEFINED BY attestationHashScheme OPTIONAL,
     value OCTET STRING
   }
 
+  RevocationOption ::= SEQUENCE {
+    revocationScheme OBJECT IDENTIFIER,
+    parameters ANY DEFINED BY revocationScheme OPTIONAL,
+    value OCTET STRING
+    -- If this revocation scheme is not understood, should
+    -- the object be treated as revoked (TRUE) or not (FALSE)
+    critical BOOLEAN DEFAULT FALSE,
+  }
+
   Entity ::= SEQUENCE {
-
+    -- the entity object version
+    waveObjectVersion OBJECT IDENTIFIER,
+    -- the entity's public keys
+    keys SEQUENCE OF EntityKey,
+    -- when is this entity valid
+    validity SEQUENCE {
+      notBefore UTCTime,
+      notAfter UTCTime
+    },
+    -- revocations
+    revocations SEQUENCE OF RevocationOption,
+    -- extensions
+    extensions SEQUENCE OF Extension,
   }
 
-  wave-id OBJECT IDENTIFIER ::= { 1 3 6 1 4 1 5000 }
-
-  wave-schemes OBJECT IDENTIFIER ::= { wave-id 2 }
-  entity-hash-id  OBJECT IDENTIFIER ::= { wave-schemes 1 }
-  revocation-scheme-id  OBJECT IDENTIFIER ::= { wave-schemes 2 }
-  body-scheme-id  OBJECT IDENTIFIER ::= { wave-schemes 3 }
-  location-scheme-id OBJECT IDENTIFIER ::= { wave-schemes 4 }
-
-  -- Objects defined by the reference crypto scheme
-  -- WAVE Reference 1 (WR1)
-
-  -- keccak256, not sha3, for interoperability with ethereum / swarm
-  entity-hash-keccak-256 OBJECT IDENTIFIER ::=  { entity-hash-id 1 }
-  -- this means that any object hashing to the same hash is considered
-  -- as a revocation of the given DOT or Entity
-  revocation-scheme-keccak-256 OBJECT IDENTIFIER ::= { revocation-scheme-id 1 }
-  -- this means the body of the dot is encrypted using OAQUE
-  body-scheme-oaque-bn256 OBJECT IDENTIFIER ::=  { body-scheme-id 1 }
-
-  -- this means the location is defined by a URL
-  location-scheme-url OBJECT IDENTIFIER ::= { location-scheme-id 1 }
-  -- this means the location is defined by an ethereum block chain
-  location-scheme-ethereum OBJECT IDENTIFIER ::= { location-scheme-id 2 }
-
-  -- this object will be DER encoded and present in the location.value scheme
-  -- when the scheme is location-scheme-url
-  LocationURL ::= SEQUENCE {
-    value UTF8String
+  EntityKey ::= SEQUENCE {
+    entityKeyScheme OBJECT IDENTIFIER,
+    parameters ANY DEFINED BY entityKeyScheme OPTIONAL,
+    value OCTET STRING
   }
 
-  -- this object will be DER encoded and present in the location.value scheme
-  -- when the scheme is location-scheme-ethereum
-  LocationEthereum ::= SEQUENCE {
-    chainID INTEGER,
-    contractAddress INTEGER
-  }
-
-  WR1BodyCiphertext ::= SEQUENCE {
-    -- content: WR1VerifierBody DER encoded
-    -- encryption algorithm: AES128
-    -- key: verifierBodyKey
-    verifierBodyCiphertext OCTET STRING,
-
-    -- content: WR1ProverBody DER encoded
-    -- encryption algorithm: AES128
-    -- key: proverBodyKey
-    proverBodyCiphertext OCTET STRING,
-
-    -- content WR1Envelope DER encoded
-    -- encryption algorithm: AES128
-    -- key: envelopeKey
-    envelopeCiphertext OCTET STRING,
-
-    -- content evelopeBodyKey
-    -- encryption algorithm: IBE-bn256 in subject system
-    -- id: envelopeID (namespace)
-    envelopeKey-ibe-bn256 OCTET STRING,
-
-    -- content envelopeBodyKey
-    -- encryption algorithm: AES128
-    -- key: ECDH (outer signature key, subject key)
-    -- this permits reading the envelope if you are the direct
-    -- recipient, even without knowing the namespace
-    envelopeKey-curve25519 OCTET STRING
-  }
-
-  WR1Envelope ::= SEQUENCE {
-    -- content: verifierBodyKey
-    -- encryption algorithm: oaque-bn256 in subject system
-    -- encryption id: Partition
-    verifierBodyKey-oaque OCTET STRING,
-
-    -- the ID for the verifierBodyKey-oaque ciphertext
-    partition SEQUENCE OF OCTET STRING
-  }
-
-  WR1ProverBody ::= SEQUENCE {
+  -- there are different kinds of proofs, this represents just one, the
+  -- explicit proof that reveals the attestations. The final authorization
+  -- or truth conveyed is the union of the paths through the given set of
+  -- attestations
+  WaveExplicitProof ::= SEQUENCE {
+    waveObjectVersion OBJECT IDENTIFIER,
+    attestations SEQUENCE OF AttestationReference,
+    paths SEQUENCE OF AttestationChain,
     extensions SEQUENCE OF Extension
   }
 
-  WR1VerifierBody ::= SEQUENCE {
-    dotVerifierBody DOTVerifierBody
+  -- this is a chain of attestations connected end-to-end
+  -- that represent a path through the subset of the authorization
+  -- graph given in the attestations field
+  AttestationChain ::= SEQUENCE {
+    path SEQUENCE OF AttestationHash,
   }
 
+  AttestationReference ::= SEQUENCE {
+    -- the hash of the WaveAttestation
+    hash AttestationHash,
+
+    -- generally the attestation is put in here verbatim
+    content WaveAttestation OPTIONAL,
+
+    -- or a location is given that permits retrieving the attestation
+    location Location OPTIONAL,
+
+    -- the content will generally need some keys to decrypt
+    keys SEQUENCE OF AttestationReferenceKey,
+
+    -- for some revocation schemes, it may be necessary to submit
+    -- additional information with the attestation reference that shows
+    -- that the attestation is not revoked (such as a signed object by
+    -- the locations in the revocation option)
+    revocationChecks SEQUENCE OF RevocationCheck,
+  }
+  AttestationReferenceKey :::= SEQUENCE {
+    attestationReferenceKeyScheme OBJECT IDENTIFIER,
+    parameters ANY DEFINED BY attestationReferenceKeyScheme OPTIONAL,
+    value OCTET STRING
+  }
+  RevocationCheck ::= SEQUENCE {
+    revocationScheme OBJECT IDENTIFIER,
+    parameters ANY DEFINED BY revocationScheme OPTIONAL,
+    value OCTET STRING
+  }
+
+  ---------------------------------------------------
+  -- Universal OIDs
+  ---------------------------------------------------
+  wave-id OBJECT IDENTIFIER ::= { 1 3 6 1 4 1 51157 }
+
+  wave-object-version OBJECT IDENTIFIER ::= { wave-id 1 }
+    attestation-object-version OBJECT IDENTIFIER ::= { wave-object-version 1 }
+      attestation-object-v1 OBJECT IDENTIFIER ::= { attestation-object-version 1 }
+    entity-object-version OBJECT IDENTIFIER ::= { wave-object-version 2 }
+      entity-object-v1 OBJECT IDENTIFIER ::= { entity-object-version 1 }
+    explicit-proof-object-version OBJECT IDENTIFIER ::= { wave-object-version 3 }
+      explicit-proof-object-v1 OBJECT IDENTIFIER ::= { explicit-proof-object-version 1 }
+
+  attestation-body-scheme OBJECT IDENTIFIER ::= { wave-id 2 }
+  attestation-reference-key-scheme OBJECT IDENTIFIER ::= { wave-id 3 }
+  outer-signature-scheme OBJECT IDENTIFIER ::= { wave-id 4 }
+  outer-signature-binding-scheme OBJECT IDENTIFIER ::= { wave-id 5 }
+  inner-signature-scheme OBJECT IDENTIFIER ::= { wave-id 6 }
+  location-scheme OBJECT IDENTIFIER ::= { wave-id 7 }
+  entity-hash-scheme OBJECT IDENTIFIER ::= { wave-id 8 }
+  attestation-hash-scheme OBJECT IDENTIFIER ::= { wave-id 9 }
+  entity-key-scheme OBJECT IDENTIFIER ::= { wave-id 10 }
 
 END

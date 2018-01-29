@@ -83,8 +83,8 @@ func (s *stub) OAQUEDelegationKeyFor(ctx context.Context, vk []byte, partition [
 
 func TestSerdes(t *testing.T) {
 	st := stub{}
-	st.source = entity.NewEntity()
-	st.dst = entity.NewEntity()
+	st.source = entity.NewEntity(params.LocationUC)
+	st.dst = entity.NewEntity(params.LocationUC)
 
 	dot := objs.DOT{}
 	dot.Content = &objs.DOTContent{
