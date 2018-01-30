@@ -3,18 +3,6 @@ BEGIN
 
 IMPORTS EntityHash FROM WAVE-Schema;
 
-WR1-RTree-Policy ::= SEQUENCE {
-  namespace EntityHash,
-  -- Similar to bosswave TTL, how many times can this be redelegated
-  indirections INTEGER,
-  statements SEQUENCE OF RTreeStatement
-}
 
-RTreeStatement ::= SEQUENCE {
-  permissionSet EntityHash,
-  permission UTF8String,
-  resource UTF8String,
-  comment UTF8String OPTIONAL
-}
 
 END

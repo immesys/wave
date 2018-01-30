@@ -3,8 +3,17 @@ BEGIN
 
   IMPORTS
     Extension,
-    AttestationVerifierBody
-  FROM Wave-Schema ;
+    AttestationVerifierBody,
+	entity-key-scheme,
+	attestation-hash-scheme,
+	entity-hash-scheme,
+	inner-signature-scheme,
+	outer-signature-scheme,
+	location-scheme,
+	attestation-reference-key-scheme,
+	attestation-body-scheme,
+	outer-signature-binding-scheme
+  FROM WAVE-Schema ;
 
   -- attestation body scheme
   unencrypted-body-scheme OBJECT IDENTIFIER ::= { attestation-body-scheme 1 }
@@ -19,6 +28,8 @@ BEGIN
   aes128-reference-key-scheme OBJECT IDENTIFIER ::= { attestation-reference-key-scheme 2 }
 
   location-scheme-url OBJECT IDENTIFIER ::= { location-scheme 1 }
+
+
   -- this object will be DER encoded and present in the location.value scheme
   -- when the scheme is location-scheme-url
   LocationURL ::= SEQUENCE {
@@ -34,7 +45,7 @@ BEGIN
   }
 
 
-  WR1Ciphertext ::= SEQUENCE {
+  WR1BodyCiphertext ::= SEQUENCE {
     -- content: WR1VerifierBody DER encoded
     -- encryption algorithm: AES128
     -- key: verifierBodyKey
@@ -81,8 +92,19 @@ BEGIN
     attestationVerifierBody AttestationVerifierBody
   }
 
+
+  Ed25519OuterSignature ::= SEQUENCE {
+    verifyingKey OCTET STRING,
+    signature OCTET STRING
+  }
+
+  ExplicitOuterVerifyingKey ::= SEQUENCE {
+    outerSignatureScheme OBJECT IDENTIFIER,
+    verifyingKey OCTET STRING
+  }
+
   -- outer signature scheme
-  outer-signature-ed25519 OBJECT IDENTIFIER ::= { outer-signature-scheme 1 }
+
   -- outer signature binding scheme
   outer-signature-binding-explicit-ed25519-vk OBJECT IDENTIFIER ::= { outer-signature-binding-scheme 1 }
   -- inner signature scheme: ed25519 signature of inner DOT with no signature value field
