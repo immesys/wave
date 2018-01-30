@@ -1,0 +1,98 @@
+WR1-Crypto DEFINITIONS AUTOMATIC TAGS ::=
+BEGIN
+
+  IMPORTS
+    Extension,
+    AttestationVerifierBody
+  FROM Wave-Schema ;
+
+  -- attestation body scheme
+  unencrypted-body-scheme OBJECT IDENTIFIER ::= { attestation-body-scheme 1 }
+  -- this is a combination of BF IBE on BN256 for the outermost layer,
+  -- OAQUE for the inner layer, AES128 for the symmetric parts and others TODO
+  wr1-body-scheme-v1 OBJECT IDENTIFIER ::= { attestation-body-scheme 2 }
+
+  -- The value is empty and the "ciphertext" is actually plaintext DER
+  unencrypted-reference-key-scheme OBJECT IDENTIFIER ::= { attestation-reference-key-scheme 1 }
+
+  -- The key is simply put directly in the value
+  aes128-reference-key-scheme OBJECT IDENTIFIER ::= { attestation-reference-key-scheme 2 }
+
+  location-scheme-url OBJECT IDENTIFIER ::= { location-scheme 1 }
+  -- this object will be DER encoded and present in the location.value scheme
+  -- when the scheme is location-scheme-url
+  LocationURL ::= SEQUENCE {
+    value UTF8String
+  }
+
+  location-scheme-ethereum-blockchain OBJECT IDENTIFIER ::= { location-scheme 2 }
+  -- this object will be DER encoded and present in the location.value scheme
+  -- when the scheme is location-scheme-ethereum-blockchain
+  LocationEthereum ::= SEQUENCE {
+    chainID INTEGER,
+    contractAddress INTEGER
+  }
+
+
+  WR1Ciphertext ::= SEQUENCE {
+    -- content: WR1VerifierBody DER encoded
+    -- encryption algorithm: AES128
+    -- key: verifierBodyKey
+    verifierBodyCiphertext OCTET STRING,
+
+    -- content: WR1ProverBody DER encoded
+    -- encryption algorithm: AES128
+    -- key: proverBodyKey
+    proverBodyCiphertext OCTET STRING,
+
+    -- content WR1Envelope DER encoded
+    -- encryption algorithm: AES128
+    -- key: envelopeKey
+    envelopeCiphertext OCTET STRING,
+
+    -- content envelopeBodyKey
+    -- encryption algorithm: IBE-bn256 in subject system
+    -- id: envelopeID (namespace)
+    envelopeKey-ibe-bn256 OCTET STRING,
+
+    -- content envelopeBodyKey
+    -- encryption algorithm: AES128
+    -- key: ECDH (outer signature key, subject key)
+    -- this permits reading the envelope if you are the direct
+    -- recipient, even without knowing the namespace
+    envelopeKey-curve25519 OCTET STRING
+  }
+
+  WR1Envelope ::= SEQUENCE {
+    -- content: verifierBodyKey
+    -- encryption algorithm: oaque-bn256 in subject system
+    -- encryption id: Partition
+    verifierBodyKey-oaque OCTET STRING,
+
+    -- the ID for the verifierBodyKey-oaque ciphertext
+    partition SEQUENCE OF OCTET STRING
+  }
+
+  WR1ProverBody ::= SEQUENCE {
+    extensions SEQUENCE OF Extension
+  }
+
+  WR1VerifierBody ::= SEQUENCE {
+    attestationVerifierBody AttestationVerifierBody
+  }
+
+  -- outer signature scheme
+  outer-signature-ed25519 OBJECT IDENTIFIER ::= { outer-signature-scheme 1 }
+  -- outer signature binding scheme
+  outer-signature-binding-explicit-ed25519-vk OBJECT IDENTIFIER ::= { outer-signature-binding-scheme 1 }
+  -- inner signature scheme: ed25519 signature of inner DOT with no signature value field
+  inner-signature-scheme-ed25519 OBJECT IDENTIFIER ::= { inner-signature-scheme 1 }
+
+  --keccak256 not sha3
+  entity-hash-keccak256 OBJECT IDENTIFIER ::= { entity-hash-scheme 1 }
+  attestation-hash-keccak256 OBJECT IDENTIFIER ::= { attestation-hash-scheme 1 }
+  entity-key-ed25519 OBJECT IDENTIFIER ::= { entity-key-scheme 1 }
+  entity-key-curve25519 OBJECT IDENTIFIER ::= { entity-key-scheme 2 }
+  entity-key-oaque OBJECT IDENTIFIER ::= { entity-key-scheme 3 }
+
+END

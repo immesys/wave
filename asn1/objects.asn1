@@ -1,4 +1,4 @@
-WAVE-Schema DEFINITIONS AUTOMATIC TAGS ::=
+Wave-Schema DEFINITIONS AUTOMATIC TAGS ::=
 BEGIN
 
   WaveAttestation ::= SEQUENCE {
@@ -131,10 +131,10 @@ BEGIN
   RevocationOption ::= SEQUENCE {
     revocationScheme OBJECT IDENTIFIER,
     parameters ANY DEFINED BY revocationScheme OPTIONAL,
-    value OCTET STRING
+    value OCTET STRING,
     -- If this revocation scheme is not understood, should
     -- the object be treated as revoked (TRUE) or not (FALSE)
-    critical BOOLEAN DEFAULT FALSE,
+    critical BOOLEAN DEFAULT FALSE
   }
 
   Entity ::= SEQUENCE {
@@ -150,7 +150,7 @@ BEGIN
     -- revocations
     revocations SEQUENCE OF RevocationOption,
     -- extensions
-    extensions SEQUENCE OF Extension,
+    extensions SEQUENCE OF Extension
   }
 
   EntityKey ::= SEQUENCE {
@@ -174,7 +174,7 @@ BEGIN
   -- that represent a path through the subset of the authorization
   -- graph given in the attestations field
   AttestationChain ::= SEQUENCE {
-    path SEQUENCE OF AttestationHash,
+    path SEQUENCE OF AttestationHash
   }
 
   AttestationReference ::= SEQUENCE {
@@ -194,9 +194,10 @@ BEGIN
     -- additional information with the attestation reference that shows
     -- that the attestation is not revoked (such as a signed object by
     -- the locations in the revocation option)
-    revocationChecks SEQUENCE OF RevocationCheck,
+    revocationChecks SEQUENCE OF RevocationCheck
   }
-  AttestationReferenceKey :::= SEQUENCE {
+
+  AttestationReferenceKey ::= SEQUENCE {
     attestationReferenceKeyScheme OBJECT IDENTIFIER,
     parameters ANY DEFINED BY attestationReferenceKeyScheme OPTIONAL,
     value OCTET STRING
@@ -212,7 +213,7 @@ BEGIN
   ---------------------------------------------------
   wave-id OBJECT IDENTIFIER ::= { 1 3 6 1 4 1 51157 }
 
-  wave-object-version OBJECT IDENTIFIER ::= { wave-id 1 }
+  wave-object-version OBJECT IDENTIFIER ::= { wave-id 2 }
     attestation-object-version OBJECT IDENTIFIER ::= { wave-object-version 1 }
       attestation-object-v1 OBJECT IDENTIFIER ::= { attestation-object-version 1 }
     entity-object-version OBJECT IDENTIFIER ::= { wave-object-version 2 }
@@ -220,14 +221,14 @@ BEGIN
     explicit-proof-object-version OBJECT IDENTIFIER ::= { wave-object-version 3 }
       explicit-proof-object-v1 OBJECT IDENTIFIER ::= { explicit-proof-object-version 1 }
 
-  attestation-body-scheme OBJECT IDENTIFIER ::= { wave-id 2 }
-  attestation-reference-key-scheme OBJECT IDENTIFIER ::= { wave-id 3 }
-  outer-signature-scheme OBJECT IDENTIFIER ::= { wave-id 4 }
-  outer-signature-binding-scheme OBJECT IDENTIFIER ::= { wave-id 5 }
-  inner-signature-scheme OBJECT IDENTIFIER ::= { wave-id 6 }
-  location-scheme OBJECT IDENTIFIER ::= { wave-id 7 }
-  entity-hash-scheme OBJECT IDENTIFIER ::= { wave-id 8 }
-  attestation-hash-scheme OBJECT IDENTIFIER ::= { wave-id 9 }
-  entity-key-scheme OBJECT IDENTIFIER ::= { wave-id 10 }
+  attestation-body-scheme OBJECT IDENTIFIER ::= { wave-id 3 }
+  attestation-reference-key-scheme OBJECT IDENTIFIER ::= { wave-id 4 }
+  outer-signature-scheme OBJECT IDENTIFIER ::= { wave-id 5 }
+  outer-signature-binding-scheme OBJECT IDENTIFIER ::= { wave-id 6 }
+  inner-signature-scheme OBJECT IDENTIFIER ::= { wave-id 7 }
+  location-scheme OBJECT IDENTIFIER ::= { wave-id 8 }
+  entity-hash-scheme OBJECT IDENTIFIER ::= { wave-id 9 }
+  attestation-hash-scheme OBJECT IDENTIFIER ::= { wave-id 10 }
+  entity-key-scheme OBJECT IDENTIFIER ::= { wave-id 11 }
 
 END
