@@ -12,8 +12,8 @@ type WaveEntity struct {
 		VerifyingKey EntityPublicKey
 		Keys         []EntityPublicKey
 		Validity     struct {
-			NotBefore time.Time
-			NotAfter  time.Time
+			NotBefore time.Time `asn1:"utc"`
+			NotAfter  time.Time `asn1:"utc"`
 		}
 		Revocations []RevocationOption
 		Extensions  []Extension
@@ -22,6 +22,6 @@ type WaveEntity struct {
 }
 
 type EntityPublicKey struct {
-	Capabilities []int64 `asn1:"set"`
+	Capabilities []int `asn1:"set"`
 	Key          asn1.External
 }

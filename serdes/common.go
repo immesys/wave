@@ -2,6 +2,7 @@ package serdes
 
 import (
 	"math/big"
+	"time"
 
 	"github.com/immesys/asn1"
 )
@@ -15,7 +16,7 @@ var (
 	AttestationBodySchemeOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3}
 	UnencryptedBodyOID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 1}
 	WR1BodyOID                            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 2}
-	AttestationReferenceKeySchemeOID      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4}
+	AttestationVerifierKeySchemeOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4}
 	OuterSignatureSchemeOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5}
 	EphemeralEd25519OID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5, 1}
 	OuterSignatureBindingSchemeOID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 6}
@@ -48,6 +49,17 @@ var (
 	AES128_GCM_PBKDF2OID                  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 2}
 )
 
+const CapCertification = 1
+const CapAttestation = 2
+const CapSigning = 3
+const CapAuthentication = 4
+const CapAuthorization = 5
+const CapEncryption = 6
+
+func DefaultEntityEd25519Capabilities() []int {
+	return []int{CapCertification, CapAttestation, CapSigning}
+}
+
 type Keccak_256 []byte
 type Sha3_256 []byte
 type Ed25519PublicKey []byte
@@ -58,16 +70,24 @@ type OAQUE_BN256_S20_Params []byte
 func init() {
 	//Our custom ASN1 parser can parse external types if we register them in
 	//advance
-	asn1.RegisterExternalType(EntityOID, &WaveEntity{})
-	asn1.RegisterExternalType(CommitmentRevocationOID, &CommitmentRevocation{})
-	asn1.RegisterExternalType(Sha3_256OID, &Sha3_256{})
-	asn1.RegisterExternalType(Keccak_256OID, &Keccak_256{})
-	asn1.RegisterExternalType(LocationURLOID, &LocationURL{})
-	asn1.RegisterExternalType(LocationEthereumOID, &LocationEthereum{})
-	asn1.RegisterExternalType(EntityEd25519OID, &Ed25519PublicKey{})
-	asn1.RegisterExternalType(EntityCurve25519OID, &Curve25519PublicKey{})
-	asn1.RegisterExternalType(EntityOAQUE_BN256_S20_AttributeSetOID, &OAQUE_BN256_S20_AttributeSet{})
-	asn1.RegisterExternalType(EntityOAQUE_BN256_S20_ParamsOID, &OAQUE_BN256_S20_Params{})
+	tpz := []struct {
+		O asn1.ObjectIdentifier
+		I interface{}
+	}{
+		{EntityOID, WaveEntity{}},
+		{CommitmentRevocationOID, CommitmentRevocation{}},
+		{Sha3_256OID, Sha3_256{}},
+		{Keccak_256OID, Keccak_256{}},
+		{LocationURLOID, LocationURL{}},
+		{LocationEthereumOID, LocationEthereum{}},
+		{EntityEd25519OID, Ed25519PublicKey{}},
+		{EntityCurve25519OID, Curve25519PublicKey{}},
+		{EntityOAQUE_BN256_S20_AttributeSetOID, OAQUE_BN256_S20_AttributeSet{}},
+		{EntityOAQUE_BN256_S20_ParamsOID, OAQUE_BN256_S20_Params{}},
+	}
+	for _, t := range tpz {
+		asn1.RegisterExternalType(t.O, t.I)
+	}
 }
 
 // WaveWireObject is used whenever an object is stored externally or transmitted.
@@ -89,8 +109,9 @@ type Extension struct {
 }
 
 type CommitmentRevocation struct {
-	Hash     asn1.External
-	Location asn1.External
+	T time.Time `asn1:"utc"`
+	//Hash     asn1.External
+	//Location asn1.External
 }
 
 type LocationURL struct {

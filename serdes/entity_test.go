@@ -2,7 +2,10 @@ package serdes
 
 import (
 	"encoding/base64"
+	"encoding/hex"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/immesys/asn1"
 
@@ -48,6 +51,38 @@ func TestEntityDecode(t *testing.T) {
 	require.NoError(t, err)
 	spew.Dump(rest)
 	spew.Dump(v)
+}
+
+func TestEntityEncode(t *testing.T) {
+	e := WaveEntity{}
+	pk := Ed25519PublicKey([]byte{1, 7, 3})
+	e.TBS.VerifyingKey = EntityPublicKey{
+		Capabilities: DefaultEntityEd25519Capabilities(),
+		Key:          asn1.NewExternal(pk),
+	}
+	e.TBS.Validity.NotBefore = time.Now()
+	e.TBS.Validity.NotAfter = time.Now().Add(5 * time.Hour)
+	der, err := asn1.Marshal(e.TBS)
+	require.NoError(t, err)
+	fmt.Printf("the TBS DER was %s\n", hex.EncodeToString(der))
+	e.Signature = []byte{55, 66, 77}
+	wireEntity := WaveWireObject{
+		Content: asn1.NewExternal(e),
+	}
+	fullDER, err := asn1.Marshal(wireEntity.Content)
+	require.NoError(t, err)
+	fmt.Printf("the full DER was %s\n", hex.EncodeToString(fullDER))
+}
+
+func TestCREncode(t *testing.T) {
+	cr := CommitmentRevocation{T: time.Now()}
+	ro := RevocationOption{
+		Critical: true,
+		Scheme:   asn1.NewExternal(cr),
+	}
+	fullDER, err := asn1.Marshal(ro)
+	require.NoError(t, err)
+	fmt.Printf("the full DER was %s\n", hex.EncodeToString(fullDER))
 }
 
 // func TestFooDecode(t *testing.T) {

@@ -161,13 +161,13 @@ BEGIN
     -- signing attestations
     attestation        (2),
     -- signing messages or other content
-    signing            (4),
+    signing            (3),
     -- signing challenges that reveal ID
-    authentication     (8),
+    authentication     (4),
     -- signing challenges that prove authorization (not via identity)
-    authorization      (16),
+    authorization      (5),
     --
-    encryption         (32)
+    encryption         (6)
   }
 
   -- there are different kinds of proofs, this represents just one, the
@@ -199,25 +199,21 @@ BEGIN
     location [1] Location OPTIONAL,
 
     -- the content will generally need some keys to decrypt
-    keys [2] SEQUENCE OF AttestationReferenceKey,
+    keys [2] SEQUENCE OF AttestationVerifierKey,
 
     -- for some revocation schemes, it may be necessary to submit
     -- additional information with the attestation reference that shows
     -- that the attestation is not revoked (such as a signed object by
     -- the locations in the revocation option)
-    revocationChecks [3] SEQUENCE OF RevocationCheck
+    revocationChecks [3] SEQUENCE OF RevocationCheck,
+
+    extensions [4] SEQUENCE OF Extension
   }
 
-  AttestationReferenceKey ::= SEQUENCE {
-    attestationReferenceKeyScheme OBJECT IDENTIFIER,
-    parameters [0] OCTET STRING OPTIONAL,
-    value OCTET STRING
-  }
-  RevocationCheck ::= SEQUENCE {
-    revocationScheme OBJECT IDENTIFIER,
-    parameters [0] OCTET STRING OPTIONAL,
-    value OCTET STRING
-  }
+  AttestationVerifierKey ::= INSTANCE OF TYPE-IDENTIFIER ({AttestationVerifierKeySchemes})
+
+  RevocationCheck ::= INSTANCE OF TYPE-IDENTIFIER ({RevocationCheckSchemes})
+
 
   RTreePolicy ::= SEQUENCE {
     namespace EntityHash,
@@ -292,7 +288,7 @@ BEGIN
   }
 
   WR1KeyMaterial ::= SEQUENCE {
-    -- todo OAQUE keys etc
+
   }
 
   WR1VerifierBody ::= SEQUENCE {
@@ -330,22 +326,12 @@ BEGIN
   Ed25519Key ::= OCTET STRING
   Curve25519Key ::= OCTET STRING
   OAQUE-BN256-S20 ::= OCTET STRING
+  AVKeyAES128-GCM ::= OCTET STRING
 
-  ---------------------------------------------------
-  -- Universal OIDs
-  ---------------------------------------------------
-  wave-id OBJECT IDENTIFIER ::= { 1 3 6 1 4 1 51157 }
-
-
-
-
-
-
-
-  -- entity-hash-scheme OBJECT IDENTIFIER ::= { wave-id 9 }
-  -- attestation-hash-scheme OBJECT IDENTIFIER ::= { wave-id 10 }
-
-
+--------------------------------------------------------------------------------
+-- Universal OIDs
+--------------------------------------------------------------------------------
+wave-id OBJECT IDENTIFIER ::= { 1 3 6 1 4 1 51157 }
 
 -- Wave object types
 --------------------------------------------------------------------------------
@@ -372,8 +358,14 @@ AttestationBodySchemes TYPE-IDENTIFIER ::= {
  ...
 }
 
--- TODO
-attestation-reference-key-scheme OBJECT IDENTIFIER ::= { wave-id 4 }
+-- Attestation Verifier Key Schemes
+--------------------------------------------------------------------------------
+attestation-verifier-key-scheme OBJECT IDENTIFIER ::= { wave-id 4 }
+attestation-verifier-key-aes128-gcm OBJECT IDENTIFIER ::= { attestation-verifier-key-scheme 1 }
+AttestationVerifierKeySchemes TYPE-IDENTIFIER ::= {
+ {AVKeyAES128-GCM IDENTIFIED BY attestation-verifier-key-aes128-gcm},
+ ...
+}
 
 -- Outer signature schemes
 --------------------------------------------------------------------------------
@@ -395,8 +387,12 @@ OuterSignatureBindingSchemes TYPE-IDENTIFIER ::= {
  ...
 }
 
--- TODO
-  inner-signature-scheme OBJECT IDENTIFIER ::= { wave-id 7 }
+-- Revocation check schemes
+--------------------------------------------------------------------------------
+revocation-check-schemes OBJECT IDENTIFIER ::= { wave-id 7 }
+RevocationCheckSchemes TYPE-IDENTIFIER ::= {
+  ...
+}
 
 -- Location schemes
 --------------------------------------------------------------------------------
