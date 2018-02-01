@@ -34,6 +34,8 @@ var (
 	EntityCurve25519OID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 2}
 	EntityOAQUE_BN256_S20_AttributeSetOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 3}
 	EntityOAQUE_BN256_S20_ParamsOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 4}
+	EntityIBE_BN256_ParamsOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 5}
+	EntityIBE_BN256_IdentityOID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 6}
 	PolicySchemeOID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12}
 	TrustLevelPolicyOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 1}
 	ResourceTreePolicyOID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 2}
@@ -62,10 +64,6 @@ func DefaultEntityEd25519Capabilities() []int {
 
 type Keccak_256 []byte
 type Sha3_256 []byte
-type Ed25519PublicKey []byte
-type Curve25519PublicKey []byte
-type OAQUE_BN256_S20_AttributeSet []byte
-type OAQUE_BN256_S20_Params []byte
 
 func init() {
 	//Our custom ASN1 parser can parse external types if we register them in
@@ -80,15 +78,27 @@ func init() {
 		{Keccak_256OID, Keccak_256{}},
 		{LocationURLOID, LocationURL{}},
 		{LocationEthereumOID, LocationEthereum{}},
-		{EntityEd25519OID, Ed25519PublicKey{}},
-		{EntityCurve25519OID, Curve25519PublicKey{}},
-		{EntityOAQUE_BN256_S20_AttributeSetOID, OAQUE_BN256_S20_AttributeSet{}},
-		{EntityOAQUE_BN256_S20_ParamsOID, OAQUE_BN256_S20_Params{}},
+		// entity stuff
+		// {EntityEd25519OID, Ed25519PublicKey{}},
+		// {EntityCurve25519OID, Curve25519PublicKey{}},
+		// {EntityOAQUE_BN256_S20_AttributeSetOID, OAQUE_BN256_S20_AttributeSet{}},
+		// {EntityOAQUE_BN256_S20_ParamsOID, OAQUE_BN256_S20_Params{}},
+		// attestation stuff
+		{EphemeralEd25519OID, Ed25519OuterSignature{}},
+		{EntityEd25519OID, PublicEd25519{}},
+		{EntityCurve25519OID, PublicCurve25519{}},
+		{EntityOAQUE_BN256_S20_AttributeSetOID, PublicOAQUE_BN256_s20{}},
+		{EntityOAQUE_BN256_S20_ParamsOID, ParamsOQAUE_BN256_s20{}},
+		{EntityIBE_BN256_ParamsOID, ParamsIBE_BN256{}},
+		{EntityIBE_BN256_IdentityOID, PublicIBE{}},
+		{AttestationOID, WaveAttestation{}},
 	}
 	for _, t := range tpz {
 		asn1.RegisterExternalType(t.O, t.I)
 	}
 }
+
+//--------------
 
 // WaveWireObject is used whenever an object is stored externally or transmitted.
 // it wraps the object with the necessary type information to permit decoding without

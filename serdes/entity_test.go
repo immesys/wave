@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +18,24 @@ const testvec string = "KIGxBgorBgEEAYOPVQICoIGiMIGfMIGZMBgxAwIBASgRBgorBg" +
 	"EEAYOPVQsBoAMEAQAwGjAYMQMCAQEoEQYKKwYBBAGDj1ULAaADBAEAMB4XDTAwMDEwMTAwMDAw" +
 	"MFoXDTAwMDEwMTAwMDAwMFowPzA9AQEAKDgGCisGAQQBg49VCgGgKjAoKBEGCisGAQQBg49VCQ" +
 	"GgAwQBACgTBgorBgEEAYOPVQgBoAUwAwwBMDAABAEA"
+
+const attestationTest string = "KIIC+QYKKwYBBAGDj1UCAaCCAukwggLlKDEGCisGAQQBg49VCQKgIwQhCJ29DD7P5zusFBm67SZ8" +
+	"XaidjZ5iur2WHRfyL8N5s4tAMFIwUAEBAChLBgorBgEEAYOPVQoBoD0wOygRBgorBgEEAYOPVQkB" +
+	"oAMEAQAoJgYKKwYBBAGDj1UIAaAYMBYMFGh0dHBzOi8vcmV2b2tlbWUuY29tMAAoggICBgorBgEE" +
+	"AYOPVQMBoIIB8jCCAe4wggGAKDAGCisGAQQBg49VCQGgIgQgidvQw+z+c7rBQZuu0mfF2onY2eYr" +
+	"q9lh0X8i/DebOLQoMAYKKwYBBAGDj1UJAaAiBCCJ29DD7P5zusFBm67SZ8XaidjZ5iur2WHRfyL8" +
+	"N5s4tDAeFw0wMDAxMDEwMDAwMDBaFw0wMDAxMDEwMDAwMDBaKIGTBgorBgEEAYOPVQwCoIGEMIGB" +
+	"KDAGCisGAQQBg49VCQGgIgQgidvQw+z+c7rBQZuu0mfF2onY2eYrq9lh0X8i/DebOLQCAQUwSjBI" +
+	"KDAGCisGAQQBg49VCQGgIgQgidvQw+z+c7rBQZuu0mfF2onY2eYrq9lh0X8i/DebOLQMB2NhbGxB" +
+	"UEkMC2Zvby9iYXIvYmF6MAAoYgYKKwYBBAGDj1UGAaBUMFIwLgYKKwYBBAGDj1UFAQQgidvQw+z+" +
+	"c7rBQZuu0mfF2onY2eYrq9lh0X8i/DebOLQEIInb0MPs/nO6wUGbrtJnxdqJ2NnmK6vZYdF/Ivw3" +
+	"mzi0MGQoMAYKKwYBBAGDj1UNAqAiBCCJ29DD7P5zusFBm67SZ8XaidjZ5iur2WHRfyL8N5s4tCgw" +
+	"BgorBgEEAYOPVQ0BoCIEIInb0MPs/nO6wUGbrtJnxdqJ2NnmK6vZYdF/Ivw3mzi0MAIwAChUBgor" +
+	"BgEEAYOPVQUBoEYwRAQgidvQw+z+c7rBQZuu0mfF2onY2eYrq9lh0X8i/DebOLQEIInb0MPs/nO6" +
+	"wUGbrtJnxdqJ2NnmK6vZYdF/Ivw3mzi0"
+
+const attestationHex string = `28 1B 06 0A 2B 06 01 04 01 83 8F 55 02 01 A0 0D
+30 0B 02 01 04 30 03 02 01 06 02 01 05`
 
 // 3003020140
 // 3003800140
@@ -55,7 +74,7 @@ func TestEntityDecode(t *testing.T) {
 
 func TestEntityEncode(t *testing.T) {
 	e := WaveEntity{}
-	pk := Ed25519PublicKey([]byte{1, 7, 3})
+	pk := PublicEd25519([]byte{1, 7, 3})
 	e.TBS.VerifyingKey = EntityPublicKey{
 		Capabilities: DefaultEntityEd25519Capabilities(),
 		Key:          asn1.NewExternal(pk),
@@ -83,6 +102,20 @@ func TestCREncode(t *testing.T) {
 	fullDER, err := asn1.Marshal(ro)
 	require.NoError(t, err)
 	fmt.Printf("the full DER was %s\n", hex.EncodeToString(fullDER))
+}
+
+func TestAttestationDecode(t *testing.T) {
+	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
+	h := strings.Replace(attestationHex, " ", "", -1)
+	h = strings.Replace(h, "\n", "", -1)
+	fmt.Printf(h + "\n")
+	ba, err := hex.DecodeString(h)
+	require.NoError(t, err)
+	wo := WaveWireObject{}
+	_, err = asn1.Unmarshal(ba, &wo.Content)
+	require.NoError(t, err)
+	spew.Dump(wo.Content)
+
 }
 
 // func TestFooDecode(t *testing.T) {

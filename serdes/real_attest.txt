@@ -1,0 +1,30 @@
+--  -- A set of policy statements about an Entity, potentially granting
+--  -- permissions or establishing facts
+--  WaveAttestation ::= SEQUENCE {
+--    tbs SEQUENCE {
+--      -- the subject of the attestation, who is receiving permissions or
+--      -- having a property attested to
+--      subject EntityHash,
+--
+--      -- how this attestation revoked
+--      revocations SEQUENCE OF RevocationOption,
+--
+--      -- extensions that are visible without any decryption of the
+--      -- attestation
+--      publicExtensions SEQUENCE OF Extension,
+--
+--      -- The main content of the attestation SHOULD be encrypted using
+--      -- a scheme that permits provers and verifiers to decrypt it but
+--      -- nobody else. The result of decrypting this MUST be an
+--      -- AttestationBody object but depending on the context of the
+--      -- decryption (e.g prover vs verifier) the contents of that
+--      -- AttestationBody object may differ.
+--      body INSTANCE OF TYPE-IDENTIFIER ({AttestationBodySchemes})
+--    },
+--    -- The attestation is signed with an ephemeral signing key generated
+--    -- for a single use (or another signature scheme suitable for single
+--    -- use is permitted). The details of this signature are bound to
+--    -- the real attestation key inside the body but we don't reveal the
+--    -- attester at this layer
+--    outerSignature INSTANCE OF TYPE-IDENTIFIER ({OuterSignatureSchemes})
+--  }

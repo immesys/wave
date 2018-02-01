@@ -8,60 +8,38 @@ BEGIN
   -- A set of policy statements about an Entity, potentially granting
   -- permissions or establishing facts
   WaveAttestation ::= SEQUENCE {
-
+	k INTEGER,
+    tbs SEQUENCE {
       -- the subject of the attestation, who is receiving permissions or
-      -- having a property attested to
-      subject EntityHash,
-
-      -- how this attestation revoked
-      revocations SEQUENCE OF RevocationOption,
-
-      -- extensions that are visible without any decryption of the
-      -- attestation
-      publicExtensions SEQUENCE OF Extension,
-
-      -- The main content of the attestation SHOULD be encrypted using
-      -- a scheme that permits provers and verifiers to decrypt it but
-      -- nobody else. The result of decrypting this MUST be an
-      -- AttestationBody object but depending on the context of the
-      -- decryption (e.g prover vs verifier) the contents of that
-      -- AttestationBody object may differ.
-      body INSTANCE OF TYPE-IDENTIFIER ({AttestationBodySchemes}),
-
-      -- The attestation is signed with an ephemeral signing key generated
-      -- for a single use (or another signature scheme suitable for single
-      -- use is permitted). The fingerprint of this signature scheme and
-      -- its parameters is put inside the AttestationBody so that if this
-      -- outer layer is modified, this can be detected after decrypting the
-      -- attestation, but we also do not reveal the real verifying key of
-      -- the source entity except to those who can decrypt the Attestation.
-      -- The Value field must be set to the algorithm's NULL value (likely
-      -- a zero length string) when calculating the signature.
-      outerSignature INSTANCE OF TYPE-IDENTIFIER ({OuterSignatureSchemes})
+ 
+	i INTEGER
+    },
+j INTEGER
   }
+
+
 
   -- Irrespective of the algorithm used to encrypt the body, this
   -- is the object it contains
   AttestationBody ::= SEQUENCE {
 
     -- These are fields visible to both prover and verifier
-    forVerifier AttestationVerifierBody,
+    verifierBody AttestationVerifierBody,
 
     -- Material relating to the policy scheme that is only visible
     -- to the prover. When decoding as a verifier, this should not be
     -- visible
-    proverPolicyAddendums SEQUENCE OF INSTANCE OF TYPE-IDENTIFIER ({PolicyAddendumSchemes}),
+    proverPolicyAddendums SEQUENCE OF PolicyAddendum,
 
     -- These are fields that contain information that should be
     -- visible to the subject of the Attestation (and perhaps
     -- chained attestation subjects) but should not be visible to those
     -- verifying this attestation as part of a proof.
-    forProver SEQUENCE {
-      extensions SEQUENCE OF Extension
-    }
+    proverExtensions SEQUENCE OF Extension
 
   }
 
+  PolicyAddendum ::= INSTANCE OF TYPE-IDENTIFIER ({PolicyAddendumSchemes})
 
   -- These are fields visible to both prover and verifier
   AttestationVerifierBody ::= SEQUENCE {
@@ -71,9 +49,18 @@ BEGIN
     subject EntityHash,
     -- the policy domain. If omitted, the policy is global. A policy domain
     -- is an Entity that represents the scope of the attestation. The exact
-    -- semantics are specific to the scheme
-    -- TODO then I think we should just omit this and put it inside the policy
+    -- semantics are specific to the scheme, but there may be cross-policy
+    -- behavior associated with the domain (e.g WR1 restricts visibility of
+    -- attribute sets to those already having some grant in the domain).
+    -- in some policy schemes the domain is the root of trust
     -- domain EntityHash OPTIONAL,
+
+    -- the visibility partition. The exact semantics are specific to the
+    -- scheme but there may be some cross-policy behavior associated
+    -- with the partition (e.g WR1 only allows the verifier body to
+    -- be decrypted by those having the key associated with the Partition
+    -- or some subkey). If the sequence is length zero,
+    -- partition SEQUENCE OF OCTET STRING,
 
     -- when is this trust valid
     validity SEQUENCE {
@@ -216,7 +203,15 @@ BEGIN
 
 
   RTreePolicy ::= SEQUENCE {
+    -- the namespace, common to all statements. This also becomes the
+    -- WR1 domain for visibility control if wr1 is used
     namespace EntityHash,
+    -- specifically for use with WR1, this controls who can see the
+    -- attestation
+    -- this is a virtual field, there must exist some function
+    -- partition but we don't store the partition
+    -- partition SEQUENCE OF OCTET STRING OPTIONAL,
+
     -- Similar to bosswave TTL, how many times can this be redelegated
     indirections INTEGER,
     statements SEQUENCE OF RTreeStatement
@@ -243,6 +238,12 @@ BEGIN
     contractAddress INTEGER
   }
 
+  PSKBodyCiphertext ::= SEQUENCE {
+    -- when decrypted results in the DER of an AttestationBody
+    attestationBodyCiphertext OCTET STRING,
+    -- the key used for encryption (which also conveys the scheme)
+    encryptedUnder  INSTANCE OF TYPE-IDENTIFIER ({EntityKeySchemes})
+  }
 
   WR1BodyCiphertext ::= SEQUENCE {
     -- content: WR1VerifierBody DER encoded
@@ -276,19 +277,18 @@ BEGIN
   WR1Envelope ::= SEQUENCE {
     -- content: verifierBodyKey
     -- encryption algorithm: oaque-bn256 in subject system
-    -- encryption id: Partition
+    -- encryption attribute set: Partition
     verifierBodyKey-oaque OCTET STRING,
 
-    -- the ID for the verifierBodyKey-oaque ciphertext
+    -- the attribute set for the verifierBodyKey-oaque ciphertext
     partition SEQUENCE OF OCTET STRING
   }
 
   WR1ProverBody ::= SEQUENCE {
-    addendum WR1KeyMaterial
-  }
-
-  WR1KeyMaterial ::= SEQUENCE {
-
+    --which keys do we give other people
+    --we have PartitionKeys that reveal the content
+    --we have a Domain Key that reveals the partition attribute set
+    addendums SEQUENCE OF PolicyAddendum
   }
 
   WR1VerifierBody ::= SEQUENCE {
@@ -323,10 +323,20 @@ BEGIN
   }
 
   --Entity keys, none of these have special structure
-  Ed25519Key ::= OCTET STRING
-  Curve25519Key ::= OCTET STRING
-  OAQUE-BN256-S20 ::= OCTET STRING
   AVKeyAES128-GCM ::= OCTET STRING
+
+  Private-Ed25519 ::= OCTET STRING
+  Private-Curve25519 ::= OCTET STRING
+  Private-BN-256-OAQUE ::= OCTET STRING
+  Private-BN-256-IBE ::= OCTET STRING
+  Master-BN256-OAQUE ::= OCTET STRING
+  Master-BN256-IBE ::= OCTET STRING
+  Public-Ed25519 ::= OCTET STRING
+  Public-Curve25519 ::= OCTET STRING
+  Public-OAQUE ::= SEQUENCE OF OCTET STRING
+  Params-BN256-OAQUE ::= OCTET STRING
+  Params-BN256-IBE ::= OCTET STRING
+  Public-IBE ::= OCTET STRING
 
 --------------------------------------------------------------------------------
 -- Universal OIDs
@@ -349,12 +359,18 @@ WaveObjects TYPE-IDENTIFIER ::= {
 -- Attestation body schemes
 --------------------------------------------------------------------------------
 attestation-body-scheme OBJECT IDENTIFIER ::= { wave-id 3 }
+-- the body is included directly
 unencrypted-body-scheme OBJECT IDENTIFIER ::= { attestation-body-scheme 1 }
+-- the body is decrypted using the Wave Reference 1 scheme
 wr1-body-scheme-v1 OBJECT IDENTIFIER ::= { attestation-body-scheme 2 }
-
+-- the body is decrypted using some pre shared key. This is mostly
+-- to force implementations not to be too tied to a specific body scheme
+-- which would hinder future development of new body schemes
+psk-body-scheme OBJECT IDENTIFIER ::= { attestation-body-scheme 3 }
 AttestationBodySchemes TYPE-IDENTIFIER ::= {
  {AttestationBody IDENTIFIED BY unencrypted-body-scheme} |
- {WR1BodyCiphertext IDENTIFIED BY wr1-body-scheme-v1},
+ {WR1BodyCiphertext IDENTIFIED BY wr1-body-scheme-v1} |
+ {PSKBodyCiphertext IDENTIFIED BY psk-body-scheme},
  ...
 }
 
@@ -425,6 +441,7 @@ RevocationSchemes TYPE-IDENTIFIER ::= {
   ...
 }
 
+
 -- Entity public key schemes
 --------------------------------------------------------------------------------
 entity-key-scheme OBJECT IDENTIFIER ::= { wave-id 11 }
@@ -432,11 +449,15 @@ ed25519-id OBJECT IDENTIFIER ::= { entity-key-scheme 1 }
 curve25519-id OBJECT IDENTIFIER ::= { entity-key-scheme 2 }
 oaque-bn256-s20-attributeset-id OBJECT IDENTIFIER ::= { entity-key-scheme 3 }
 oaque-bn256-s20-params-id OBJECT IDENTIFIER ::= { entity-key-scheme 4 }
+ibe-bn256-params-id OBJECT IDENTIFIER ::= { entity-key-scheme 5 }
+ibe-bn256-identity-id OBJECT IDENTIFIER ::= { entity-key-scheme 6 }
 EntityKeySchemes TYPE-IDENTIFIER ::= {
-  {OCTET STRING IDENTIFIED BY ed25519-id} |
-  {OCTET STRING IDENTIFIED BY curve25519-id} |
-  {OCTET STRING IDENTIFIED BY oaque-bn256-s20-attributeset-id} |
-  {OCTET STRING IDENTIFIED BY oaque-bn256-s20-params-id},
+  {Public-Ed25519 IDENTIFIED BY ed25519-id} |
+  {Public-Curve25519 IDENTIFIED BY curve25519-id} |
+  {Public-OAQUE IDENTIFIED BY oaque-bn256-s20-attributeset-id} |
+  {Params-BN256-OAQUE IDENTIFIED BY oaque-bn256-s20-params-id} |
+  {Params-BN256-IBE  IDENTIFIED BY ibe-bn256-params-id} |
+  {Public-IBE IDENTIFIED BY ibe-bn256-identity-id},
   ...
 }
 
@@ -454,9 +475,20 @@ PolicySchemes TYPE-IDENTIFIER ::= {
 -- Policy addendum schemes
 --------------------------------------------------------------------------------
 policy-addendum-scheme OBJECT IDENTIFIER ::= { wave-id 13 }
-wr1-key-material-id OBJECT IDENTIFIER ::= { policy-addendum-scheme 1 }
+-- this key permits the recipient to view the attribute set corresponding
+-- to the partition key that would decrypt the attestation body for all
+-- attestations in the same visibility domain
+wr1-domain-visibility-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 1 }
+-- this key permits decrypting attestations where the partition is
+-- more qualified than the given key
+wr1-partition-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 2 }
+-- this key permits decrypting messages encrypted using OAQUE where the
+-- attributeset is more qualified than the given key
+wr1-oaque-encryption-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 3 }
 PolicyAddendumSchemes TYPE-IDENTIFIER ::= {
-  {WR1KeyMaterial IDENTIFIED BY wr1-key-material-id},
+  {Private-BN-256-IBE IDENTIFIED BY wr1-domain-visibility-key} |
+  {Private-BN-256-OAQUE IDENTIFIED BY wr1-partition-key} |
+  {Private-BN-256-OAQUE IDENTIFIED BY wr1-oaque-encryption-key},
   ...
 }
 
@@ -468,11 +500,15 @@ ed25519-secret-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 1 }
 curve25519-secret-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 2 }
 oaque-bn256-s20-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 3 }
 oaque-bn256-s20-master-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 4 }
+bn256-ibe-master-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 5 }
+bn256-ibe-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 6 }
 EntitySecretKeySchemes TYPE-IDENTIFIER ::= {
-  {OCTET STRING IDENTIFIED BY ed25519-secret-id} |
-  {OCTET STRING IDENTIFIED BY curve25519-secret-id} |
-  {OCTET STRING IDENTIFIED BY oaque-bn256-s20-private-key-id} |
-  {OCTET STRING IDENTIFIED BY oaque-bn256-s20-master-key-id},
+  {Private-Ed25519 IDENTIFIED BY ed25519-secret-id} |
+  {Private-Curve25519 IDENTIFIED BY curve25519-secret-id} |
+  {Private-BN-256-OAQUE IDENTIFIED BY oaque-bn256-s20-private-key-id} |
+  {Master-BN256-OAQUE IDENTIFIED BY oaque-bn256-s20-master-key-id} |
+  {Master-BN256-IBE IDENTIFIED BY bn256-ibe-master-key-id} |
+  {Private-BN-256-IBE IDENTIFIED BY bn256-ibe-private-key-id},
   ...
 }
 
