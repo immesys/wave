@@ -2,7 +2,6 @@ package serdes
 
 import (
 	"math/big"
-	"time"
 
 	"github.com/immesys/asn1"
 )
@@ -92,6 +91,7 @@ func init() {
 		{EntityIBE_BN256_ParamsOID, ParamsIBE_BN256{}},
 		{EntityIBE_BN256_IdentityOID, PublicIBE{}},
 		{AttestationOID, WaveAttestation{}},
+		{UnencryptedBodyOID, AttestationBody{}},
 	}
 	for _, t := range tpz {
 		asn1.RegisterExternalType(t.O, t.I)
@@ -119,9 +119,8 @@ type Extension struct {
 }
 
 type CommitmentRevocation struct {
-	T time.Time `asn1:"utc"`
-	//Hash     asn1.External
-	//Location asn1.External
+	Hash     asn1.External
+	Location asn1.External
 }
 
 type LocationURL struct {

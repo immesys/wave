@@ -6,7 +6,6 @@ import (
 	"github.com/immesys/asn1"
 )
 
-/*
 type WaveAttestation struct {
 	TBS struct {
 		Subject          asn1.External //EntityHash
@@ -16,14 +15,20 @@ type WaveAttestation struct {
 	}
 	OuterSignature asn1.External
 }
-*/
-type WaveAttestation struct {
-	K   int
-	TBS struct {
-		I int
-	}
-	j int
+
+type Foo struct {
+	Bar []asn1.External
 }
+
+// type WaveAttestationLite struct {
+// 	TBS struct {
+// 		Subject     asn1.External //EntityHash
+// 		Revocations []RevocationOption
+// 		//PublicExtensions []Extension
+// 		//Body             asn1.External
+// 	}
+// 	OuterSignature asn1.External
+// }
 
 type AttestationBody struct {
 	VerifierBody          AttestationVerifierBody

@@ -1,7 +1,6 @@
 package serdes
 
 import (
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -34,8 +33,41 @@ const attestationTest string = "KIIC+QYKKwYBBAGDj1UCAaCCAukwggLlKDEGCisGAQQBg49V
 	"BgEEAYOPVQUBoEYwRAQgidvQw+z+c7rBQZuu0mfF2onY2eYrq9lh0X8i/DebOLQEIInb0MPs/nO6" +
 	"wUGbrtJnxdqJ2NnmK6vZYdF/Ivw3mzi0"
 
-const attestationHex string = `28 1B 06 0A 2B 06 01 04 01 83 8F 55 02 01 A0 0D
-30 0B 02 01 04 30 03 02 01 06 02 01 05`
+const entityHex string = `28 81 B1 06 0A 2B 06 01 04 01 83 8F 55 02 02 A0
+81 A2 30 81 9F 30 81 99 30 18 31 03 02 01 01 28
+11 06 0A 2B 06 01 04 01 83 8F 55 0B 01 A0 03 04
+01 00 30 1A 30 18 31 03 02 01 01 28 11 06 0A 2B
+06 01 04 01 83 8F 55 0B 01 A0 03 04 01 00 30 1E
+17 0D 30 30 30 31 30 31 30 30 30 30 30 30 5A 17
+0D 30 30 30 31 30 31 30 30 30 30 30 30 5A 30 3F
+30 3D 01 01 00 28 38 06 0A 2B 06 01 04 01 83 8F
+55 0A 01 A0 2A 30 28 28 11 06 0A 2B 06 01 04 01
+83 8F 55 09 01 A0 03 04 01 00 28 13 06 0A 2B 06
+01 04 01 83 8F 55 08 01 A0 05 30 03 0C 01 30 30
+00 04 01 00`
+
+const attestationHex string = `28 82 01 2D 06 0A 2B 06 01 04 01 83 8F 55 02 01
+A0 82 01 1D 30 82 01 19 30 81 FE 28 11 06 0A 2B
+06 01 04 01 83 8F 55 09 01 A0 03 04 01 00 30 3F
+30 3D 01 01 00 28 38 06 0A 2B 06 01 04 01 83 8F
+55 0A 01 A0 2A 30 28 28 11 06 0A 2B 06 01 04 01
+83 8F 55 09 01 A0 03 04 01 00 28 13 06 0A 2B 06
+01 04 01 83 8F 55 08 01 A0 05 30 03 0C 01 30 30
+00 28 81 A5 06 0A 2B 06 01 04 01 83 8F 55 03 01
+A0 81 96 30 81 93 30 7A 28 11 06 0A 2B 06 01 04
+01 83 8F 55 09 01 A0 03 04 01 00 28 11 06 0A 2B
+06 01 04 01 83 8F 55 09 01 A0 03 04 01 00 30 1E
+17 0D 30 30 30 31 30 31 30 30 30 30 30 30 5A 17
+0D 30 30 30 31 30 31 30 30 30 30 30 30 5A 28 13
+06 0A 2B 06 01 04 01 83 8F 55 0C 01 A0 05 30 03
+02 01 01 30 00 28 1B 06 0A 2B 06 01 04 01 83 8F
+55 06 01 A0 0D 30 0B 30 06 06 01 00 04 01 00 04
+01 00 30 13 28 11 06 0A 2B 06 01 04 01 83 8F 55
+0D 01 A0 03 04 01 00 30 00 28 16 06 0A 2B 06 01
+04 01 83 8F 55 05 01 A0 08 30 06 04 01 00 04 01
+00`
+
+const noWireTypeAttest string = `30 0B 02 01 05 30 03 02 01 08 02 01 06`
 
 // 3003020140
 // 3003800140
@@ -62,7 +94,9 @@ const attestationHex string = `28 1B 06 0A 2B 06 01 04 01 83 8F 55 02 01 A0 0D
 // }
 
 func TestEntityDecode(t *testing.T) {
-	ba, err := base64.StdEncoding.DecodeString(testvec)
+	h := strings.Replace(attestationHex, " ", "", -1)
+	h = strings.Replace(h, "\n", "", -1)
+	ba, err := hex.DecodeString(h)
 	require.NoError(t, err)
 
 	v := WaveWireObject{}
@@ -93,18 +127,18 @@ func TestEntityEncode(t *testing.T) {
 	fmt.Printf("the full DER was %s\n", hex.EncodeToString(fullDER))
 }
 
-func TestCREncode(t *testing.T) {
-	cr := CommitmentRevocation{T: time.Now()}
-	ro := RevocationOption{
-		Critical: true,
-		Scheme:   asn1.NewExternal(cr),
-	}
-	fullDER, err := asn1.Marshal(ro)
-	require.NoError(t, err)
-	fmt.Printf("the full DER was %s\n", hex.EncodeToString(fullDER))
-}
+// func TestCREncode(t *testing.T) {
+// 	cr := CommitmentRevocation{T: time.Now()}
+// 	ro := RevocationOption{
+// 		Critical: true,
+// 		Scheme:   asn1.NewExternal(cr),
+// 	}
+// 	fullDER, err := asn1.Marshal(ro)
+// 	require.NoError(t, err)
+// 	fmt.Printf("the full DER was %s\n", hex.EncodeToString(fullDER))
+// }
 
-func TestAttestationDecode(t *testing.T) {
+func TestAttestationDecode1(t *testing.T) {
 	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
 	h := strings.Replace(attestationHex, " ", "", -1)
 	h = strings.Replace(h, "\n", "", -1)
@@ -117,6 +151,101 @@ func TestAttestationDecode(t *testing.T) {
 	spew.Dump(wo.Content)
 
 }
+
+const JustAttestationBody = `30 81 95 30 7A 28 11 06 0A 2B 06 01 04 01 83 8F
+55 09 01 A0 03 04 01 00 28 11 06 0A 2B 06 01 04
+01 83 8F 55 09 01 A0 03 04 01 00 30 1E 17 0D 30
+30 30 31 30 31 30 30 30 30 30 30 5A 17 0D 30 30
+30 31 30 31 30 30 30 30 30 30 5A 28 13 06 0A 2B
+06 01 04 01 83 8F 55 0C 01 A0 05 30 03 02 01 01
+30 00 28 1B 06 0A 2B 06 01 04 01 83 8F 55 06 01
+A0 0D 30 0B 30 06 06 01 00 04 01 00 04 01 00 30
+15 28 13 06 0A 2B 06 01 04 01 83 8F 55 0D 01 A0
+05 04 03 FF 44 33 30 00`
+
+const JustAttestationBodyBig = `30 81 93 30 7A 28 11 06 0A 2B 06 01 04 01 83 8F
+55 09 01 A0 03 04 01 00 28 11 06 0A 2B 06 01 04
+01 83 8F 55 09 01 A0 03 04 01 00 30 1E 17 0D 30
+30 30 31 30 31 30 30 30 30 30 30 5A 17 0D 30 30
+30 31 30 31 30 30 30 30 30 30 5A 28 13 06 0A 2B
+06 01 04 01 83 8F 55 0C 01 A0 05 30 03 02 01 01
+30 00 28 1B 06 0A 2B 06 01 04 01 83 8F 55 06 01
+A0 0D 30 0B 30 06 06 01 00 04 01 00 04 01 00 30
+13 28 11 06 0A 2B 06 01 04 01 83 8F 55 0D 01 A0
+03 04 01 00 30 00`
+
+func TestAttestationBodyDecode(t *testing.T) {
+	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
+	h := strings.Replace(JustAttestationBody, " ", "", -1)
+	h = strings.Replace(h, "\n", "", -1)
+	fmt.Printf(h + "\n")
+	ba, err := hex.DecodeString(h)
+	require.NoError(t, err)
+	wo := AttestationBody{}
+	_, err = asn1.Unmarshal(ba, &wo)
+	require.NoError(t, err)
+	spew.Dump(wo)
+
+}
+
+const FooHex = `30 28 30 26 28 11 06 0A 2B 06 01 04 01 83 8F 55
+09 01 A0 03 04 01 00 28 11 06 0A 2B 06 01 04 01
+83 8F 55 09 01 A0 03 04 01 00`
+
+func TestFoo(t *testing.T) {
+	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
+	h := strings.Replace(FooHex, " ", "", -1)
+	h = strings.Replace(h, "\n", "", -1)
+	fmt.Printf(h + "\n")
+	ba, err := hex.DecodeString(h)
+	require.NoError(t, err)
+	wo := Foo{}
+	_, err = asn1.Unmarshal(ba, &wo)
+	require.NoError(t, err)
+	spew.Dump(wo)
+
+}
+
+// func TestAttestationDecode2(t *testing.T) {
+// 	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
+// 	h := strings.Replace(noWireTypeAttest, " ", "", -1)
+// 	h = strings.Replace(h, "\n", "", -1)
+// 	fmt.Printf(h + "\n")
+// 	ba, err := hex.DecodeString(h)
+// 	require.NoError(t, err)
+// 	wo := WaveAttestation{}
+// 	_, err = asn1.Unmarshal(ba, &wo)
+// 	require.NoError(t, err)
+// 	spew.Dump(wo)
+// }
+
+const WaveAttLite = `
+30 6E 30 54 28 11 06 0A 2B 06 01 04 01 83 8F 55
+09 01 A0 03 04 01 00 30 3F 30 3D 01 01 00 28 38
+06 0A 2B 06 01 04 01 83 8F 55 0A 01 A0 2A 30 28
+28 11 06 0A 2B 06 01 04 01 83 8F 55 09 01 A0 03
+04 01 00 28 13 06 0A 2B 06 01 04 01 83 8F 55 08
+01 A0 05 30 03 0C 01 30 28 16 06 0A 2B 06 01 04
+01 83 8F 55 05 01 A0 08 30 06 04 01 00 04 01 00`
+
+/*
+30 2F 30 15 28 11 06 0A 2B 06 01 04 01 83 8F 55
+09 01 A0 03 04 01 00 30 00 28 16 06 0A 2B 06 01
+04 01 83 8F 55 05 01 A0 08 30 06 04 01 00 04 01
+00
+*/
+// func TestAttestationDecodeLite(t *testing.T) {
+// 	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
+// 	h := strings.Replace(WaveAttLite, " ", "", -1)
+// 	h = strings.Replace(h, "\n", "", -1)
+// 	fmt.Printf(h + "\n")
+// 	ba, err := hex.DecodeString(h)
+// 	require.NoError(t, err)
+// 	wo := WaveAttestationLite{}
+// 	_, err = asn1.Unmarshal(ba, &wo)
+// 	require.NoError(t, err)
+// 	spew.Dump(wo)
+// }
 
 // func TestFooDecode(t *testing.T) {
 // 	ba, err := base64.StdEncoding.DecodeString(testvec)
