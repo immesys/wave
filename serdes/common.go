@@ -1,10 +1,10 @@
 package serdes
 
 import (
-	"math/big"
-
 	"github.com/immesys/asn1"
 )
+
+//go:generate msgp
 
 var (
 	WaveOID                               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157}
@@ -39,12 +39,16 @@ var (
 	TrustLevelPolicyOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 1}
 	ResourceTreePolicyOID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 2}
 	PolicyAddendumOID                     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13}
-	WR1KeyMaterialOID                     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 1}
+	WR1DomainVisibilityKey_IBE_BN256OID   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 1}
+	WR1PartitionKey_OAQUE_BN256_s20OID    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 2}
+	WR1EncryptionKey_OAQUE_BN256_s20OID   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 3}
 	EntitySecretKeySchemeOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14}
 	EntitySecretEd25519OID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 1}
 	EntitySecretCurve25519OID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 2}
 	EntitySecretOAQUE_BN256_S20OID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 3}
 	EntitySecretOAQUE_BN256_S20_MasterOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 4}
+	EntitySecretIBE_BN256_MasterOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 5}
+	EntitySecretIBE_BN256OID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 6}
 	EntityKeyringSchemeOID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15}
 	PlaintextKeyringOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 1}
 	AES128_GCM_PBKDF2OID                  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 2}
@@ -56,10 +60,6 @@ const CapSigning = 3
 const CapAuthentication = 4
 const CapAuthorization = 5
 const CapEncryption = 6
-
-func DefaultEntityEd25519Capabilities() []int {
-	return []int{CapCertification, CapAttestation, CapSigning}
-}
 
 type Keccak_256 []byte
 type Sha3_256 []byte
@@ -84,14 +84,27 @@ func init() {
 		// {EntityOAQUE_BN256_S20_ParamsOID, OAQUE_BN256_S20_Params{}},
 		// attestation stuff
 		{EphemeralEd25519OID, Ed25519OuterSignature{}},
-		{EntityEd25519OID, PublicEd25519{}},
-		{EntityCurve25519OID, PublicCurve25519{}},
-		{EntityOAQUE_BN256_S20_AttributeSetOID, PublicOAQUE_BN256_s20{}},
-		{EntityOAQUE_BN256_S20_ParamsOID, ParamsOQAUE_BN256_s20{}},
-		{EntityIBE_BN256_ParamsOID, ParamsIBE_BN256{}},
-		{EntityIBE_BN256_IdentityOID, PublicIBE{}},
+		{EntityEd25519OID, EntityPublicEd25519{}},
+		{EntityCurve25519OID, EntityPublicCurve25519{}},
+		{EntityOAQUE_BN256_S20_AttributeSetOID, EntityPublicOAQUE_BN256_s20{}},
+		{EntityOAQUE_BN256_S20_ParamsOID, EntityParamsOQAUE_BN256_s20{}},
+		{EntityIBE_BN256_ParamsOID, EntityParamsIBE_BN256{}},
+		{EntityIBE_BN256_IdentityOID, EntityPublicIBE{}},
 		{AttestationOID, WaveAttestation{}},
 		{UnencryptedBodyOID, AttestationBody{}},
+		{TrustLevelPolicyOID, TrustLevel{}},
+		{SignedOuterKeyOID, SignedOuterKey{}},
+
+		{EntitySecretEd25519OID, EntitySecretCurve25519{}},
+		{EntitySecretCurve25519OID, EntitySecretCurve25519{}},
+		{EntitySecretOAQUE_BN256_S20OID, EntitySecretOQAUE_BN256_s20{}},
+		{EntitySecretOAQUE_BN256_S20_MasterOID, EntitySecretMasterOQAUE_BN256_s20{}},
+		{EntitySecretIBE_BN256_MasterOID, EntitySecretMasterIBE_BN256{}},
+		{EntitySecretIBE_BN256OID, EntitySecretIBE_BN256{}},
+
+		{WR1DomainVisibilityKey_IBE_BN256OID, WR1DomainVisibilityKey_IBE_BN256{}},
+		{WR1PartitionKey_OAQUE_BN256_s20OID, WR1PartitionKey_OAQUE_BN256_s20{}},
+		{WR1EncryptionKey_OAQUE_BN256_s20OID, WR1EncryptionKey_OAQUE_BN256_s20{}},
 	}
 	for _, t := range tpz {
 		asn1.RegisterExternalType(t.O, t.I)
@@ -128,5 +141,5 @@ type LocationURL struct {
 }
 type LocationEthereum struct {
 	ChainID         int
-	ContractAddress *big.Int
+	ContractAddress []byte
 }

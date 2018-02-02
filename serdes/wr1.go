@@ -2,6 +2,8 @@ package serdes
 
 import "github.com/immesys/asn1"
 
+//go:generate msgp
+
 type WR1BodyCiphertext struct {
 	VerifierBodyCiphertext []byte
 	ProverBodyCiphertext   []byte
@@ -28,17 +30,20 @@ type Ed25519OuterSignature struct {
 	Signature    []byte
 }
 
-type SignedOuterKey struct {
-	TBS struct {
-		OuterSignatureScheme asn1.ObjectIdentifier
-		VerifyingKey         []byte
-	}
-	Signature []byte
-}
+type EntityPublicEd25519 []byte
+type EntityPublicCurve25519 []byte
+type EntityPublicOAQUE_BN256_s20 [][]byte
+type EntityParamsOQAUE_BN256_s20 []byte
+type EntityParamsIBE_BN256 []byte
+type EntityPublicIBE []byte
 
-type PublicEd25519 []byte
-type PublicCurve25519 []byte
-type PublicOAQUE_BN256_s20 [][]byte
-type ParamsOQAUE_BN256_s20 []byte
-type ParamsIBE_BN256 []byte
-type PublicIBE []byte
+type EntitySecretEd25519 []byte
+type EntitySecretCurve25519 []byte
+type EntitySecretOQAUE_BN256_s20 []byte
+type EntitySecretMasterOQAUE_BN256_s20 []byte
+type EntitySecretMasterIBE_BN256 []byte
+type EntitySecretIBE_BN256 []byte
+
+type WR1DomainVisibilityKey_IBE_BN256 []byte
+type WR1PartitionKey_OAQUE_BN256_s20 []byte
+type WR1EncryptionKey_OAQUE_BN256_s20 []byte

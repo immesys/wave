@@ -274,7 +274,7 @@ BEGIN
   -- when the scheme is location-scheme-ethereum-blockchain
   LocationEthereum ::= SEQUENCE {
     chainID INTEGER,
-    contractAddress INTEGER
+    contractAddress OCTET STRING
   }
 
   PSKBodyCiphertext ::= SEQUENCE {

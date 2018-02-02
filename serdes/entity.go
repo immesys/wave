@@ -6,6 +6,8 @@ import (
 	"github.com/immesys/asn1"
 )
 
+//go:generate msgp
+
 type WaveEntity struct {
 	TBS struct {
 		Raw          asn1.RawContent

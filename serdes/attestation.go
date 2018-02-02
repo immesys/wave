@@ -6,6 +6,8 @@ import (
 	"github.com/immesys/asn1"
 )
 
+//go:generate msgp
+
 type WaveAttestation struct {
 	TBS struct {
 		Subject          asn1.External //EntityHash
@@ -15,20 +17,6 @@ type WaveAttestation struct {
 	}
 	OuterSignature asn1.External
 }
-
-type Foo struct {
-	Bar []asn1.External
-}
-
-// type WaveAttestationLite struct {
-// 	TBS struct {
-// 		Subject     asn1.External //EntityHash
-// 		Revocations []RevocationOption
-// 		//PublicExtensions []Extension
-// 		//Body             asn1.External
-// 	}
-// 	OuterSignature asn1.External
-// }
 
 type AttestationBody struct {
 	VerifierBody          AttestationVerifierBody
@@ -45,5 +33,17 @@ type AttestationVerifierBody struct {
 	}
 	Policy                asn1.External
 	Extensions            []Extension
-	OuterSignatureBidning asn1.External
+	OuterSignatureBinding asn1.External
+}
+
+type TrustLevel struct {
+	Trust int
+}
+
+type SignedOuterKey struct {
+	TBS struct {
+		OuterSignatureScheme asn1.ObjectIdentifier
+		VerifyingKey         []byte
+	}
+	Signature []byte
 }

@@ -2,14 +2,14 @@ package serdes
 
 import (
 	"encoding/hex"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/immesys/asn1"
-
 	"github.com/davecgh/go-spew/spew"
+	"github.com/immesys/asn1"
+	"github.com/tinylib/msgp/msgp"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -69,32 +69,8 @@ A0 81 96 30 81 93 30 7A 28 11 06 0A 2B 06 01 04
 
 const noWireTypeAttest string = `30 0B 02 01 05 30 03 02 01 08 02 01 06`
 
-// 3003020140
-// 3003800140
-
-// func TestFooDecode3(t *testing.T) {
-// 	ba, er := hex.DecodeString("30040C023634") //"") //"3003020140")
-// 	require.NoError(t, er)
-// 	v := FooMin{}
-// 	rest, err := asn1.Unmarshal(ba, &v)
-// 	require.NoError(t, err)
-// 	spew.Dump(rest)
-// 	spew.Dump(v)
-// }
-
-// func TestFooDecode(t *testing.T) {
-// 	asn1.RegisterExternalType(asn1.ObjectIdentifier{1, 2, 2, 5}, &Bar{})
-// 	ba, er := hex.DecodeString(strings.Replace("30 18 02 01 40 28 13 06 03 2A 02 05 A0 0C 30 0A 0C 05 68 65 6C 6C 6F 02 01 22", " ", "", -1))
-// 	require.NoError(t, er)
-// 	v := Foo{}
-// 	rest, err := asn1.Unmarshal(ba, &v)
-// 	require.NoError(t, err)
-// 	spew.Dump(rest)
-// 	spew.Dump(v)
-// }
-
 func TestEntityDecode(t *testing.T) {
-	h := strings.Replace(attestationHex, " ", "", -1)
+	h := strings.Replace(entityHex, " ", "", -1)
 	h = strings.Replace(h, "\n", "", -1)
 	ba, err := hex.DecodeString(h)
 	require.NoError(t, err)
@@ -102,29 +78,59 @@ func TestEntityDecode(t *testing.T) {
 	v := WaveWireObject{}
 	rest, err := asn1.Unmarshal(ba, &v.Content)
 	require.NoError(t, err)
-	spew.Dump(rest)
-	spew.Dump(v)
+	_ = rest
+	_ = v
+	//spew.Dump(rest)
+	//spew.Dump(v)
 }
 
 func TestEntityEncode(t *testing.T) {
 	e := WaveEntity{}
-	pk := PublicEd25519([]byte{1, 7, 3})
+	pk := EntityPublicEd25519([]byte{1, 7, 3})
 	e.TBS.VerifyingKey = EntityPublicKey{
 		Capabilities: DefaultEntityEd25519Capabilities(),
 		Key:          asn1.NewExternal(pk),
 	}
 	e.TBS.Validity.NotBefore = time.Now()
 	e.TBS.Validity.NotAfter = time.Now().Add(5 * time.Hour)
-	der, err := asn1.Marshal(e.TBS)
+	_, err := asn1.Marshal(e.TBS)
 	require.NoError(t, err)
-	fmt.Printf("the TBS DER was %s\n", hex.EncodeToString(der))
 	e.Signature = []byte{55, 66, 77}
 	wireEntity := WaveWireObject{
 		Content: asn1.NewExternal(e),
 	}
-	fullDER, err := asn1.Marshal(wireEntity.Content)
+	_, err = asn1.Marshal(wireEntity.Content)
 	require.NoError(t, err)
-	fmt.Printf("the full DER was %s\n", hex.EncodeToString(fullDER))
+}
+
+func TestAttestationEncode(t *testing.T) {
+	a := WaveAttestation{}
+	subject := Keccak_256("hello")
+	a.TBS.Subject = asn1.NewExternal(subject)
+
+	b := AttestationBody{}
+	b.VerifierBody.Attester = asn1.NewExternal(Keccak_256("world"))
+	b.VerifierBody.Policy = asn1.NewExternal(TrustLevel{3})
+	b.VerifierBody.Subject = asn1.NewExternal(subject)
+	b.VerifierBody.Validity.NotAfter = time.Now().Add(50 * time.Minute)
+	b.VerifierBody.Validity.NotBefore = time.Now()
+	b.ProverPolicyAddendums = append(b.ProverPolicyAddendums, asn1.NewExternal(WR1PartitionKey_OAQUE_BN256_s20("hello")))
+	sigok := SignedOuterKey{}
+	sigok.TBS.OuterSignatureScheme = EphemeralEd25519OID
+	sigok.TBS.VerifyingKey = []byte("hello")
+	sigok.Signature = []byte("foobar")
+	b.VerifierBody.OuterSignatureBinding = asn1.NewExternal(sigok)
+	outersig := Ed25519OuterSignature{}
+	outersig.VerifyingKey = []byte("fhelllo")
+	outersig.Signature = []byte("haai")
+	a.TBS.Body = asn1.NewExternal(b)
+	a.OuterSignature = asn1.NewExternal(outersig)
+
+	wireEntity := WaveWireObject{
+		Content: asn1.NewExternal(a),
+	}
+	_, err := asn1.Marshal(wireEntity.Content)
+	require.NoError(t, err)
 }
 
 // func TestCREncode(t *testing.T) {
@@ -142,13 +148,13 @@ func TestAttestationDecode1(t *testing.T) {
 	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
 	h := strings.Replace(attestationHex, " ", "", -1)
 	h = strings.Replace(h, "\n", "", -1)
-	fmt.Printf(h + "\n")
 	ba, err := hex.DecodeString(h)
 	require.NoError(t, err)
 	wo := WaveWireObject{}
 	_, err = asn1.Unmarshal(ba, &wo.Content)
 	require.NoError(t, err)
-	spew.Dump(wo.Content)
+
+	//spew.Dump(wo.Content)
 
 }
 
@@ -178,94 +184,108 @@ func TestAttestationBodyDecode(t *testing.T) {
 	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
 	h := strings.Replace(JustAttestationBody, " ", "", -1)
 	h = strings.Replace(h, "\n", "", -1)
-	fmt.Printf(h + "\n")
 	ba, err := hex.DecodeString(h)
 	require.NoError(t, err)
 	wo := AttestationBody{}
 	_, err = asn1.Unmarshal(ba, &wo)
 	require.NoError(t, err)
-	spew.Dump(wo)
-
+	//spew.Dump(wo)
 }
 
-const FooHex = `30 28 30 26 28 11 06 0A 2B 06 01 04 01 83 8F 55
-09 01 A0 03 04 01 00 28 11 06 0A 2B 06 01 04 01
-83 8F 55 09 01 A0 03 04 01 00`
-
-func TestFoo(t *testing.T) {
+func TestAttestationMsgp(t *testing.T) {
+	_ = msgp.Marshaler(WaveAttestation{})
 	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
-	h := strings.Replace(FooHex, " ", "", -1)
+	h := strings.Replace(attestationHex, " ", "", -1)
 	h = strings.Replace(h, "\n", "", -1)
-	fmt.Printf(h + "\n")
 	ba, err := hex.DecodeString(h)
 	require.NoError(t, err)
-	wo := Foo{}
-	_, err = asn1.Unmarshal(ba, &wo)
+	wo := WaveWireObject{}
+	_, err = asn1.Unmarshal(ba, &wo.Content)
 	require.NoError(t, err)
-	spew.Dump(wo)
-
+	msgarr, err := wo.MarshalMsg(nil)
+	require.NoError(t, err)
+	readback := WaveWireObject{}
+	_, err = readback.UnmarshalMsg(msgarr)
+	require.NoError(t, err)
+	spew.Dump(readback)
 }
 
-// func TestAttestationDecode2(t *testing.T) {
-// 	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
-// 	h := strings.Replace(noWireTypeAttest, " ", "", -1)
-// 	h = strings.Replace(h, "\n", "", -1)
-// 	fmt.Printf(h + "\n")
-// 	ba, err := hex.DecodeString(h)
-// 	require.NoError(t, err)
-// 	wo := WaveAttestation{}
-// 	_, err = asn1.Unmarshal(ba, &wo)
-// 	require.NoError(t, err)
-// 	spew.Dump(wo)
-// }
+func BenchmarkEntityEncode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		e := WaveEntity{}
+		pk := EntityPublicEd25519([]byte{1, 7, 3})
+		e.TBS.VerifyingKey = EntityPublicKey{
+			Capabilities: DefaultEntityEd25519Capabilities(),
+			Key:          asn1.NewExternal(pk),
+		}
+		e.TBS.Validity.NotBefore = time.Now()
+		e.TBS.Validity.NotAfter = time.Now().Add(5 * time.Hour)
+		_, err := asn1.Marshal(e.TBS)
+		require.NoError(b, err)
+		e.Signature = []byte{55, 66, 77}
+		wireEntity := WaveWireObject{
+			Content: asn1.NewExternal(e),
+		}
+		_, err = asn1.Marshal(wireEntity.Content)
+		require.NoError(b, err)
+	}
+}
 
-const WaveAttLite = `
-30 6E 30 54 28 11 06 0A 2B 06 01 04 01 83 8F 55
-09 01 A0 03 04 01 00 30 3F 30 3D 01 01 00 28 38
-06 0A 2B 06 01 04 01 83 8F 55 0A 01 A0 2A 30 28
-28 11 06 0A 2B 06 01 04 01 83 8F 55 09 01 A0 03
-04 01 00 28 13 06 0A 2B 06 01 04 01 83 8F 55 08
-01 A0 05 30 03 0C 01 30 28 16 06 0A 2B 06 01 04
-01 83 8F 55 05 01 A0 08 30 06 04 01 00 04 01 00`
+func BenchmarkEntityDecode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		h := strings.Replace(entityHex, " ", "", -1)
+		h = strings.Replace(h, "\n", "", -1)
+		ba, err := hex.DecodeString(h)
+		require.NoError(b, err)
 
-/*
-30 2F 30 15 28 11 06 0A 2B 06 01 04 01 83 8F 55
-09 01 A0 03 04 01 00 30 00 28 16 06 0A 2B 06 01
-04 01 83 8F 55 05 01 A0 08 30 06 04 01 00 04 01
-00
-*/
-// func TestAttestationDecodeLite(t *testing.T) {
-// 	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
-// 	h := strings.Replace(WaveAttLite, " ", "", -1)
-// 	h = strings.Replace(h, "\n", "", -1)
-// 	fmt.Printf(h + "\n")
-// 	ba, err := hex.DecodeString(h)
-// 	require.NoError(t, err)
-// 	wo := WaveAttestationLite{}
-// 	_, err = asn1.Unmarshal(ba, &wo)
-// 	require.NoError(t, err)
-// 	spew.Dump(wo)
-// }
+		v := WaveWireObject{}
+		rest, err := asn1.Unmarshal(ba, &v.Content)
+		require.NoError(b, err)
+		_ = rest
+		_ = v
+	}
+}
 
-// func TestFooDecode(t *testing.T) {
-// 	ba, err := base64.StdEncoding.DecodeString(testvec)
-// 	require.NoError(t, err)
-//
-// 	v := Foo{}
-// 	rest, err := asn1.Unmarshal(ba, &v)
-// 	require.NoError(t, err)
-// 	spew.Dump(rest)
-// 	spew.Dump(v)
-// }
-//
-// func TestFooMinDeconde(t *testing.T) {
-//
-// 	ba, err := base64.StdEncoding.DecodeString(testvec2)
-// 	require.NoError(t, err)
-//
-// 	v := Foo{}
-// 	rest, err := asn1.Unmarshal(ba, &v)
-// 	require.NoError(t, err)
-// 	spew.Dump(rest)
-// 	spew.Dump(v)
-// }
+func BenchmarkAttestationDecode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		h := strings.Replace(attestationHex, " ", "", -1)
+		h = strings.Replace(h, "\n", "", -1)
+		ba, err := hex.DecodeString(h)
+		require.NoError(b, err)
+		wo := WaveWireObject{}
+		_, err = asn1.Unmarshal(ba, &wo.Content)
+		require.NoError(b, err)
+	}
+}
+
+func BenchmarkAttestationEncode(bm *testing.B) {
+	for i := 0; i < bm.N; i++ {
+		a := WaveAttestation{}
+		subject := Keccak_256("hello")
+		a.TBS.Subject = asn1.NewExternal(subject)
+
+		b := AttestationBody{}
+		b.VerifierBody.Attester = asn1.NewExternal(Keccak_256("world"))
+		b.VerifierBody.Policy = asn1.NewExternal(TrustLevel{3})
+		b.VerifierBody.Subject = asn1.NewExternal(subject)
+		b.VerifierBody.Validity.NotAfter = time.Now().Add(50 * time.Minute)
+		b.VerifierBody.Validity.NotBefore = time.Now()
+		b.ProverPolicyAddendums = append(b.ProverPolicyAddendums, asn1.NewExternal(WR1PartitionKey_OAQUE_BN256_s20("hello")))
+		sigok := SignedOuterKey{}
+		sigok.TBS.OuterSignatureScheme = EphemeralEd25519OID
+		sigok.TBS.VerifyingKey = []byte("hello")
+		sigok.Signature = []byte("foobar")
+		b.VerifierBody.OuterSignatureBinding = asn1.NewExternal(sigok)
+		outersig := Ed25519OuterSignature{}
+		outersig.VerifyingKey = []byte("fhelllo")
+		outersig.Signature = []byte("haai")
+		a.TBS.Body = asn1.NewExternal(b)
+		a.OuterSignature = asn1.NewExternal(outersig)
+
+		wireEntity := WaveWireObject{
+			Content: asn1.NewExternal(a),
+		}
+		_, err := asn1.Marshal(wireEntity.Content)
+		require.NoError(bm, err)
+	}
+}
