@@ -6,8 +6,6 @@ import (
 	"github.com/immesys/asn1"
 )
 
-//go:generate msgp
-
 type WaveAttestation struct {
 	TBS struct {
 		Subject          asn1.External //EntityHash

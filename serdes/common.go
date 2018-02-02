@@ -1,10 +1,10 @@
 package serdes
 
 import (
+	"encoding/gob"
+
 	"github.com/immesys/asn1"
 )
-
-//go:generate msgp
 
 var (
 	WaveOID                               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157}
@@ -108,6 +108,7 @@ func init() {
 	}
 	for _, t := range tpz {
 		asn1.RegisterExternalType(t.O, t.I)
+		gob.Register(t.I)
 	}
 }
 
@@ -137,7 +138,7 @@ type CommitmentRevocation struct {
 }
 
 type LocationURL struct {
-	Value string
+	Value string `asn1:"utf8"`
 }
 type LocationEthereum struct {
 	ChainID         int

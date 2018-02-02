@@ -1,14 +1,15 @@
 package serdes
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/hex"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
-	"github.com/tinylib/msgp/msgp"
 
 	"github.com/stretchr/testify/require"
 )
@@ -45,6 +46,20 @@ const entityHex string = `28 81 B1 06 0A 2B 06 01 04 01 83 8F 55 02 02 A0
 83 8F 55 09 01 A0 03 04 01 00 28 13 06 0A 2B 06
 01 04 01 83 8F 55 08 01 A0 05 30 03 0C 01 30 30
 00 04 01 00`
+
+const entityHexComment string = `28 81 C7 06 0A 2B 06 01 04 01 83 8F 55 02 02 A0
+81 B8 30 81 B5 30 81 AF 30 18 31 03 02 01 01 28
+11 06 0A 2B 06 01 04 01 83 8F 55 0B 01 A0 03 04
+01 00 30 1A 30 18 31 03 02 01 01 28 11 06 0A 2B
+06 01 04 01 83 8F 55 0B 01 A0 03 04 01 00 30 1E
+17 0D 30 30 30 31 30 31 30 30 30 30 30 30 5A 17
+0D 30 30 30 31 30 31 30 30 30 30 30 30 5A 30 3F
+30 3D 01 01 00 28 38 06 0A 2B 06 01 04 01 83 8F
+55 0A 01 A0 2A 30 28 28 11 06 0A 2B 06 01 04 01
+83 8F 55 09 01 A0 03 04 01 00 28 13 06 0A 2B 06
+01 04 01 83 8F 55 08 01 A0 05 30 03 0C 01 30 A0
+09 0C 07 43 6F 6E 74 61 63 74 A1 09 0C 07 43 6F
+6D 6D 65 6E 74 30 00 04 01 00`
 
 const attestationHex string = `28 82 01 2D 06 0A 2B 06 01 04 01 83 8F 55 02 01
 A0 82 01 1D 30 82 01 19 30 81 FE 28 11 06 0A 2B
@@ -84,6 +99,21 @@ func TestEntityDecode(t *testing.T) {
 	//spew.Dump(v)
 }
 
+func TestEntityDecode2(t *testing.T) {
+	h := strings.Replace(entityHexComment, " ", "", -1)
+	h = strings.Replace(h, "\n", "", -1)
+	ba, err := hex.DecodeString(h)
+	require.NoError(t, err)
+
+	v := WaveWireObject{}
+	rest, err := asn1.Unmarshal(ba, &v.Content)
+	require.NoError(t, err)
+	_ = rest
+	_ = v
+	//spew.Dump(rest)
+	//spew.Dump(v)
+}
+
 func TestEntityEncode(t *testing.T) {
 	e := WaveEntity{}
 	pk := EntityPublicEd25519([]byte{1, 7, 3})
@@ -101,6 +131,28 @@ func TestEntityEncode(t *testing.T) {
 	}
 	_, err = asn1.Marshal(wireEntity.Content)
 	require.NoError(t, err)
+}
+
+func TestEntityEncode2(t *testing.T) {
+	e := WaveEntity{}
+	pk := EntityPublicEd25519([]byte{1, 7, 3})
+	e.TBS.VerifyingKey = EntityPublicKey{
+		Capabilities: DefaultEntityEd25519Capabilities(),
+		Key:          asn1.NewExternal(pk),
+	}
+	e.TBS.Validity.NotBefore = time.Now()
+	e.TBS.Comment = "hello"
+
+	e.TBS.Validity.NotAfter = time.Now().Add(5 * time.Hour)
+	_, err := asn1.Marshal(e.TBS)
+	require.NoError(t, err)
+	e.Signature = []byte{55, 66, 77}
+	wireEntity := WaveWireObject{
+		Content: asn1.NewExternal(e),
+	}
+	der, err := asn1.Marshal(wireEntity.Content)
+	require.NoError(t, err)
+	fmt.Printf("der was: %x\n", der)
 }
 
 func TestAttestationEncode(t *testing.T) {
@@ -192,8 +244,7 @@ func TestAttestationBodyDecode(t *testing.T) {
 	//spew.Dump(wo)
 }
 
-func TestAttestationMsgp(t *testing.T) {
-	_ = msgp.Marshaler(WaveAttestation{})
+func TestAttestationGob(t *testing.T) {
 	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
 	h := strings.Replace(attestationHex, " ", "", -1)
 	h = strings.Replace(h, "\n", "", -1)
@@ -202,14 +253,63 @@ func TestAttestationMsgp(t *testing.T) {
 	wo := WaveWireObject{}
 	_, err = asn1.Unmarshal(ba, &wo.Content)
 	require.NoError(t, err)
-	msgarr, err := wo.MarshalMsg(nil)
+	bf := bytes.Buffer{}
+	gobenc := gob.NewEncoder(&bf)
+	err = gobenc.Encode(wo)
 	require.NoError(t, err)
+	gobdec := gob.NewDecoder(&bf)
 	readback := WaveWireObject{}
-	_, err = readback.UnmarshalMsg(msgarr)
+	err = gobdec.Decode(&readback)
 	require.NoError(t, err)
-	spew.Dump(readback)
+
+	der, err := asn1.Marshal(wo.Content)
+	require.NoError(t, err)
+
+	fmt.Printf("expected: %x\n", ba)
+	fmt.Printf("got     : %x\n", der)
+	require.EqualValues(t, ba, der)
+
 }
 
+func BenchmarkGobEncodeAttestation(b *testing.B) {
+	h := strings.Replace(attestationHex, " ", "", -1)
+	h = strings.Replace(h, "\n", "", -1)
+	ba, err := hex.DecodeString(h)
+	require.NoError(b, err)
+	wo := WaveWireObject{}
+	_, err = asn1.Unmarshal(ba, &wo.Content)
+	require.NoError(b, err)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bf := bytes.Buffer{}
+		gobenc := gob.NewEncoder(&bf)
+		err = gobenc.Encode(wo)
+		require.NoError(b, err)
+	}
+}
+func BenchmarkGobDecodeAttestation(b *testing.B) {
+	//ba, err := base64.StdEncoding.DecodeString(attestationTest)
+	h := strings.Replace(attestationHex, " ", "", -1)
+	h = strings.Replace(h, "\n", "", -1)
+	ba, err := hex.DecodeString(h)
+	require.NoError(b, err)
+	wo := WaveWireObject{}
+	_, err = asn1.Unmarshal(ba, &wo.Content)
+	require.NoError(b, err)
+	obf := bytes.Buffer{}
+	gobenc := gob.NewEncoder(&obf)
+	err = gobenc.Encode(wo)
+	require.NoError(b, err)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		bf := bytes.NewBuffer(obf.Bytes())
+		gobdec := gob.NewDecoder(bf)
+		readback := WaveWireObject{}
+		err = gobdec.Decode(&readback)
+		require.NoError(b, err)
+	}
+}
 func BenchmarkEntityEncode(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		e := WaveEntity{}

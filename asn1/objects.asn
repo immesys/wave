@@ -5,10 +5,6 @@ BEGIN
   -- type identifier
   WaveWireObject ::= INSTANCE OF TYPE-IDENTIFIER ({WaveObjects})
 
-  Foo ::= SEQUENCE {
-	b SEQUENCE OF EntityHash
-  }
-
   -- A set of policy statements about an Entity, potentially granting
   -- permissions or establishing facts
   WaveAttestation ::= SEQUENCE {
@@ -153,6 +149,8 @@ BEGIN
       },
       -- revocations
       revocations SEQUENCE OF RevocationOption,
+      contact [0] IMPLICIT UTF8String OPTIONAL,
+      comment [1] IMPLICIT UTF8String OPTIONAL,
       -- extensions
       extensions SEQUENCE OF Extension
     },
@@ -219,21 +217,21 @@ BEGIN
     hash AttestationHash,
 
     -- generally the attestation is put in here verbatim
-    content [0] WaveAttestation OPTIONAL,
+    content [0] IMPLICIT WaveAttestation OPTIONAL,
 
     -- or a location is given that permits retrieving the attestation
-    location [1] Location OPTIONAL,
+    location [1] IMPLICIT Location OPTIONAL,
 
     -- the content will generally need some keys to decrypt
-    keys [2] SEQUENCE OF AttestationVerifierKey,
+    keys SEQUENCE OF AttestationVerifierKey,
 
     -- for some revocation schemes, it may be necessary to submit
     -- additional information with the attestation reference that shows
     -- that the attestation is not revoked (such as a signed object by
     -- the locations in the revocation option)
-    revocationChecks [3] SEQUENCE OF RevocationCheck,
+    revocationChecks SEQUENCE OF RevocationCheck,
 
-    extensions [4] SEQUENCE OF Extension
+    extensions SEQUENCE OF Extension
   }
 
   AttestationVerifierKey ::= INSTANCE OF TYPE-IDENTIFIER ({AttestationVerifierKeySchemes})

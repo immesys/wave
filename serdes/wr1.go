@@ -2,8 +2,6 @@ package serdes
 
 import "github.com/immesys/asn1"
 
-//go:generate msgp
-
 type WR1BodyCiphertext struct {
 	VerifierBodyCiphertext []byte
 	ProverBodyCiphertext   []byte
