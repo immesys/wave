@@ -27,3 +27,17 @@ type EntityPublicKey struct {
 	Capabilities []int `asn1:"set"`
 	Key          asn1.External
 }
+
+type WaveEntitySecret struct {
+	Entity  WaveEntity
+	Keyring asn1.External
+}
+
+type EntityKeyring struct {
+	Keys []EntityKeyringEntry
+}
+
+type EntityKeyringEntry struct {
+	Public  EntityPublicKey
+	Private asn1.External
+}

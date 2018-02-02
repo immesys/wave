@@ -12,6 +12,7 @@ var (
 	AttestationOID                        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 1}
 	EntityOID                             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 2}
 	ExplicitProofOID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 3}
+	EntitySecretOID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 4}
 	AttestationBodySchemeOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3}
 	UnencryptedBodyOID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 1}
 	WR1BodyOID                            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 2}
@@ -95,7 +96,7 @@ func init() {
 		{TrustLevelPolicyOID, TrustLevel{}},
 		{SignedOuterKeyOID, SignedOuterKey{}},
 
-		{EntitySecretEd25519OID, EntitySecretCurve25519{}},
+		{EntitySecretEd25519OID, EntitySecretEd25519{}},
 		{EntitySecretCurve25519OID, EntitySecretCurve25519{}},
 		{EntitySecretOAQUE_BN256_S20OID, EntitySecretOQAUE_BN256_s20{}},
 		{EntitySecretOAQUE_BN256_S20_MasterOID, EntitySecretMasterOQAUE_BN256_s20{}},
@@ -105,6 +106,8 @@ func init() {
 		{WR1DomainVisibilityKey_IBE_BN256OID, WR1DomainVisibilityKey_IBE_BN256{}},
 		{WR1PartitionKey_OAQUE_BN256_s20OID, WR1PartitionKey_OAQUE_BN256_s20{}},
 		{WR1EncryptionKey_OAQUE_BN256_s20OID, WR1EncryptionKey_OAQUE_BN256_s20{}},
+		{PlaintextKeyringOID, EntityKeyring{}},
+		{EntitySecretOID, WaveEntitySecret{}},
 	}
 	for _, t := range tpz {
 		asn1.RegisterExternalType(t.O, t.I)

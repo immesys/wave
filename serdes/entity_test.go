@@ -118,7 +118,7 @@ func TestEntityEncode(t *testing.T) {
 	e := WaveEntity{}
 	pk := EntityPublicEd25519([]byte{1, 7, 3})
 	e.TBS.VerifyingKey = EntityPublicKey{
-		Capabilities: DefaultEntityEd25519Capabilities(),
+		Capabilities: []int{1, 2, 3},
 		Key:          asn1.NewExternal(pk),
 	}
 	e.TBS.Validity.NotBefore = time.Now()
@@ -137,7 +137,7 @@ func TestEntityEncode2(t *testing.T) {
 	e := WaveEntity{}
 	pk := EntityPublicEd25519([]byte{1, 7, 3})
 	e.TBS.VerifyingKey = EntityPublicKey{
-		Capabilities: DefaultEntityEd25519Capabilities(),
+		Capabilities: []int{1, 2, 3},
 		Key:          asn1.NewExternal(pk),
 	}
 	e.TBS.Validity.NotBefore = time.Now()
@@ -315,7 +315,7 @@ func BenchmarkEntityEncode(b *testing.B) {
 		e := WaveEntity{}
 		pk := EntityPublicEd25519([]byte{1, 7, 3})
 		e.TBS.VerifyingKey = EntityPublicKey{
-			Capabilities: DefaultEntityEd25519Capabilities(),
+			Capabilities: []int{1, 2, 3},
 			Key:          asn1.NewExternal(pk),
 		}
 		e.TBS.Validity.NotBefore = time.Now()

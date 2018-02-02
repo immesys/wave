@@ -33,27 +33,6 @@ BEGIN
     outerSignature INSTANCE OF TYPE-IDENTIFIER ({OuterSignatureSchemes})
   }
 
-  WaveAttestationLite ::= SEQUENCE {
-    tbs SEQUENCE {
-      -- the subject of the attestation, who is receiving permissions or
-      -- having a property attested to
-      subject EntityHash,
-      -- how this attestation revoked
-      revocations SEQUENCE OF RevocationOption
-      -- extensions that are visible without any decryption of the
-      -- attestation
-      --publicExtensions SEQUENCE OF Extension
-    },
-    -- The attestation is signed with an ephemeral signing key generated
-    -- for a single use (or another signature scheme suitable for single
-    -- use is permitted). The details of this signature are bound to
-    -- the real attestation key inside the body but we don't reveal the
-    -- attester at this layer
-    outerSignature INSTANCE OF TYPE-IDENTIFIER ({OuterSignatureSchemes})
-  }
-
-
-
   -- Irrespective of the algorithm used to encrypt the body, this
   -- is the object it contains
   AttestationBody ::= SEQUENCE {
@@ -149,8 +128,6 @@ BEGIN
       },
       -- revocations
       revocations SEQUENCE OF RevocationOption,
-      contact [0] IMPLICIT UTF8String OPTIONAL,
-      comment [1] IMPLICIT UTF8String OPTIONAL,
       -- extensions
       extensions SEQUENCE OF Extension
     },
@@ -217,21 +194,21 @@ BEGIN
     hash AttestationHash,
 
     -- generally the attestation is put in here verbatim
-    content [0] IMPLICIT WaveAttestation OPTIONAL,
+    content [0] WaveAttestation OPTIONAL,
 
     -- or a location is given that permits retrieving the attestation
-    location [1] IMPLICIT Location OPTIONAL,
+    location [1] Location OPTIONAL,
 
     -- the content will generally need some keys to decrypt
-    keys SEQUENCE OF AttestationVerifierKey,
+    keys [2] SEQUENCE OF AttestationVerifierKey,
 
     -- for some revocation schemes, it may be necessary to submit
     -- additional information with the attestation reference that shows
     -- that the attestation is not revoked (such as a signed object by
     -- the locations in the revocation option)
-    revocationChecks SEQUENCE OF RevocationCheck,
+    revocationChecks [3] SEQUENCE OF RevocationCheck,
 
-    extensions SEQUENCE OF Extension
+    extensions [4] SEQUENCE OF Extension
   }
 
   AttestationVerifierKey ::= INSTANCE OF TYPE-IDENTIFIER ({AttestationVerifierKeySchemes})
@@ -272,7 +249,7 @@ BEGIN
   -- when the scheme is location-scheme-ethereum-blockchain
   LocationEthereum ::= SEQUENCE {
     chainID INTEGER,
-    contractAddress OCTET STRING
+    contractAddress INTEGER
   }
 
   PSKBodyCiphertext ::= SEQUENCE {
@@ -386,10 +363,12 @@ wave-object OBJECT IDENTIFIER ::= { wave-id 2 }
 attestation-id OBJECT IDENTIFIER ::= { wave-object 1 }
 entity-id OBJECT IDENTIFIER ::= { wave-object 2 }
 explicit-proof-id OBJECT IDENTIFIER ::= { wave-object 3 }
+entity-secret-id OBJECT IDENTIFIER ::= { wave-object 4 }
 WaveObjects TYPE-IDENTIFIER ::= {
   {WaveAttestation IDENTIFIED BY attestation-id} |
   {WaveEntity IDENTIFIED BY entity-id} |
-  {WaveExplicitProof IDENTIFIED BY explicit-proof-id},
+  {WaveExplicitProof IDENTIFIED BY explicit-proof-id} |
+  {WaveEntitySecret IDENTIFIED BY entity-secret-id}, 
 ...
 }
 

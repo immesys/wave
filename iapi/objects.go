@@ -2,13 +2,14 @@ package iapi
 
 import "github.com/immesys/wave/serdes"
 
-type InEntity struct {
-	//This would be a WaveEntitySecret or nil
-	secret *serdes.WaveWiredObject
-	//This is always present
-	public *serdes.WaveWiredObject
+type Entity struct {
+	canonicalForm *serdes.WaveEntity
+	verifyingKey  EntityKeyScheme
+	keys          []EntityKeyScheme
+	revocations   []RevocationScheme
+	extensions    []ExtensionScheme
 }
-
-func (ie *InEntity) EntitySecret() {
-
+type EntitySecrets struct {
+	canonicalForm *serdes.WaveEntitySecret
+	keyring       []EntitySecretKeyScheme
 }
