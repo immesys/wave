@@ -166,7 +166,8 @@ func TestAttestationEncode(t *testing.T) {
 	b.VerifierBody.Subject = asn1.NewExternal(subject)
 	b.VerifierBody.Validity.NotAfter = time.Now().Add(50 * time.Minute)
 	b.VerifierBody.Validity.NotBefore = time.Now()
-	b.ProverPolicyAddendums = append(b.ProverPolicyAddendums, asn1.NewExternal(WR1PartitionKey_OAQUE_BN256_s20("hello")))
+
+	//	b.ProverPolicyAddendums = append(b.ProverPolicyAddendums, asn1.NewExternal(WR1PartitionKey_OAQUE_BN256_s20("hello")))
 	sigok := SignedOuterKey{}
 	sigok.TBS.OuterSignatureScheme = EphemeralEd25519OID
 	sigok.TBS.VerifyingKey = []byte("hello")
@@ -370,7 +371,7 @@ func BenchmarkAttestationEncode(bm *testing.B) {
 		b.VerifierBody.Subject = asn1.NewExternal(subject)
 		b.VerifierBody.Validity.NotAfter = time.Now().Add(50 * time.Minute)
 		b.VerifierBody.Validity.NotBefore = time.Now()
-		b.ProverPolicyAddendums = append(b.ProverPolicyAddendums, asn1.NewExternal(WR1PartitionKey_OAQUE_BN256_s20("hello")))
+		//b.ProverPolicyAddendums = append(b.ProverPolicyAddendums, asn1.NewExternal(WR1PartitionKey_OAQUE_BN256_s20("hello")))
 		sigok := SignedOuterKey{}
 		sigok.TBS.OuterSignatureScheme = EphemeralEd25519OID
 		sigok.TBS.VerifyingKey = []byte("hello")

@@ -2,7 +2,6 @@ package iapi
 
 import (
 	"context"
-	"encoding/asn1"
 
 	"github.com/immesys/wave/serdes"
 )
@@ -10,7 +9,6 @@ import (
 // In all of these, the context is assumed to contain the perspective entity secret
 
 type Scheme interface {
-	Is(asn1.ObjectIdentifier) bool
 	Supported() bool
 }
 
@@ -19,13 +17,14 @@ type RevocationScheme interface {
 }
 
 type DecryptionContext interface {
-	//Specific to body scheme
 }
-
+type EncryptionContext interface {
+	EntityFromHash(ctx context.Context, hash HashScheme) (Entity, error)
+}
 type AttestationBodyScheme interface {
 	Scheme
-	DecryptBodyAsProver(ctx context.Context, dc DecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, err error)
-	DecryptBodyAsVerifier(ctx context.Context, vks AttestationVerifierKeyScheme, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, err error)
+	DecryptBody(ctx context.Context, dc DecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, err error)
+	EncryptBody(ctx context.Context, ec EncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error)
 }
 
 type OuterSignatureScheme interface {
@@ -59,12 +58,14 @@ type EntityKeyringScheme interface {
 }
 
 type EntitySecretKeyScheme interface {
-	EntityKeyScheme
-	SignCertify(ctx context.Context, publickey []byte) ([]byte, error)
+	Public() (EntityKeyScheme, error)
+	SignCertify(ctx context.Context, content []byte) ([]byte, error)
 	//Signing signature bindings or signing DER (for ephemeral)
 	SignAttestation(ctx context.Context, content []byte) ([]byte, error)
 	SignMessage(ctx context.Context, content []byte) ([]byte, error)
-	EncryptMessage(ctx context.Context, to EntityKeyScheme, content []byte) ([]byte, error)
+	DecryptMessageDH(ctx context.Context, ciphertext []byte) ([]byte, error)
+	GenerateChildKey(ctx context.Context, identity interface{}) (EntitySecretKeyScheme, error)
+	SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error)
 }
 
 type Capability int
@@ -83,10 +84,11 @@ type EntityKeyScheme interface {
 	//Such as the public key, used for comparing keys to check private matches
 	IdentifyingBlob(ctx context.Context) (string, error)
 	HasCapability(c Capability) bool
-	VerifyCertify(ctx context.Context, signature []byte) error
-	VerifyAttestation(ctx context.Context, signature []byte) error
-	VerifyMessage(ctx context.Context, signature []byte) error
-	DecryptMessage(ctx context.Context, signature []byte) ([]byte, error)
+	VerifyCertify(ctx context.Context, data []byte, signature []byte) error
+	VerifyAttestation(ctx context.Context, data []byte, signature []byte) error
+	VerifyMessage(ctx context.Context, data []byte, signature []byte) error
+	EncryptMessageDH(ctx context.Context, content []byte) ([]byte, error)
+	CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error)
 }
 
 type AttestationVerifierKeyScheme interface {

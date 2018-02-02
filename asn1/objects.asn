@@ -143,10 +143,12 @@ BEGIN
   }
 
   EntityKeyring ::= SEQUENCE {
-    keys SEQUENCE OF SEQUENCE {
-      public EntityPublicKey,
-      secret EntityPrivateKey
-    }
+    keys SEQUENCE OF EntityKeyringEntry
+  }
+
+  EntityKeyringEntry ::= SEQUENCE {
+    public EntityPublicKey,
+    secret EntityPrivateKey
   }
 
   EntityPrivateKey ::= INSTANCE OF TYPE-IDENTIFIER ({EntitySecretKeySchemes})
@@ -256,7 +258,7 @@ BEGIN
     -- when decrypted results in the DER of an AttestationBody
     attestationBodyCiphertext OCTET STRING,
     -- the key used for encryption (which also conveys the scheme)
-    encryptedUnder  INSTANCE OF TYPE-IDENTIFIER ({EntityKeySchemes})
+    encryptedUnder  EntityPublicKey
   }
 
   WR1BodyCiphertext ::= SEQUENCE {
@@ -368,7 +370,7 @@ WaveObjects TYPE-IDENTIFIER ::= {
   {WaveAttestation IDENTIFIED BY attestation-id} |
   {WaveEntity IDENTIFIED BY entity-id} |
   {WaveExplicitProof IDENTIFIED BY explicit-proof-id} |
-  {WaveEntitySecret IDENTIFIED BY entity-secret-id}, 
+  {WaveEntitySecret IDENTIFIED BY entity-secret-id},
 ...
 }
 
@@ -502,9 +504,9 @@ wr1-partition-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 2 }
 -- attributeset is more qualified than the given key
 wr1-oaque-encryption-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 3 }
 PolicyAddendumSchemes TYPE-IDENTIFIER ::= {
-  {Private-BN-256-IBE IDENTIFIED BY wr1-domain-visibility-key} |
-  {Private-BN-256-OAQUE IDENTIFIED BY wr1-partition-key} |
-  {Private-BN-256-OAQUE IDENTIFIED BY wr1-oaque-encryption-key},
+  {EntityKeyringEntry IDENTIFIED BY wr1-domain-visibility-key} |
+  {EntityKeyringEntry IDENTIFIED BY wr1-partition-key} |
+  {EntityKeyringEntry IDENTIFIED BY wr1-oaque-encryption-key},
   ...
 }
 

@@ -42,6 +42,6 @@ type EntitySecretMasterOQAUE_BN256_s20 []byte
 type EntitySecretMasterIBE_BN256 []byte
 type EntitySecretIBE_BN256 []byte
 
-type WR1DomainVisibilityKey_IBE_BN256 []byte
-type WR1PartitionKey_OAQUE_BN256_s20 []byte
-type WR1EncryptionKey_OAQUE_BN256_s20 []byte
+type WR1DomainVisibilityKey_IBE_BN256 EntityKeyringEntry
+type WR1PartitionKey_OAQUE_BN256_s20 EntityKeyringEntry
+type WR1EncryptionKey_OAQUE_BN256_s20 EntityKeyringEntry

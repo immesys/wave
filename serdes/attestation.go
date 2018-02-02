@@ -45,3 +45,8 @@ type SignedOuterKey struct {
 	}
 	Signature []byte
 }
+
+type PSKBodyCiphertext struct {
+	AttestationBodyCiphetext []byte
+	EncryptedUnder           EntityPublicKey
+}

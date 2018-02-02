@@ -3,6 +3,7 @@ package iapi
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"time"
 
 	"github.com/immesys/asn1"
@@ -12,9 +13,6 @@ import (
 	"golang.org/x/crypto/ed25519"
 	"vuvuzela.io/crypto/ibe"
 )
-
-type IAPIs struct {
-}
 
 type PNewEntity struct {
 	Contact *string
@@ -29,7 +27,9 @@ type RNewEntity struct {
 	SecretDER []byte
 }
 
-func (iapi *IAPIs) NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
+//Creates a new WR1 entity object and returns the public and secret
+//canonical representations
+func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	en := serdes.WaveEntitySecret{}
 
 	if p.Comment != nil {
@@ -160,5 +160,55 @@ func (iapi *IAPIs) NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, e
 	return &RNewEntity{
 		PublicDER: publicDER,
 		SecretDER: secretDER,
+	}, nil
+}
+
+type PParseEntity struct {
+	DER []byte
+}
+type RParseEntity struct {
+	Entity *Entity
+}
+
+func ParseEntity(ctx context.Context, p *PParseEntity) (*RParseEntity, error) {
+	wo := serdes.WaveWireObject{}
+	trailing, err := asn1.Unmarshal(p.DER, &wo.Content)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode: %v", err)
+	}
+	if len(trailing) != 0 {
+		return nil, fmt.Errorf("could not decode: trailing content")
+	}
+	en, ok := wo.Content.Content.(serdes.WaveEntity)
+	if !ok {
+		return nil, fmt.Errorf("object not an entity")
+	}
+
+	//Ok we have an entity object, lets check the signature
+	ks := EntityKeySchemeFor(&en.TBS.VerifyingKey)
+	if !ks.Supported() {
+		return nil, fmt.Errorf("entity uses unsupported key scheme")
+	}
+
+	err = ks.VerifyCertify(ctx, en.TBS.Raw, en.Signature)
+	if err != nil {
+		return nil, fmt.Errorf("entity signature check failed: %v", err)
+	}
+
+	//Entity appears ok, lets unpack it further
+	rv := &Entity{}
+	rv.canonicalForm = &en
+	rv.verifyingKey = ks
+	//TODO
+	//rv.revocations
+	//TODO
+	//rv.extensions
+
+	for _, key := range en.TBS.Keys {
+		rv.keys = append(rv.keys, EntityKeySchemeFor(&key))
+	}
+
+	return &RParseEntity{
+		Entity: rv,
 	}, nil
 }
