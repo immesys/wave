@@ -36,7 +36,7 @@ var (
 	EntityOAQUE_BN256_S20_AttributeSetOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 3}
 	EntityOAQUE_BN256_S20_ParamsOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 4}
 	EntityIBE_BN256_ParamsOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 5}
-	EntityIBE_BN256_IdentityOID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 6}
+	EntityIBE_BN256_PublicOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 6}
 	PolicySchemeOID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12}
 	TrustLevelPolicyOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 1}
 	ResourceTreePolicyOID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 2}
@@ -91,7 +91,7 @@ func init() {
 		{EntityOAQUE_BN256_S20_AttributeSetOID, EntityPublicOAQUE_BN256_s20{}},
 		{EntityOAQUE_BN256_S20_ParamsOID, EntityParamsOQAUE_BN256_s20{}},
 		{EntityIBE_BN256_ParamsOID, EntityParamsIBE_BN256{}},
-		{EntityIBE_BN256_IdentityOID, EntityPublicIBE{}},
+		{EntityIBE_BN256_PublicOID, EntityPublicIBE_BN256{}},
 		{AttestationOID, WaveAttestation{}},
 		{UnencryptedBodyOID, AttestationBody{}},
 		{TrustLevelPolicyOID, TrustLevel{}},

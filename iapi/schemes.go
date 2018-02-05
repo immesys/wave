@@ -63,8 +63,8 @@ type EntitySecretKeyScheme interface {
 	//Signing signature bindings or signing DER (for ephemeral)
 	SignAttestation(ctx context.Context, content []byte) ([]byte, error)
 	SignMessage(ctx context.Context, content []byte) ([]byte, error)
-	DecryptMessageDH(ctx context.Context, ciphertext []byte) ([]byte, error)
-	GenerateChildKey(ctx context.Context, identity interface{}) (EntitySecretKeyScheme, error)
+	DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error)
+	GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeyScheme, error)
 	SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error)
 }
 
@@ -87,7 +87,8 @@ type EntityKeyScheme interface {
 	VerifyCertify(ctx context.Context, data []byte, signature []byte) error
 	VerifyAttestation(ctx context.Context, data []byte, signature []byte) error
 	VerifyMessage(ctx context.Context, data []byte, signature []byte) error
-	EncryptMessageDH(ctx context.Context, content []byte) ([]byte, error)
+	EncryptMessage(ctx context.Context, content []byte) ([]byte, error)
+	GenerateChildKey(ctx context.Context, identity interface{}) (EntityKeyScheme, error)
 	CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error)
 }
 

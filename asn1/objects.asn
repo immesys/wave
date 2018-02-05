@@ -352,7 +352,10 @@ BEGIN
   Public-OAQUE ::= SEQUENCE OF OCTET STRING
   Params-BN256-OAQUE ::= OCTET STRING
   Params-BN256-IBE ::= OCTET STRING
-  Public-IBE ::= OCTET STRING
+  Public-BN256-IBE ::= SEQUENCE {
+    params Params-BN256-IBE,
+    id OCTET STRING
+  }
 
 --------------------------------------------------------------------------------
 -- Universal OIDs
@@ -468,14 +471,14 @@ curve25519-id OBJECT IDENTIFIER ::= { entity-key-scheme 2 }
 oaque-bn256-s20-attributeset-id OBJECT IDENTIFIER ::= { entity-key-scheme 3 }
 oaque-bn256-s20-params-id OBJECT IDENTIFIER ::= { entity-key-scheme 4 }
 ibe-bn256-params-id OBJECT IDENTIFIER ::= { entity-key-scheme 5 }
-ibe-bn256-identity-id OBJECT IDENTIFIER ::= { entity-key-scheme 6 }
+ibe-bn256-public-id OBJECT IDENTIFIER ::= { entity-key-scheme 6 }
 EntityKeySchemes TYPE-IDENTIFIER ::= {
   {Public-Ed25519 IDENTIFIED BY ed25519-id} |
   {Public-Curve25519 IDENTIFIED BY curve25519-id} |
   {Public-OAQUE IDENTIFIED BY oaque-bn256-s20-attributeset-id} |
   {Params-BN256-OAQUE IDENTIFIED BY oaque-bn256-s20-params-id} |
   {Params-BN256-IBE  IDENTIFIED BY ibe-bn256-params-id} |
-  {Public-IBE IDENTIFIED BY ibe-bn256-identity-id},
+  {Public-BN256-IBE IDENTIFIED BY ibe-bn256-public-id},
   ...
 }
 

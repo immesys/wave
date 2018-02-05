@@ -28,12 +28,16 @@ type Ed25519OuterSignature struct {
 	Signature    []byte
 }
 
+type EntityPublicIBE_BN256 struct {
+	Params EntityParamsIBE_BN256
+	ID     []byte
+}
+
 type EntityPublicEd25519 []byte
 type EntityPublicCurve25519 []byte
 type EntityPublicOAQUE_BN256_s20 [][]byte
 type EntityParamsOQAUE_BN256_s20 []byte
 type EntityParamsIBE_BN256 []byte
-type EntityPublicIBE []byte
 
 type EntitySecretEd25519 []byte
 type EntitySecretCurve25519 []byte

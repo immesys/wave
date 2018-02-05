@@ -104,7 +104,7 @@ func (psk *PSKBodyScheme) DecryptBody(ctx context.Context, dc DecryptionContext,
 	decodedForm = nil
 	err = fmt.Errorf("no suitable PSK found")
 	pskdc.GetDecryptPSK(ctx, subject, pk, func(k EntitySecretKeyScheme) bool {
-		der, serr := k.DecryptMessageDH(ctx, ciphertext.AttestationBodyCiphetext)
+		der, serr := k.DecryptMessage(ctx, ciphertext.AttestationBodyCiphetext)
 		if serr == nil {
 			rv := serdes.AttestationBody{}
 			trailing, serr := asn1.Unmarshal(der, rv)
@@ -146,7 +146,7 @@ func (psk *PSKBodyScheme) EncryptBody(ctx context.Context, ec EncryptionContext,
 			err = serr
 			return false
 		}
-		ciphertext, serr := pub.EncryptMessageDH(ctx, der)
+		ciphertext, serr := pub.EncryptMessage(ctx, der)
 		if serr != nil {
 			err = serr
 			return false
