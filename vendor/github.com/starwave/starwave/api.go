@@ -8,9 +8,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/SoftwareDefinedBuildings/starwave/core"
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/cryptutils"
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
+	"github.com/ucbrise/starwave/core"
+	"github.com/ucbrise/starwave/crypto/cryptutils"
+	"github.com/ucbrise/starwave/crypto/oaque"
 )
 
 // HierarchyDescriptor is the public information representing a hierarchy.
@@ -118,6 +118,7 @@ type EncryptedSymmetricKey struct {
 // message encrypted using that symmetric key.
 type EncryptedMessage struct {
 	Key     *EncryptedSymmetricKey
+	IV      [24]byte
 	Message []byte
 }
 
@@ -173,30 +174,41 @@ type DelegationBundle struct {
 
 // Compress elides information that could probably be obtained from
 // metadata included with the delegations: To, From, and Hierarchy fields
+func (deleg *FullDelegation) Compress() {
+	if deleg.Broad != nil {
+		deleg.Broad.From = nil
+		deleg.Broad.To = nil
+	}
+	for _, narrow := range deleg.Narrow {
+		narrow.Hierarchy = nil
+		narrow.To = nil
+	}
+}
+
+// Decompress fills in fields that were elided.
+func (deleg *FullDelegation) Decompress(from *EntityDescriptor, to *EntityDescriptor, hd *HierarchyDescriptor) {
+	if deleg.Broad != nil {
+		deleg.Broad.From = from
+		deleg.Broad.To = to
+	}
+	for _, narrow := range deleg.Narrow {
+		narrow.Hierarchy = hd
+		narrow.To = to
+	}
+}
+
+// Compress elides information that could probably be obtained from
+// metadata included with the delegations: To, From, and Hierarchy fields
 func (db *DelegationBundle) Compress() {
 	for _, deleg := range db.Delegations {
-		if deleg.Broad != nil {
-			deleg.Broad.From = nil
-			deleg.Broad.To = nil
-		}
-		for _, narrow := range deleg.Narrow {
-			narrow.Hierarchy = nil
-			narrow.To = nil
-		}
+		deleg.Compress()
 	}
 }
 
 // Decompress fills in fields that were elided.
 func (db *DelegationBundle) Decompress(from *EntityDescriptor, to *EntityDescriptor, hd *HierarchyDescriptor) {
 	for _, deleg := range db.Delegations {
-		if deleg.Broad != nil {
-			deleg.Broad.From = from
-			deleg.Broad.To = to
-		}
-		for _, narrow := range deleg.Narrow {
-			narrow.Hierarchy = hd
-			narrow.To = to
-		}
+		deleg.Decompress(from, to, hd)
 	}
 }
 
@@ -372,7 +384,7 @@ func ResolveChain(first *BroadeningDelegationWithKey, rest []*BroadeningDelegati
 		attrs := perm.AttributeSet()
 		attrs[MaxURIDepth+TimeDepth] = first.Hierarchy.HashToZp()
 		subkey := oaque.NonDelegableKey(delegation.To.Params, key, attrs)
-		nextKeyBytes, ok := core.HybridDecrypt(delegation.Delegation.Key.Ciphertext, delegation.Delegation.Message, subkey)
+		nextKeyBytes, ok := core.HybridDecrypt(delegation.Delegation.Key.Ciphertext, delegation.Delegation.Message, subkey, &delegation.Delegation.IV)
 		if !ok {
 			return nil
 		}
@@ -386,7 +398,7 @@ func ResolveChain(first *BroadeningDelegationWithKey, rest []*BroadeningDelegati
 	attrs := perm.AttributeSet()
 	attrs[MaxURIDepth+TimeDepth] = first.Hierarchy.HashToZp()
 	subkey := oaque.NonDelegableKey(first.To.Params, key, attrs)
-	finalKeyBytes, ok := core.HybridDecrypt(first.Key.Key.Ciphertext, first.Key.Message, subkey)
+	finalKeyBytes, ok := core.HybridDecrypt(first.Key.Key.Ciphertext, first.Key.Message, subkey, &first.Key.IV)
 	if !ok {
 		return nil
 	}
@@ -407,6 +419,25 @@ func ResolveChain(first *BroadeningDelegationWithKey, rest []*BroadeningDelegati
 func Encrypt(random io.Reader, hd *HierarchyDescriptor, perm *Permission, message []byte) (*EncryptedMessage, error) {
 	e := PrepareEncryption(hd, perm)
 	return e.Encrypt(random, message)
+}
+
+// EncryptWithSymmetricKey is like Encrypt, but allows you to reuse the same
+// symmetric key (eliminating expensive OAQUE encryptions).
+func EncryptWithSymmetricKey(random io.Reader, esymm *EncryptedSymmetricKey, symm []byte, message []byte) (*EncryptedMessage, error) {
+	res := &EncryptedMessage{
+		Key:     esymm,
+		Message: nil,
+	}
+	_, err := rand.Read(res.IV[:])
+	if err != nil {
+		return nil, err
+	}
+
+	var key [32]byte
+	copy(key[:], symm[:len(key)])
+
+	res.Message = core.EncryptWithSymmetricKey(random, &key, &res.IV, message)
+	return res, nil
 }
 
 // GenerateEncryptedSymmetricKey fills in the provided buffer "symm" with random
@@ -468,6 +499,16 @@ func Decrypt(c *EncryptedMessage, key *DecryptionKey) []byte {
 	return d.Decrypt(c)
 }
 
+// DecryptWithSymmetricKey is like Decrypt, but allows you to reuse the same
+// symmetric key (avoiding expensive OAQUE decryptions).
+func DecryptWithSymmetricKey(c *EncryptedMessage, key *[32]byte) []byte {
+	message, ok := core.DecryptWithSymmetricKey(key, &c.IV, c.Message)
+	if !ok {
+		return nil
+	}
+	return message
+}
+
 // DecryptSymmetricKey is like Decrypt, except that the input is only an
 // encrypted symmetric key instead of an encrypted message.
 func DecryptSymmetricKey(c *EncryptedSymmetricKey, key *DecryptionKey, symm []byte) []byte {
@@ -486,7 +527,7 @@ func PrepareDecryption(perm *Permission, key *DecryptionKey) *Decryptor {
 // Decrypt is the same as the general "Decrypt" function, except that it uses
 // cached results in the decryptor to speed up the process.
 func (d *Decryptor) Decrypt(c *EncryptedMessage) []byte {
-	message, ok := core.HybridDecrypt(c.Key.Ciphertext, c.Message, (*oaque.PrivateKey)(d))
+	message, ok := core.HybridDecrypt(c.Key.Ciphertext, c.Message, (*oaque.PrivateKey)(d), &c.IV)
 	if !ok {
 		return nil
 	}

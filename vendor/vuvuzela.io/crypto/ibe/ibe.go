@@ -44,6 +44,7 @@ func (priv *MasterPrivateKey) MarshalBinary() ([]byte, error) {
 	return priv.s.Bytes(), nil
 }
 func (priv *MasterPrivateKey) UnmarshalBinary(data []byte) error {
+	priv.s = new(big.Int)
 	priv.s.SetBytes(data)
 	return nil
 }

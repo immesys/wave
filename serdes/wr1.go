@@ -32,10 +32,12 @@ type EntityPublicIBE_BN256 struct {
 	Params EntityParamsIBE_BN256
 	ID     []byte
 }
-
+type EntityPublicOAQUE_BN256_s20 struct {
+	Params       EntityParamsOQAUE_BN256_s20
+	AttributeSet [][]byte
+}
 type EntityPublicEd25519 []byte
 type EntityPublicCurve25519 []byte
-type EntityPublicOAQUE_BN256_s20 [][]byte
 type EntityParamsOQAUE_BN256_s20 []byte
 type EntityParamsIBE_BN256 []byte
 

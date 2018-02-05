@@ -472,6 +472,16 @@ func Decrypt(key *PrivateKey, ciphertext *Ciphertext) *bn256.GT {
 	return plaintext
 }
 
+// DecryptWithMaster is the same as Decrypt, but requires the master key to be
+// provided. It is substantially more efficient than generating a private key
+// and then calling Decrypt.
+func DecryptWithMaster(master *MasterKey, ciphertext *Ciphertext) *bn256.GT {
+	factor := bn256.Pair((*bn256.G1)(master), ciphertext.B)
+	factor.Neg(factor)
+	factor.Add(factor, ciphertext.A)
+	return factor
+}
+
 // Sign produces a signature for the provided message hash, using the provided
 // private key.
 func Sign(s *big.Int, params *Params, sigparams *SignatureParams, key *PrivateKey, message *big.Int) (*Signature, error) {

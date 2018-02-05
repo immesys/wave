@@ -100,15 +100,17 @@ func ParseTimeFromPath(timePath []uint16) (TimePath, error) {
 }
 
 func ParseTime(time time.Time) (TimePath, error) {
+	utctime := time.UTC()
+
 	path := make([]uint16, 6, 6)
-	path[0] = uint16(time.Year())
-	path[1] = uint16(time.Month())
-	path[3] = uint16(time.Day())
+	path[0] = uint16(utctime.Year())
+	path[1] = uint16(utctime.Month())
+	path[3] = uint16(utctime.Day())
 	path[2] = (path[3]-1)/5 + 1
 	if path[2] == 7 {
 		path[2] = 6
 	}
-	path[5] = uint16(time.Hour())
+	path[5] = uint16(utctime.Hour())
 	path[4] = (path[5] / 6) + 1
 	return ParseTimeFromPath(path)
 }

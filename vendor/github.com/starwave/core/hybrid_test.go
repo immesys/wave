@@ -3,10 +3,12 @@ package core
 import (
 	"bytes"
 	"crypto/rand"
+	"io"
+	"io/ioutil"
 	"math/big"
 	"testing"
 
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
+	"github.com/ucbrise/starwave/crypto/oaque"
 )
 
 func oaqueHelper(t *testing.T) (*oaque.Params, *oaque.PreparedAttributeList, *oaque.PrivateKey) {
@@ -58,7 +60,8 @@ func TestHybridEncryption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	decrypted, success := HybridDecrypt(ekey, emsg, key)
+	var iv [24]byte
+	decrypted, success := HybridDecrypt(ekey, emsg, key, &iv)
 	if !success {
 		t.Fatal("Hybrid decryption failed")
 	}
@@ -73,8 +76,38 @@ func TestHybridEncryption(t *testing.T) {
 	}
 	idx := bigidx.Uint64()
 	emsg[idx] = ^emsg[idx]
-	_, success = HybridDecrypt(ekey, emsg, key)
+	_, success = HybridDecrypt(ekey, emsg, key, &iv)
 	if success {
 		t.Fatal("Decryption succeeded after tampering with ciphertext")
+	}
+}
+
+func TestHybridStreamEncryption(t *testing.T) {
+	message := make([]byte, 32)
+	_, err := rand.Read(message)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	params, precomputed, key := oaqueHelper(t)
+
+	encryptedkey, ereader, err := HybridStreamEncrypt(rand.Reader, params, precomputed, bytes.NewReader(message))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fullereader := io.MultiReader(bytes.NewReader(encryptedkey.Marshal()), ereader)
+
+	dreader, err := HybridStreamDecryptConcatenated(fullereader, key)
+	if err != nil {
+		t.Fatalf("Hybrid decryption failed: %s", err.Error())
+	}
+
+	decrypted, err := ioutil.ReadAll(dreader)
+	if err != nil {
+		t.Fatalf("Could not read decrypted reader: %s", err.Error())
+	}
+	if !bytes.Equal(message, decrypted) {
+		t.Fatal("Hybrid decryption gave the wrong result")
 	}
 }

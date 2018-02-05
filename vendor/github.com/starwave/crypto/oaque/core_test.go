@@ -182,6 +182,28 @@ func TestNonDelegableKey(t *testing.T) {
 	decryptAndCheckHelper(t, key2, ciphertext, message)
 }
 
+func TestDecryptWithMaster(t *testing.T) {
+	// Set up parameters
+	params, masterkey, err := Setup(rand.Reader, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attrs2 := AttributeList{2: big.NewInt(4), 7: big.NewInt(123)}
+
+	// Come up with a message to encrypt
+	message := NewMessage()
+
+	// Encrypt a message under the top level public key
+	ciphertext := encryptHelper(t, params, attrs2, message)
+
+	// Generate key in two steps
+	decrypted := DecryptWithMaster(masterkey, ciphertext)
+	if !bytes.Equal(message.Marshal(), decrypted.Marshal()) {
+		t.Fatal("Original and decrypted messages differ")
+	}
+}
+
 func TestNonDelegableKeyFromMaster(t *testing.T) {
 	// Set up parameters
 	params, masterkey, err := Setup(rand.Reader, 10)
@@ -507,6 +529,60 @@ func BenchmarkDecrypt_20(b *testing.B) {
 	DecryptBenchmarkHelper(b, 20)
 }
 
+func DecryptWithMasterBenchmarkHelper(b *testing.B, numAttributes int) {
+	b.StopTimer()
+
+	// Set up parameters
+	params, master, err := Setup(rand.Reader, 20)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		message, err := NewRandomMessage(rand.Reader)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		attrs := make(AttributeList)
+		for i := 0; i != numAttributes; i++ {
+			attrs[AttributeIndex(i)], err = rand.Int(rand.Reader, bn256.Order)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		ciphertext, err := Encrypt(nil, params, attrs, message)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.StartTimer()
+		decrypted := DecryptWithMaster(master, ciphertext)
+		b.StopTimer()
+
+		if !bytes.Equal(message.Marshal(), decrypted.Marshal()) {
+			b.Fatal("Original and decrypted messages differ")
+		}
+	}
+}
+
+func BenchmarkDecryptWithMaster_5(b *testing.B) {
+	DecryptWithMasterBenchmarkHelper(b, 5)
+}
+
+func BenchmarkDecryptWithMaster_10(b *testing.B) {
+	DecryptWithMasterBenchmarkHelper(b, 10)
+}
+
+func BenchmarkDecryptWithMaster_15(b *testing.B) {
+	DecryptWithMasterBenchmarkHelper(b, 15)
+}
+
+func BenchmarkDecryptWithMaster_20(b *testing.B) {
+	DecryptWithMasterBenchmarkHelper(b, 20)
+}
+
 func NonDelegableKeyBenchmarkHelper(b *testing.B, numAttributes int) {
 	b.StopTimer()
 
@@ -802,4 +878,107 @@ func BenchmarkResampleKey_15(b *testing.B) {
 
 func BenchmarkResampleKey_20(b *testing.B) {
 	ResampleKeyBenchmarkHelper(b, 20, false)
+}
+
+func QualifyKeyStartBenchmarkHelper(b *testing.B, numAttributes int) {
+	b.StopTimer()
+
+	for i := 0; i < b.N; i++ {
+		// Set up parameters
+		params, master, err := Setup(rand.Reader, 20)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		attrs := make(AttributeList)
+		for i := 0; i != numAttributes; i++ {
+			attrs[AttributeIndex(i)], err = rand.Int(rand.Reader, bn256.Order)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		key, err := KeyGen(nil, params, master, attrs)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		attrs[AttributeIndex(numAttributes-1)], err = rand.Int(rand.Reader, bn256.Order)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.StartTimer()
+		_, err = QualifyKey(nil, params, key, attrs)
+		b.StopTimer()
+
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkQualifyKeyStart_5(b *testing.B) {
+	QualifyKeyStartBenchmarkHelper(b, 5)
+}
+
+func BenchmarkQualifyKeyStart_10(b *testing.B) {
+	QualifyKeyStartBenchmarkHelper(b, 10)
+}
+
+func BenchmarkQualifyKeyStart_15(b *testing.B) {
+	QualifyKeyStartBenchmarkHelper(b, 15)
+}
+
+func BenchmarkQualifyKeyStart_20(b *testing.B) {
+	QualifyKeyStartBenchmarkHelper(b, 20)
+}
+
+func QualifyKeyEndBenchmarkHelper(b *testing.B, numAttributes int) {
+	b.StopTimer()
+
+	for i := 0; i < b.N; i++ {
+		// Set up parameters
+		params, master, err := Setup(rand.Reader, 20)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		attrs := make(AttributeList)
+		for i := 0; i != numAttributes; i++ {
+			attrs[AttributeIndex(i)], err = rand.Int(rand.Reader, bn256.Order)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		key, err := KeyGen(nil, params, master, AttributeList{0: attrs[0]})
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.StartTimer()
+		_, err = QualifyKey(nil, params, key, attrs)
+		b.StopTimer()
+
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkQualifyKeyEnd_5(b *testing.B) {
+	QualifyKeyEndBenchmarkHelper(b, 5)
+}
+
+func BenchmarkQualifyKeyEnd_10(b *testing.B) {
+	QualifyKeyEndBenchmarkHelper(b, 10)
+}
+
+func BenchmarkQualifyKeyEnd_15(b *testing.B) {
+	QualifyKeyEndBenchmarkHelper(b, 15)
+}
+
+func BenchmarkQualifyKeyEnd_20(b *testing.B) {
+	QualifyKeyEndBenchmarkHelper(b, 20)
 }

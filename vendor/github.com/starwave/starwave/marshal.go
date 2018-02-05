@@ -1,12 +1,15 @@
 package starwave
 
 import (
+	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"io"
 	"reflect"
 
-	"github.com/SoftwareDefinedBuildings/starwave/core"
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
+	"github.com/ucbrise/starwave/core"
+	"github.com/ucbrise/starwave/crypto/oaque"
 )
 
 type MessageType byte
@@ -73,8 +76,9 @@ func checkMessageType(message []byte, expected MessageType) []byte {
 
 const MarshalledLengthLength = 4
 
-func putLength(buf []byte, length int) {
+func putLength(buf []byte, length int) []byte {
 	binary.LittleEndian.PutUint32(buf, uint32(length))
+	return buf
 }
 
 func getLength(buf []byte) int {
@@ -82,8 +86,7 @@ func getLength(buf []byte) int {
 }
 
 func MarshalAppendLength(length int, buf []byte) []byte {
-	lenbuf := make([]byte, MarshalledLengthLength)
-	putLength(lenbuf, length)
+	lenbuf := putLength(make([]byte, MarshalledLengthLength), length)
 	return append(buf, lenbuf...)
 }
 
@@ -100,6 +103,30 @@ type Marshallable interface {
 	Unmarshal([]byte) bool
 }
 
+func MarshalIntoStream(m Marshallable) io.Reader {
+	marshalled := m.Marshal()
+	length := putLength(make([]byte, MarshalledLengthLength), len(marshalled))
+	return io.MultiReader(bytes.NewReader(length), bytes.NewReader(marshalled))
+}
+
+func UnmarshalFromStream(m Marshallable, stream io.Reader) error {
+	lenbuf := make([]byte, MarshalledLengthLength)
+	_, err := io.ReadFull(stream, lenbuf)
+	if err != nil {
+		return err
+	}
+	length := getLength(lenbuf)
+	buf := make([]byte, length)
+	_, err = io.ReadFull(stream, buf)
+	if err != nil {
+		return err
+	}
+	if !m.Unmarshal(buf) {
+		return errors.New("Could not unmarshal from stream")
+	}
+	return nil
+}
+
 func MarshalAppendWithLength(m Marshallable, buf []byte) []byte {
 	if m == nil || reflect.ValueOf(m).IsNil() {
 		return MarshalAppendLength(0, buf)
@@ -110,17 +137,24 @@ func MarshalAppendWithLength(m Marshallable, buf []byte) []byte {
 	return buf
 }
 
-func UnmarshalPrefixWithLength(m Marshallable, buf []byte) []byte {
+func UnmarshalPrefixWithLengthRaw(buf []byte) ([]byte, []byte) {
 	length, buf := UnmarshalPrefixLength(buf)
 	if length == 0 {
 		// Message was nil
-		return buf
+		return nil, buf
 	}
-	success := m.Unmarshal(buf[:length])
-	if !success {
-		return nil
+	return buf[:length], buf[length:]
+}
+
+func UnmarshalPrefixWithLength(m Marshallable, buf []byte) []byte {
+	rawbytes, rest := UnmarshalPrefixWithLengthRaw(buf)
+	if rawbytes != nil {
+		success := m.Unmarshal(rawbytes)
+		if !success {
+			return nil
+		}
 	}
-	return buf[length:]
+	return rest
 }
 
 type MarshallableString struct {
@@ -318,6 +352,7 @@ func (em *EncryptedMessage) Marshal() []byte {
 	buf := newMessageBuffer(1024+MarshalledLengthLength+len(em.Message), TypeEncryptedMessage)
 
 	buf = MarshalAppendWithLength(em.Key, buf)
+	buf = append(buf, em.IV[:]...)
 	buf = MarshalAppendWithLength(NewMarshallableBytes(em.Message), buf)
 
 	return buf
@@ -332,6 +367,9 @@ func (em *EncryptedMessage) Unmarshal(marshalled []byte) bool {
 		return false
 	}
 
+	copy(em.IV[:], buf[:len(em.IV)])
+	buf = buf[len(em.IV):]
+
 	message := MarshallableString{}
 	buf = UnmarshalPrefixWithLength(&message, buf)
 	if buf == nil {
@@ -340,6 +378,30 @@ func (em *EncryptedMessage) Unmarshal(marshalled []byte) bool {
 	em.Message = []byte(message.s)
 
 	return true
+}
+
+// UnmarshalPartial is like Unmarshal, except that it does not unmarshal the
+// encrypted symmetric key. This is useful for checking if the decryption is
+// already cached.
+func (em *EncryptedMessage) UnmarshalPartial(marshalled []byte) ([]byte, bool) {
+	buf := checkMessageType(marshalled, TypeEncryptedMessage)
+
+	ekey, buf := UnmarshalPrefixWithLengthRaw(buf)
+	if buf == nil {
+		return ekey, false
+	}
+
+	copy(em.IV[:], buf[:len(em.IV)])
+	buf = buf[len(em.IV):]
+
+	message := MarshallableString{}
+	buf = UnmarshalPrefixWithLength(&message, buf)
+	if buf == nil {
+		return ekey, false
+	}
+	em.Message = []byte(message.s)
+
+	return ekey, true
 }
 
 func (bd *BroadeningDelegation) Marshal() []byte {
@@ -456,7 +518,9 @@ func (fd *FullDelegation) Unmarshal(marshalled []byte) bool {
 		}
 		fd.Narrow[i] = new(BroadeningDelegationWithKey)
 		fd.Narrow[i].Key = key
-		fd.Narrow[i].To = fd.Broad.To
+		if fd.Broad != nil {
+			fd.Narrow[i].To = fd.Broad.To
+		}
 		fd.Narrow[i].Hierarchy = hierarchy
 	}
 

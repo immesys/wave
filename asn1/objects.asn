@@ -93,8 +93,6 @@ BEGIN
     outerSignatureBinding INSTANCE OF TYPE-IDENTIFIER ({OuterSignatureBindingSchemes})
   }
 
-  Location ::= INSTANCE OF TYPE-IDENTIFIER ({LocationSchemes})
-
   Extension ::= SEQUENCE {
     extnID OBJECT IDENTIFIER,
     -- should parsing of the object fail if this extension is not understood
@@ -102,10 +100,6 @@ BEGIN
     -- DER encoding of ASN.1 value identified by extnID
     value OCTET STRING
   }
-
-  Hash ::= INSTANCE OF TYPE-IDENTIFIER ({HashSchemes})
-  EntityHash ::= Hash
-  AttestationHash ::= Hash
 
   RevocationOption ::= SEQUENCE {
     -- If this revocation scheme is not understood, should
@@ -213,11 +207,6 @@ BEGIN
     extensions [4] SEQUENCE OF Extension
   }
 
-  AttestationVerifierKey ::= INSTANCE OF TYPE-IDENTIFIER ({AttestationVerifierKeySchemes})
-
-  RevocationCheck ::= INSTANCE OF TYPE-IDENTIFIER ({RevocationCheckSchemes})
-
-
   RTreePolicy ::= SEQUENCE {
     -- the namespace, common to all statements. This also becomes the
     -- WR1 domain for visibility control if wr1 is used
@@ -240,6 +229,24 @@ BEGIN
     comment UTF8String OPTIONAL
   }
 
+  -- A key specifically to enable a verifier to inspect a subset of an attestation
+  -- for the purposes of verifying a proof
+  AttestationVerifierKey ::= INSTANCE OF TYPE-IDENTIFIER ({AttestationVerifierKeySchemes})
+
+  -- A mini proof that a revocation does not exist
+  RevocationCheck ::= INSTANCE OF TYPE-IDENTIFIER ({RevocationCheckSchemes})
+
+
+  Hash ::= INSTANCE OF TYPE-IDENTIFIER ({HashSchemes})
+  EntityHash ::= Hash
+  AttestationHash ::= Hash
+  -- The two currently supported hash schemes
+  HashSha3-256 ::= OCTET STRING
+  HashKeccak-256 ::= OCTET STRING
+
+  -- When referencing an attestation or entity hash, where should this be
+  -- resolvable
+  Location ::= INSTANCE OF TYPE-IDENTIFIER ({LocationSchemes})
 
   -- this object will be DER encoded and present in the location.value scheme
   -- when the scheme is location-scheme-url
@@ -254,6 +261,7 @@ BEGIN
     contractAddress INTEGER
   }
 
+  -- A pre-shared-key attestation body ciphertext
   PSKBodyCiphertext ::= SEQUENCE {
     -- when decrypted results in the DER of an AttestationBody
     attestationBodyCiphertext OCTET STRING,
@@ -261,6 +269,7 @@ BEGIN
     encryptedUnder  EntityPublicKey
   }
 
+  -- A body ciphertext for the wave reference 1 scheme
   WR1BodyCiphertext ::= SEQUENCE {
     -- content: WR1VerifierBody DER encoded
     -- encryption algorithm: AES128
@@ -311,9 +320,6 @@ BEGIN
     attestationVerifierBody AttestationVerifierBody
   }
 
-  HashSha3-256 ::= OCTET STRING
-  HashKeccak-256 ::= OCTET STRING
-
   Ed25519OuterSignature ::= SEQUENCE {
     verifyingKey OCTET STRING,
     signature OCTET STRING
@@ -338,18 +344,20 @@ BEGIN
     location Location
   }
 
-  --Entity keys, none of these have special structure
   AVKeyAES128-GCM ::= OCTET STRING
 
   Private-Ed25519 ::= OCTET STRING
   Private-Curve25519 ::= OCTET STRING
-  Private-BN-256-OAQUE ::= OCTET STRING
-  Private-BN-256-IBE ::= OCTET STRING
+  Private-BN256-OAQUE ::= OCTET STRING
+  Private-BN256-IBE ::= OCTET STRING
   Master-BN256-OAQUE ::= OCTET STRING
   Master-BN256-IBE ::= OCTET STRING
   Public-Ed25519 ::= OCTET STRING
   Public-Curve25519 ::= OCTET STRING
-  Public-OAQUE ::= SEQUENCE OF OCTET STRING
+  Public-OAQUE ::= SEQUENCE {
+    params Params-BN256-OAQUE,
+    attributeset SEQUENCE OF OCTET STRING
+  }
   Params-BN256-OAQUE ::= OCTET STRING
   Params-BN256-IBE ::= OCTET STRING
   Public-BN256-IBE ::= SEQUENCE {
@@ -513,7 +521,6 @@ PolicyAddendumSchemes TYPE-IDENTIFIER ::= {
   ...
 }
 
-
 -- Entity secret key schemes
 --------------------------------------------------------------------------------
 entity-secret-key-scheme OBJECT IDENTIFIER ::= { wave-id 14 }
@@ -526,10 +533,10 @@ bn256-ibe-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 6 }
 EntitySecretKeySchemes TYPE-IDENTIFIER ::= {
   {Private-Ed25519 IDENTIFIED BY ed25519-secret-id} |
   {Private-Curve25519 IDENTIFIED BY curve25519-secret-id} |
-  {Private-BN-256-OAQUE IDENTIFIED BY oaque-bn256-s20-private-key-id} |
+  {Private-BN256-OAQUE IDENTIFIED BY oaque-bn256-s20-private-key-id} |
   {Master-BN256-OAQUE IDENTIFIED BY oaque-bn256-s20-master-key-id} |
   {Master-BN256-IBE IDENTIFIED BY bn256-ibe-master-key-id} |
-  {Private-BN-256-IBE IDENTIFIED BY bn256-ibe-private-key-id},
+  {Private-BN256-IBE IDENTIFIED BY bn256-ibe-private-key-id},
   ...
 }
 

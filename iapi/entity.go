@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/immesys/asn1"
-	"github.com/immesys/wave/crypto"
 	"github.com/immesys/wave/serdes"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/ed25519"
@@ -53,20 +52,27 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	kr := serdes.EntityKeyring{}
 
 	//Ed25519
-	publicEd25519, privateEd25519, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	ke := serdes.EntityKeyringEntry{
-		Public: serdes.EntityPublicKey{
-			Capabilities: []int{int(CapAttestation), int(CapCertification)},
-			Key:          asn1.NewExternal(serdes.EntityPublicEd25519(publicEd25519)),
-		},
-		Private: asn1.NewExternal(serdes.EntitySecretEd25519(privateEd25519)),
-	}
-	kr.Keys = append(kr.Keys, ke)
+	ed25519KE := NewEntityKeyScheme(serdes.EntityEd25519OID)
+	cf, err := ed25519KE.SecretCanonicalForm(context.Background())
+	if err != nil  here
+	kr.Keys = append(kr.Keys, )
+  //
+	// publicEd25519, privateEd25519, err := ed25519.GenerateKey(rand.Reader)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// ke := serdes.EntityKeyringEntry{
+	// 	Public: serdes.EntityPublicKey{
+	// 		Capabilities: []int{int(CapAttestation), int(CapCertification)},
+	// 		Key:          asn1.NewExternal(serdes.EntityPublicEd25519(publicEd25519)),
+	// 	},
+	// 	Private: asn1.NewExternal(serdes.EntitySecretEd25519(privateEd25519)),
+	// }
+	// kr.Keys = append(kr.Keys, ke)
 
 	//Curve25519
+	curve25519KE := NewEntityKeyScheme(serdes.EntityCurve25519OID)
+	kr.Keys = append(kr.Keys, curve25519KE.Sec)
 	{
 		var secret [32]byte
 		_, err = rand.Read(secret[:])

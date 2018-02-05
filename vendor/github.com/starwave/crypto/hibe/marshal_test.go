@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/cryptutils"
+	"github.com/ucbrise/starwave/crypto/cryptutils"
 	"vuvuzela.io/crypto/bn256"
 )
 
@@ -61,7 +61,7 @@ func TestTopLevelWithMarshalling(t *testing.T) {
 	}
 
 	// Generate key for the top level
-	toplevelkey, err := KeyGenFromMaster(rand.Reader, params, key, IDToInts(ID[:1]))
+	toplevelkey, err := KeyGen(rand.Reader, params, key, IDToInts(ID[:1]))
 	if err != nil {
 		t.Fatal(err)
 	}

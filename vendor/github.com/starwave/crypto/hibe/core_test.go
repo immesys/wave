@@ -45,7 +45,7 @@ func TestTopLevel(t *testing.T) {
 	}
 
 	// Generate key for the top level
-	toplevelkey, err := KeyGenFromMaster(rand.Reader, params, key, LINEAR_HIERARCHY[:1])
+	toplevelkey, err := KeyGen(rand.Reader, params, key, LINEAR_HIERARCHY[:1])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,39 @@ func TestTopLevel(t *testing.T) {
 	}
 }
 
-func TestSecondLevelFromMaster(t *testing.T) {
+func TestKeyGen(t *testing.T) {
+	// Set up parameters
+	params, key, err := Setup(rand.Reader, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Come up with a message to encrypt
+	message := NewMessage()
+
+	// Encrypt a message under the ID
+	ciphertext, err := Encrypt(rand.Reader, params, LINEAR_HIERARCHY, message)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Generate key from master key
+	secondlevelkey, err := KeyGen(rand.Reader, params, key, LINEAR_HIERARCHY)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if secondlevelkey.DepthLeft() != 7 {
+		t.Fatal("Depth remaining on key is incorrect")
+	}
+
+	decrypted := Decrypt(secondlevelkey, ciphertext)
+	if !bytes.Equal(message.Marshal(), decrypted.Marshal()) {
+		t.Fatal("Original and decrypted messages differ")
+	}
+}
+
+func TestQualifyKey(t *testing.T) {
 	// Set up parameters
 	params, key, err := Setup(rand.Reader, 10)
 	if err != nil {
@@ -72,18 +104,24 @@ func TestSecondLevelFromMaster(t *testing.T) {
 	message := NewMessage()
 
 	// Encrypt a message under the second level public key
-	ciphertext, err := Encrypt(rand.Reader, params, LINEAR_HIERARCHY[:2], message)
+	ciphertext, err := Encrypt(rand.Reader, params, LINEAR_HIERARCHY, message)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Generate second level key from master key
-	secondlevelkey, err := KeyGenFromMaster(rand.Reader, params, key, LINEAR_HIERARCHY[:2])
+	// Generate top level key from master key
+	toplevelkey, err := KeyGen(rand.Reader, params, key, LINEAR_HIERARCHY[:1])
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if secondlevelkey.DepthLeft() != 8 {
+	// Generate second level key from top level key
+	secondlevelkey, err := QualifyKey(rand.Reader, params, toplevelkey, LINEAR_HIERARCHY)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if secondlevelkey.DepthLeft() != 7 {
 		t.Fatal("Depth remaining on key is incorrect")
 	}
 
@@ -93,7 +131,7 @@ func TestSecondLevelFromMaster(t *testing.T) {
 	}
 }
 
-func TestSecondLevelFromParent(t *testing.T) {
+func TestNonDelegableKeyFromMaster(t *testing.T) {
 	// Set up parameters
 	params, key, err := Setup(rand.Reader, 10)
 	if err != nil {
@@ -110,18 +148,53 @@ func TestSecondLevelFromParent(t *testing.T) {
 	}
 
 	// Generate top level key from master key
-	toplevelkey, err := KeyGenFromMaster(rand.Reader, params, key, LINEAR_HIERARCHY[:1])
-	if err != nil {
-		t.Fatal(err)
-	}
+	toplevelkey := NonDelegableKeyFromMaster(params, key, LINEAR_HIERARCHY[:1])
 
 	// Generate second level key from top level key
-	secondlevelkey, err := KeyGenFromParent(rand.Reader, params, toplevelkey, LINEAR_HIERARCHY[:2])
+	secondlevelkey, err := QualifyKey(rand.Reader, params, toplevelkey, LINEAR_HIERARCHY[:2])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if secondlevelkey.DepthLeft() != 8 {
+		t.Fatal("Depth remaining on key is incorrect")
+	}
+
+	decrypted := Decrypt(secondlevelkey, ciphertext)
+	if !bytes.Equal(message.Marshal(), decrypted.Marshal()) {
+		t.Fatal("Original and decrypted messages differ")
+	}
+}
+
+func TestNonDelegableKey(t *testing.T) {
+	// Set up parameters
+	params, key, err := Setup(rand.Reader, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Come up with a message to encrypt
+	message := NewMessage()
+
+	// Encrypt a message under the second level public key
+	ciphertext, err := Encrypt(rand.Reader, params, LINEAR_HIERARCHY, message)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Generate top level key from master key
+	toplevelkey, err := KeyGen(rand.Reader, params, key, LINEAR_HIERARCHY[:1])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Generate second level key from top level key
+	secondlevelkey, err := NonDelegableKey(params, toplevelkey, LINEAR_HIERARCHY)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if secondlevelkey.DepthLeft() != 7 {
 		t.Fatal("Depth remaining on key is incorrect")
 	}
 
@@ -197,7 +270,7 @@ func BenchmarkEncryptLarge(b *testing.B) {
 	}
 }
 
-func BenchmarkKeyGenFromMaster(b *testing.B) {
+func BenchmarkKeyGen(b *testing.B) {
 	b.StopTimer()
 
 	// Set up parameters
@@ -208,7 +281,7 @@ func BenchmarkKeyGenFromMaster(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		b.StartTimer()
-		_, err := KeyGenFromMaster(rand.Reader, params, key, LINEAR_HIERARCHY)
+		_, err := KeyGen(rand.Reader, params, key, LINEAR_HIERARCHY)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -216,7 +289,7 @@ func BenchmarkKeyGenFromMaster(b *testing.B) {
 	}
 }
 
-func BenchmarkKeyGenFromParent(b *testing.B) {
+func BenchmarkQualifyKey(b *testing.B) {
 	b.StopTimer()
 
 	// Set up parameters
@@ -226,20 +299,20 @@ func BenchmarkKeyGenFromParent(b *testing.B) {
 	}
 
 	// Generate top level key from master key
-	toplevelkey, err := KeyGenFromMaster(rand.Reader, params, key, LINEAR_HIERARCHY[:1])
+	toplevelkey, err := KeyGen(rand.Reader, params, key, LINEAR_HIERARCHY[:1])
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	// Generate second level key from top level key
-	secondlevelkey, err := KeyGenFromParent(rand.Reader, params, toplevelkey, LINEAR_HIERARCHY[:2])
+	secondlevelkey, err := QualifyKey(rand.Reader, params, toplevelkey, LINEAR_HIERARCHY[:2])
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	for i := 0; i < b.N; i++ {
 		b.StartTimer()
-		_, err := KeyGenFromParent(rand.Reader, params, secondlevelkey, LINEAR_HIERARCHY)
+		_, err := QualifyKey(rand.Reader, params, secondlevelkey, LINEAR_HIERARCHY)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -257,7 +330,7 @@ func BenchmarkDecryptWithKeyGeneratedFromMaster(b *testing.B) {
 	}
 
 	// Generate secret key
-	thirdlevelkey, err := KeyGenFromMaster(rand.Reader, params, key, LINEAR_HIERARCHY)
+	thirdlevelkey, err := KeyGen(rand.Reader, params, key, LINEAR_HIERARCHY)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -290,19 +363,19 @@ func BenchmarkDecryptWithKeyGeneratedFromParent(b *testing.B) {
 	}
 
 	// Generate top level key from master key
-	toplevelkey, err := KeyGenFromMaster(rand.Reader, params, key, LINEAR_HIERARCHY[:1])
+	toplevelkey, err := KeyGen(rand.Reader, params, key, LINEAR_HIERARCHY[:1])
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	// Generate second level key from top level key
-	secondlevelkey, err := KeyGenFromParent(rand.Reader, params, toplevelkey, LINEAR_HIERARCHY[:2])
+	secondlevelkey, err := QualifyKey(rand.Reader, params, toplevelkey, LINEAR_HIERARCHY[:2])
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	// Generate third level key from second level key
-	thirdlevelkey, err := KeyGenFromParent(rand.Reader, params, secondlevelkey, LINEAR_HIERARCHY)
+	thirdlevelkey, err := QualifyKey(rand.Reader, params, secondlevelkey, LINEAR_HIERARCHY)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -323,4 +396,270 @@ func BenchmarkDecryptWithKeyGeneratedFromParent(b *testing.B) {
 			b.Fatal("Original and decrypted messages differ")
 		}
 	}
+}
+
+func EncryptBenchmarkHelper(b *testing.B, numAttributes int) {
+	b.StopTimer()
+
+	// Set up parameters
+	params, _, err := Setup(rand.Reader, 20)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		message, err := NewRandomMessage(rand.Reader)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		id := make([]*big.Int, numAttributes)
+		for i := range id {
+			id[i], err = rand.Int(rand.Reader, bn256.Order)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		b.StartTimer()
+		_, err = Encrypt(rand.Reader, params, id, message)
+		b.StopTimer()
+
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkEncrypt_5(b *testing.B) {
+	EncryptBenchmarkHelper(b, 5)
+}
+
+func BenchmarkEncrypt_10(b *testing.B) {
+	EncryptBenchmarkHelper(b, 10)
+}
+
+func BenchmarkEncrypt_15(b *testing.B) {
+	EncryptBenchmarkHelper(b, 15)
+}
+
+func BenchmarkEncrypt_20(b *testing.B) {
+	EncryptBenchmarkHelper(b, 20)
+}
+
+func DecryptBenchmarkHelper(b *testing.B, numAttributes int) {
+	b.StopTimer()
+
+	// Set up parameters
+	params, master, err := Setup(rand.Reader, 20)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		message, err := NewRandomMessage(rand.Reader)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		id := make([]*big.Int, numAttributes)
+		for i := range id {
+			id[i], err = rand.Int(rand.Reader, bn256.Order)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		key, err := KeyGen(rand.Reader, params, master, id)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		ciphertext, err := Encrypt(rand.Reader, params, id, message)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.StartTimer()
+		decrypted := Decrypt(key, ciphertext)
+		b.StopTimer()
+
+		if !bytes.Equal(message.Marshal(), decrypted.Marshal()) {
+			b.Fatal("Original and decrypted messages differ")
+		}
+	}
+}
+
+func BenchmarkDecrypt_5(b *testing.B) {
+	DecryptBenchmarkHelper(b, 5)
+}
+
+func BenchmarkDecrypt_10(b *testing.B) {
+	DecryptBenchmarkHelper(b, 10)
+}
+
+func BenchmarkDecrypt_15(b *testing.B) {
+	DecryptBenchmarkHelper(b, 15)
+}
+
+func BenchmarkDecrypt_20(b *testing.B) {
+	DecryptBenchmarkHelper(b, 20)
+}
+
+func NonDelegableKeyBenchmarkHelper(b *testing.B, numAttributes int) {
+	b.StopTimer()
+
+	// Set up parameters
+	params, master, err := Setup(rand.Reader, 20)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		message, err := NewRandomMessage(rand.Reader)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		id := make([]*big.Int, numAttributes)
+		for i := range id {
+			id[i], err = rand.Int(rand.Reader, bn256.Order)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		pseudomaster, err := KeyGen(rand.Reader, params, master, []*big.Int{})
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		ciphertext, err := Encrypt(rand.Reader, params, id, message)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.StartTimer()
+		key, _ := NonDelegableKey(params, pseudomaster, id)
+		b.StopTimer()
+
+		decrypted := Decrypt(key, ciphertext)
+		if !bytes.Equal(message.Marshal(), decrypted.Marshal()) {
+			b.Fatal("Original and decrypted messages differ")
+		}
+	}
+}
+
+func BenchmarkNonDelegableKey_5(b *testing.B) {
+	NonDelegableKeyBenchmarkHelper(b, 5)
+}
+
+func BenchmarkNonDelegableKey_10(b *testing.B) {
+	NonDelegableKeyBenchmarkHelper(b, 10)
+}
+
+func BenchmarkNonDelegableKey_15(b *testing.B) {
+	NonDelegableKeyBenchmarkHelper(b, 15)
+}
+
+func BenchmarkNonDelegableKey_20(b *testing.B) {
+	NonDelegableKeyBenchmarkHelper(b, 20)
+}
+
+func QualifyKeyStartBenchmarkHelper(b *testing.B, numAttributes int) {
+	b.StopTimer()
+
+	for i := 0; i < b.N; i++ {
+		// Set up parameters
+		params, master, err := Setup(rand.Reader, 20)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		id := make([]*big.Int, numAttributes)
+		for i := range id {
+			id[i], err = rand.Int(rand.Reader, bn256.Order)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		key, err := KeyGen(rand.Reader, params, master, id[:len(id)-1])
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.StartTimer()
+		_, err = QualifyKey(rand.Reader, params, key, id)
+		b.StopTimer()
+
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkQualifyKeyStart_5(b *testing.B) {
+	QualifyKeyStartBenchmarkHelper(b, 5)
+}
+
+func BenchmarkQualifyKeyStart_10(b *testing.B) {
+	QualifyKeyStartBenchmarkHelper(b, 10)
+}
+
+func BenchmarkQualifyKeyStart_15(b *testing.B) {
+	QualifyKeyStartBenchmarkHelper(b, 15)
+}
+
+func BenchmarkQualifyKeyStart_20(b *testing.B) {
+	QualifyKeyStartBenchmarkHelper(b, 20)
+}
+
+func QualifyKeyEndBenchmarkHelper(b *testing.B, numAttributes int) {
+	b.StopTimer()
+
+	for i := 0; i < b.N; i++ {
+		// Set up parameters
+		params, master, err := Setup(rand.Reader, 20)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		id := make([]*big.Int, numAttributes)
+		for i := range id {
+			id[i], err = rand.Int(rand.Reader, bn256.Order)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		key, err := KeyGen(rand.Reader, params, master, id[:1])
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.StartTimer()
+		_, err = QualifyKey(rand.Reader, params, key, id)
+		b.StopTimer()
+
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkQualifyKeyEnd_5(b *testing.B) {
+	QualifyKeyEndBenchmarkHelper(b, 5)
+}
+
+func BenchmarkQualifyKeyEnd_10(b *testing.B) {
+	QualifyKeyEndBenchmarkHelper(b, 10)
+}
+
+func BenchmarkQualifyKeyEnd_15(b *testing.B) {
+	QualifyKeyEndBenchmarkHelper(b, 15)
+}
+
+func BenchmarkQualifyKeyEnd_20(b *testing.B) {
+	QualifyKeyEndBenchmarkHelper(b, 20)
 }

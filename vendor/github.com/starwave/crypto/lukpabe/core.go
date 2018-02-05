@@ -9,7 +9,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/cryptutils"
+	"github.com/ucbrise/starwave/crypto/cryptutils"
 	"vuvuzela.io/crypto/bn256"
 )
 
@@ -26,7 +26,7 @@ type Params struct {
 
 // MasterKey represents the key that can generate a private key for any access
 // tree.
-type MasterKey *big.Int
+type MasterKey big.Int
 
 // AttributeSet represents a set of attributes. Each attribute is an integer in
 // Zp*.
@@ -167,7 +167,7 @@ func RandomInZp(random io.Reader) (*big.Int, error) {
 // Setup generates the system parameters, which may be made visible to an
 // adversary. The parameter "n" is the maximum number of attributes under
 // which a message may be encrypted.
-func Setup(random io.Reader, n int) (*Params, MasterKey, error) {
+func Setup(random io.Reader, n int) (*Params, *MasterKey, error) {
 	params := new(Params)
 
 	var err error
@@ -190,7 +190,7 @@ func Setup(random io.Reader, n int) (*Params, MasterKey, error) {
 		}
 	}
 
-	return params, y, nil
+	return params, (*MasterKey)(y), nil
 }
 
 // Precache forces "cached params" to be computed. Normally, they are computed
@@ -251,7 +251,7 @@ func KeyGenNode(random io.Reader, params *Params, key *PrivateKey, q0 *big.Int, 
 // KeyGen generates a private key for the specified access tree, using the
 // master key. It traverses the tree, setting the correct AccessIndex for the
 // tree, to match this private key.
-func KeyGen(random io.Reader, params *Params, master MasterKey, tree AccessNode) (*PrivateKey, error) {
+func KeyGen(random io.Reader, params *Params, master *MasterKey, tree AccessNode) (*PrivateKey, error) {
 	key := &PrivateKey{
 		D:    []*bn256.G1{},
 		R:    []*bn256.G2{},
@@ -393,7 +393,7 @@ func DecryptNode(key *PrivateKey, ciphertext *Ciphertext, node AccessNode) *bn25
 }
 
 // DecryptNodeURI uses optimizations specific to STARWAVE's access trees. The
-// access tree is a single gate with many leaves, the first Threshold leaves
+// access tree is a single gate with many leaves, so the first Threshold leaves
 // always work.
 func DecryptNodeURI(params *Params, key *PrivateKey, ciphertext *Ciphertext, node AccessNode) *bn256.GT {
 	lagranges := make([]*big.Int, node.Threshold())
@@ -505,4 +505,117 @@ func DecryptSpecific(params *Params, key *PrivateKey, ciphertext *Ciphertext) *b
 	params.Precache()
 	power := DecryptNodeURI(params, key, ciphertext, key.Tree)
 	return new(bn256.GT).Add(ciphertext.E1, power.Neg(power))
+}
+
+// RerandomizeNode rerandomizes a subtree of a private key, in place.
+func RerandomizeNode(random io.Reader, params *Params, key *PrivateKey, node AccessNode, c *big.Int) error {
+	if node.IsLeaf() {
+		y := node.Index() - 1
+		ry, err := RandomInZp(random)
+		if err != nil {
+			return err
+		}
+
+		ty := params.T(node.Attribute())
+		key.D[y].Add(key.D[y], new(bn256.G1).ScalarMult(params.G2, c))
+		key.D[y].Add(key.D[y], ty.ScalarMult(ty, ry))
+		key.R[y].Add(key.R[y], new(bn256.G2).ScalarBaseMult(ry))
+	} else {
+		poly := cryptutils.EmptyPolynomial(node.Threshold() - 1)
+		poly[len(poly)-1] = c
+		poly.RandomFill(random, bn256.Order)
+
+		for j, child := range node.Children() {
+			i := j + 1
+			cy := poly.EvalMod(big.NewInt(int64(i)), bn256.Order)
+			err := RerandomizeNode(random, params, key, child, cy)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// Rerandomize rerandomizes a private key, in place.
+func Rerandomize(random io.Reader, params *Params, key *PrivateKey) {
+	RerandomizeNode(random, params, key, key.Tree, big.NewInt(0))
+}
+
+// ScaleSubtree scales all polynomials in the subtree rooted at node by a factor
+// of c.
+func ScaleSubtree(key *PrivateKey, node AccessNode, c *big.Int) {
+	if node.IsLeaf() {
+		x := node.Index() - 1
+		key.D[x].ScalarMult(key.D[x], c)
+		key.R[x].ScalarMult(key.R[x], c)
+	} else {
+		for _, child := range node.Children() {
+			ScaleSubtree(key, child, c)
+		}
+	}
+}
+
+// AppendSubtree scales all polynomials in the subtree rooted at node by a factor
+// of c.
+func AppendSubtree(params *Params, key *PrivateKey, node AccessNode) {
+	if node.IsLeaf() {
+		key.D = append(key.D, new(bn256.G1).ScalarBaseMult(big.NewInt(0)))
+		key.R = append(key.R, new(bn256.G2).ScalarBaseMult(big.NewInt(0)))
+		node.AsLeaf().PrivateKeyIndex = len(key.D)
+	} else {
+		for _, child := range node.Children() {
+			AppendSubtree(params, key, child)
+		}
+	}
+}
+
+// AppendChild qualifies a private key by adding a new subtree as a child of
+// the specified node. The threshold of the gate increases too.
+//
+// Due to some computation optimizations, it is _necessary_ to call Rerandomize
+// on the resulting key before using the key to perform decryption. This avoids
+// unnecessary repeated work when the key is qualified in multiple ways before
+// finally delegated to another entity.
+func AppendChildren(params *Params, key *PrivateKey, node *AccessGate, newsubtrees ...AccessNode) {
+	/*
+	 * The algorithm in the paper only inserts one new child; we would like to
+	 * insert many, more efficiently than just running that algorithm many
+	 * times. So we generalize the algorithm as follows. We multiply the
+	 * polynomial at the node by another polynomial f of degree
+	 * len(newsubtrees), where f(0) = 1, and f(v_i) = 0 for each index v_i of
+	 * the new children.
+	 *
+	 * This polynomial f is:
+	 * f(x) = a * (x - v_1) * ... * (x - v_n)
+	 * where a = (((-1) ^ n) / (v_1 * ... * v_n))
+	 */
+	v := int64(len(node.Inputs))
+	a := big.NewInt(1)
+	for i, newsubtree := range newsubtrees {
+		// err := KeyGenNode(random, params, key, big.NewInt(0), newsubtree)
+		// if err != nil {
+		// 	return err
+		// }
+		AppendSubtree(params, key, newsubtree)
+
+		a.Mul(a, big.NewInt(-(v + 1 + int64(i))))
+		a.Mod(a, bn256.Order)
+	}
+	a.ModInverse(a, bn256.Order)
+	for j, child := range node.Inputs {
+		cx := new(big.Int).Set(a)
+		term := big.NewInt(int64(j+1) - v)
+		neg1 := big.NewInt(-1)
+		for _ = range newsubtrees {
+			term.Add(term, neg1)
+			cx.Mul(cx, term)
+			cx.Mod(cx, bn256.Order)
+		}
+
+		ScaleSubtree(key, child, cx)
+	}
+	node.Inputs = append(node.Inputs, newsubtrees...)
+	node.Thresh += len(newsubtrees)
 }

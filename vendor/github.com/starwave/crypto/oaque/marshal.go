@@ -175,9 +175,12 @@ func (key *PrivateKey) Unmarshal(marshalled []byte) bool {
 	return true
 }
 
+// CiphertextMarshalledSize is the size of a marshalled ciphertext, in bytes.
+const CiphertextMarshalledSize = 9 << geShift
+
 // Marshal encodes a ciphertext as a byte slice.
 func (ciphertext *Ciphertext) Marshal() []byte {
-	marshalled := make([]byte, 9<<geShift)
+	marshalled := make([]byte, CiphertextMarshalledSize)
 
 	copy(geIndex(marshalled, 0, 6), ciphertext.A.Marshal())
 	copy(geIndex(marshalled, 6, 2), ciphertext.B.Marshal())
@@ -188,7 +191,7 @@ func (ciphertext *Ciphertext) Marshal() []byte {
 
 // Unmarshal recovers the ciphertext from an encoded byte slice.
 func (ciphertext *Ciphertext) Unmarshal(marshalled []byte) bool {
-	if len(marshalled) != 9<<geShift {
+	if len(marshalled) != CiphertextMarshalledSize {
 		return false
 	}
 
@@ -208,9 +211,12 @@ func (ciphertext *Ciphertext) Unmarshal(marshalled []byte) bool {
 	return true
 }
 
+// SignatureMarshalledSize is the size of a marshalled signature, in bytes.
+const SignatureMarshalledSize = 5 << geShift
+
 // Marshal encodes a signature as a byte slice.
 func (signature *Signature) Marshal() []byte {
-	marshalled := make([]byte, 5<<geShift)
+	marshalled := make([]byte, SignatureMarshalledSize)
 
 	copy(geIndex(marshalled, 0, 1), signature.S1.Marshal())
 	copy(geIndex(marshalled, 1, 2), signature.S2.Marshal())
@@ -221,7 +227,7 @@ func (signature *Signature) Marshal() []byte {
 
 // Unmarshal recovers the signature from an encoded byte slice.
 func (signature *Signature) Unmarshal(marshalled []byte) bool {
-	if len(marshalled) != 5<<geShift {
+	if len(marshalled) != SignatureMarshalledSize {
 		return false
 	}
 

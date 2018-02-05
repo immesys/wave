@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/immesys/asn1"
+
 	"github.com/immesys/wave/serdes"
 	"github.com/stretchr/testify/require"
 )
@@ -102,4 +104,50 @@ func TestIBE_BN256(t *testing.T) {
 	readback2, err := childpriv.DecryptMessage(context.Background(), ciphertext)
 	require.Error(t, err)
 	require.Nil(t, readback2)
+	ciphertext[3] ^= 0x80
+
+	//now test serdes
+	scf, err := master.SecretCanonicalForm(context.Background())
+	require.NoError(t, err)
+	masterder, err := asn1.Marshal(*scf)
+	require.NoError(t, err)
+	readbackmaster := serdes.EntityKeyringEntry{}
+	_, err = asn1.Unmarshal(masterder, &readbackmaster)
+	require.NoError(t, err)
+	master2 := EntitySecretKeySchemeFor(&readbackmaster)
+	childpriv2, err := master2.GenerateChildSecretKey(context.Background(), []byte("foo"))
+	require.NoError(t, err)
+	plaintext2, err := childpriv2.DecryptMessage(context.Background(), ciphertext)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, plaintext2)
+
+	//Check child private key serdes works
+	cf, err := childpriv2.SecretCanonicalForm(context.Background())
+	require.NoError(t, err)
+	childer, err := asn1.Marshal(*cf)
+	require.NoError(t, err)
+	readbackchild := serdes.EntityKeyringEntry{}
+	_, err = asn1.Unmarshal(childer, &readbackchild)
+	require.NoError(t, err)
+	childpriv3 := EntitySecretKeySchemeFor(&readbackchild)
+	plaintext3, err := childpriv3.DecryptMessage(context.Background(), ciphertext)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, plaintext3)
+
+	//Check child public key serdes works
+	pubeks, err := childpriv3.Public()
+	require.NoError(t, err)
+	cf2, err := pubeks.CanonicalForm(context.Background())
+	require.NoError(t, err)
+	pubder, err := asn1.Marshal(*cf2)
+	require.NoError(t, err)
+	readbackpub := serdes.EntityPublicKey{}
+	_, err = asn1.Unmarshal(pubder, &readbackpub)
+	require.NoError(t, err)
+	pubeks2 := EntityKeySchemeFor(&readbackpub)
+	ciphertext2, err := pubeks2.EncryptMessage(context.Background(), msg)
+	require.NoError(t, err)
+	plaintext4, err := childpriv.DecryptMessage(context.Background(), ciphertext2)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, plaintext4)
 }

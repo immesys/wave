@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/cryptutils"
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
+	"github.com/ucbrise/starwave/crypto/cryptutils"
+	"github.com/ucbrise/starwave/crypto/oaque"
 )
 
 /* ID Component Interface */
@@ -75,9 +75,15 @@ func (uc URIComponent) Position() URIComponentPosition {
 type URIPath []URIComponent
 
 func (up URIPath) String() string {
-	components := make([]string, len(up), len(up))
+	components := make([]string, len(up), len(up)+1)
 	for i := 0; i != len(components); i++ {
 		components[i] = up[i].String()
+	}
+	last := components[len(components)-1]
+	if last == "$" {
+		components = components[:len(components)-1]
+	} else {
+		components = append(components, "*")
 	}
 	return strings.Join(components, "/")
 }

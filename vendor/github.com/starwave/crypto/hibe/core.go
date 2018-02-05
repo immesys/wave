@@ -144,8 +144,8 @@ func Setup(random io.Reader, l int) (*Params, MasterKey, error) {
 	return params, master, nil
 }
 
-// KeyGenFromMaster generates a key for an ID using the master key.
-func KeyGenFromMaster(random io.Reader, params *Params, master MasterKey, id []*big.Int) (*PrivateKey, error) {
+// KeyGen generates a key for an ID using the master key.
+func KeyGen(random io.Reader, params *Params, master MasterKey, id []*big.Int) (*PrivateKey, error) {
 	key := &PrivateKey{}
 	k := len(id)
 	l := len(params.H)
@@ -176,18 +176,42 @@ func KeyGenFromMaster(random io.Reader, params *Params, master MasterKey, id []*
 	return key, nil
 }
 
-// KeyGenFromParent generates a key for an ID using the private key of the
-// parent of ID in the hierarchy. Using a different parent will result in
-// undefined behavior.
-func KeyGenFromParent(random io.Reader, params *Params, parent *PrivateKey, id []*big.Int) (*PrivateKey, error) {
+// NonDelegableKeyGenFromMaster generates a key for an ID using the master key.
+// The resulting key is not re-randomized, and therefore is not suitable for
+// delegation to other entities.
+func NonDelegableKeyFromMaster(params *Params, master MasterKey, id []*big.Int) *PrivateKey {
+	key := &PrivateKey{}
+	k := len(id)
+	l := len(params.H)
+	if k > l {
+		panic("Cannot generate key at greater than maximum depth.")
+	}
+
+	product := new(bn256.G1).Set(params.G3)
+	for i := 0; i != k; i++ {
+		h := new(bn256.G1).ScalarMult(params.H[i], id[i])
+		product.Add(product, h)
+	}
+
+	key.A0 = new(bn256.G1).Add(master, product)
+	key.A1 = new(bn256.G2).Set(params.G)
+	key.B = make([]*bn256.G1, l-k)
+	for j := 0; j != l-k; j++ {
+		key.B[j] = new(bn256.G1).Set(params.H[k+j])
+	}
+
+	return key
+}
+
+// QualifyKey generates a key for an ID using the private key of ancestor
+// ancestor of ID in the hierarchy. Using a key that does not correspond to
+// an ancestor of ID will result in undefined behavior.
+func QualifyKey(random io.Reader, params *Params, ancestor *PrivateKey, id []*big.Int) (*PrivateKey, error) {
 	key := &PrivateKey{}
 	k := len(id)
 	l := len(params.H)
 	if k > l {
 		panic("Cannot generate key at greater than maximum depth")
-	}
-	if parent.DepthLeft() != l-k+1 {
-		panic("Trying to generate key at depth that is not the child of the provided parent")
 	}
 
 	// Randomly choose t in Zp
@@ -203,19 +227,52 @@ func KeyGenFromParent(random io.Reader, params *Params, parent *PrivateKey, id [
 	}
 	product.ScalarMult(product, t)
 
-	bpower := new(bn256.G1).ScalarMult(parent.B[0], id[k-1])
+	key.A0 = new(bn256.G1).Add(ancestor.A0, product)
 
-	key.A0 = new(bn256.G1).Add(parent.A0, bpower)
-	key.A0.Add(key.A0, product)
+	newterms := k + ancestor.DepthLeft() - l
+	for j := 0; j != newterms; j++ {
+		bpower := new(bn256.G1).ScalarMult(ancestor.B[j], id[k-newterms+j])
+		key.A0.Add(key.A0, bpower)
+	}
 
 	key.A1 = new(bn256.G2).ScalarMult(params.G, t)
-	key.A1.Add(parent.A1, key.A1)
+	key.A1.Add(ancestor.A1, key.A1)
 
 	key.B = make([]*bn256.G1, l-k)
 	for j := 0; j != l-k; j++ {
 		key.B[j] = new(bn256.G1).ScalarMult(params.H[k+j], t)
-		key.B[j].Add(parent.B[j+1], key.B[j])
+		key.B[j].Add(ancestor.B[j+1], key.B[j])
 	}
+
+	return key, nil
+}
+
+// NonDelegableKey is like QualifyKey, except that the resulting key should only
+// be used for decryption. This is significantly faster than the QualifyKey
+// function. However, the output should _not_ be delegated to another
+// entity, as it is not properly re-randomized and could leak information about
+// the ancestor key.
+// QualifyKey generates a key for an ID using the private key of ancestor
+// ancestor of ID in the hierarchy. Using a key that does not correspond to
+// an ancestor of ID will result in undefined behavior.
+func NonDelegableKey(params *Params, ancestor *PrivateKey, id []*big.Int) (*PrivateKey, error) {
+	key := &PrivateKey{}
+	k := len(id)
+	l := len(params.H)
+	if k > l {
+		panic("Cannot generate key at greater than maximum depth")
+	}
+
+	key.A0 = new(bn256.G1).Set(ancestor.A0)
+
+	newterms := k + ancestor.DepthLeft() - l
+	for j := 0; j != newterms; j++ {
+		bpower := new(bn256.G1).ScalarMult(ancestor.B[j], id[k-newterms+j])
+		key.A0.Add(key.A0, bpower)
+	}
+
+	key.A1 = ancestor.A1
+	key.B = ancestor.B[newterms:]
 
 	return key, nil
 }
