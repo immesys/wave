@@ -72,7 +72,13 @@ func EntityKeySchemeFor(e *serdes.EntityPublicKey) EntityKeyScheme {
 	case e.Key.OID.Equal(serdes.EntityIBE_BN256_PublicOID):
 		rv := &EntityKey_OAQUE_BN256_S20{
 			canonicalForm: e,
-			todo
+			Params:        &oaque.Params{},
+		}
+		obj := e.Key.Content.(serdes.EntityPublicOAQUE_BN256_s20)
+		rv.AttributeSet = obj.AttributeSet
+		ok := rv.Params.Unmarshal(obj.Params)
+		if !ok {
+			return &UnsupportedKeyScheme{canonicalForm: e}
 		}
 		return rv
 	}
@@ -130,7 +136,7 @@ func EntitySecretKeySchemeFor(e *serdes.EntityKeyringEntry) EntitySecretKeySchem
 			PrivateKey:    &priv,
 			ID:            obj.ID,
 		}
-
+todo oaque
 	}
 	return &UnsupportedSecretKeyScheme{canonicalForm: e}
 }
