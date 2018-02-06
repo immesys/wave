@@ -64,6 +64,7 @@ type EntitySecretKeyScheme interface {
 	SignAttestation(ctx context.Context, content []byte) ([]byte, error)
 	SignMessage(ctx context.Context, content []byte) ([]byte, error)
 	DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error)
+	DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error)
 	GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeyScheme, error)
 	SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error)
 }

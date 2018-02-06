@@ -2,15 +2,11 @@ package iapi
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"time"
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
-	"golang.org/x/crypto/curve25519"
-	"golang.org/x/crypto/ed25519"
-	"vuvuzela.io/crypto/ibe"
 )
 
 type PNewEntity struct {
@@ -52,11 +48,18 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	kr := serdes.EntityKeyring{}
 
 	//Ed25519
-	ed25519KE := NewEntityKeyScheme(serdes.EntityEd25519OID)
+
+	ed25519KE, err := NewEntityKeyScheme(serdes.EntityEd25519OID)
+	if err != nil {
+		return nil, err
+	}
 	cf, err := ed25519KE.SecretCanonicalForm(context.Background())
-	if err != nil  here
-	kr.Keys = append(kr.Keys, )
-  //
+	if err != nil {
+		return nil, err
+	}
+	kr.Keys = append(kr.Keys, *cf)
+
+	//
 	// publicEd25519, privateEd25519, err := ed25519.GenerateKey(rand.Reader)
 	// if err != nil {
 	// 	return nil, err
@@ -71,65 +74,99 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	// kr.Keys = append(kr.Keys, ke)
 
 	//Curve25519
-	curve25519KE := NewEntityKeyScheme(serdes.EntityCurve25519OID)
-	kr.Keys = append(kr.Keys, curve25519KE.Sec)
 	{
-		var secret [32]byte
-		_, err = rand.Read(secret[:])
+		curve25519KE, err := NewEntityKeyScheme(serdes.EntityCurve25519OID)
 		if err != nil {
 			return nil, err
 		}
-		var public [32]byte
-		curve25519.ScalarBaseMult(&public, &secret)
-		ke := serdes.EntityKeyringEntry{
-			Public: serdes.EntityPublicKey{
-				Capabilities: []int{int(CapEncryption)},
-				Key:          asn1.NewExternal(serdes.EntityPublicCurve25519(public[:])),
-			},
-			Private: asn1.NewExternal(serdes.EntitySecretCurve25519(secret[:])),
+		cf, err := curve25519KE.SecretCanonicalForm(context.Background())
+		if err != nil {
+			return nil, err
 		}
-		kr.Keys = append(kr.Keys, ke)
+		kr.Keys = append(kr.Keys, *cf)
 	}
-	//IBE
+	//
+	// {
+	// 	var secret [32]byte
+	// 	_, err = rand.Read(secret[:])
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	var public [32]byte
+	// 	curve25519.ScalarBaseMult(&public, &secret)
+	// 	ke := serdes.EntityKeyringEntry{
+	// 		Public: serdes.EntityPublicKey{
+	// 			Capabilities: []int{int(CapEncryption)},
+	// 			Key:          asn1.NewExternal(serdes.EntityPublicCurve25519(public[:])),
+	// 		},
+	// 		Private: asn1.NewExternal(serdes.EntitySecretCurve25519(secret[:])),
+	// 	}
+	// 	kr.Keys = append(kr.Keys, ke)
+	// }
 	{
-		params, master := ibe.Setup(rand.Reader)
-		paramsblob, err := params.MarshalBinary()
+		ibeKE, err := NewEntityKeyScheme(serdes.EntityIBE_BN256_ParamsOID)
 		if err != nil {
 			return nil, err
 		}
-		masterblob, err := master.MarshalBinary()
+		cf, err := ibeKE.SecretCanonicalForm(context.Background())
 		if err != nil {
 			return nil, err
 		}
-		ke := serdes.EntityKeyringEntry{
-			Public: serdes.EntityPublicKey{
-				Capabilities: []int{int(CapEncryption)},
-				Key:          asn1.NewExternal(serdes.EntityParamsIBE_BN256(paramsblob)),
-			},
-			Private: asn1.NewExternal(serdes.EntitySecretMasterIBE_BN256(masterblob)),
-		}
-		kr.Keys = append(kr.Keys, ke)
+		kr.Keys = append(kr.Keys, *cf)
 	}
-	//OAQUE
+	//
+	// //IBE
+	// {
+	// 	params, master := ibe.Setup(rand.Reader)
+	// 	paramsblob, err := params.MarshalBinary()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	masterblob, err := master.MarshalBinary()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	ke := serdes.EntityKeyringEntry{
+	// 		Public: serdes.EntityPublicKey{
+	// 			Capabilities: []int{int(CapEncryption)},
+	// 			Key:          asn1.NewExternal(serdes.EntityParamsIBE_BN256(paramsblob)),
+	// 		},
+	// 		Private: asn1.NewExternal(serdes.EntitySecretMasterIBE_BN256(masterblob)),
+	// 	}
+	// 	kr.Keys = append(kr.Keys, ke)
+	// }
 	{
-		params, master, err := crypto.GenerateOAQUEKeys()
-		paramsblob := params.Marshal()
+		oaqueKE, err := NewEntityKeyScheme(serdes.EntityOAQUE_BN256_S20_ParamsOID)
 		if err != nil {
 			return nil, err
 		}
-		masterblob := master.Marshal()
+		cf, err := oaqueKE.SecretCanonicalForm(context.Background())
 		if err != nil {
 			return nil, err
 		}
-		ke := serdes.EntityKeyringEntry{
-			Public: serdes.EntityPublicKey{
-				Capabilities: []int{int(CapEncryption), int(CapAuthorization)},
-				Key:          asn1.NewExternal(serdes.EntityParamsOQAUE_BN256_s20(paramsblob)),
-			},
-			Private: asn1.NewExternal(serdes.EntitySecretMasterOQAUE_BN256_s20(masterblob)),
-		}
-		kr.Keys = append(kr.Keys, ke)
+		kr.Keys = append(kr.Keys, *cf)
 	}
+	//
+	// //OAQUE
+	// {
+	// 	params, master, err := crypto.GenerateOAQUEKeys()
+	// 	paramsblob := params.Marshal()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	masterblob := master.Marshal()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	ke := serdes.EntityKeyringEntry{
+	// 		Public: serdes.EntityPublicKey{
+	// 			Capabilities: []int{int(CapEncryption), int(CapAuthorization)},
+	// 			Key:          asn1.NewExternal(serdes.EntityParamsOQAUE_BN256_s20(paramsblob)),
+	// 		},
+	// 		Private: asn1.NewExternal(serdes.EntitySecretMasterOQAUE_BN256_s20(masterblob)),
+	// 	}
+	// 	kr.Keys = append(kr.Keys, ke)
+	// }
 	//Put the keyring into the secret entity object
 	en.Keyring = asn1.NewExternal(kr)
 
@@ -147,7 +184,10 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	if err != nil {
 		return nil, err
 	}
-	en.Entity.Signature = ed25519.Sign(privateEd25519, der)
+	en.Entity.Signature, err = ed25519KE.SignCertify(context.Background(), der)
+	if err != nil {
+		return nil, err
+	}
 
 	//Serialize wrapped public part
 	publicEntity := serdes.WaveWireObject{}

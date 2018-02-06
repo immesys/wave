@@ -151,3 +151,65 @@ func TestIBE_BN256(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, msg, plaintext4)
 }
+
+func TestOAQUE(t *testing.T) {
+	master, err := NewEntityKeyScheme(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	require.NoError(t, err)
+	params, err := master.Public()
+	require.NoError(t, err)
+
+	slots := make([][]byte, 20)
+	slots[0] = []byte("foo")
+	k1, err := master.GenerateChildSecretKey(context.Background(), slots)
+	require.NoError(t, err)
+
+	k1pub, err := k1.Public()
+	require.NoError(t, err)
+	k1pub2, err := params.GenerateChildKey(context.Background(), slots)
+
+	msg := make([]byte, 64)
+	rand.Read(msg)
+
+	ciphertext, err := k1pub.EncryptMessage(context.Background(), msg)
+	require.NoError(t, err)
+
+	rb1, err := k1.DecryptMessage(context.Background(), ciphertext)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, rb1)
+
+	ciphertext2, err := k1pub2.EncryptMessage(context.Background(), msg)
+	rb2, err := k1.DecryptMessage(context.Background(), ciphertext2)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, rb2)
+}
+
+func TestOAQUEDelegation(t *testing.T) {
+	master, err := NewEntityKeyScheme(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	require.NoError(t, err)
+	//	params, err := master.Public()
+	//	require.NoError(t, err)
+
+	slots := make([][]byte, 20)
+	slots[0] = []byte("foo")
+	k1, err := master.GenerateChildSecretKey(context.Background(), slots)
+	require.NoError(t, err)
+
+	k1pub, err := k1.Public()
+	require.NoError(t, err)
+	slots[1] = []byte("bar")
+	k2pub, err := k1pub.GenerateChildKey(context.Background(), slots)
+	require.NoError(t, err)
+
+	msg := make([]byte, 64)
+	rand.Read(msg)
+
+	ciphertext, err := k2pub.EncryptMessage(context.Background(), msg)
+	require.NoError(t, err)
+
+	_, err = k1.DecryptMessage(context.Background(), ciphertext)
+	require.Error(t, err)
+
+	rb, err := k1.DecryptMessageAsChild(context.Background(), ciphertext, slots)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, rb)
+}

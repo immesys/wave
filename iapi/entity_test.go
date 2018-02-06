@@ -17,5 +17,6 @@ func TestCreateEntity(t *testing.T) {
 		DER: R.PublicDER,
 	})
 	require.NoError(t, err)
+	_ = readback
 	spew.Dump(readback.Entity)
 }

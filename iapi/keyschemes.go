@@ -40,6 +40,7 @@ func EntityKeySchemeFor(e *serdes.EntityPublicKey) EntityKeyScheme {
 	case e.Key.OID.Equal(serdes.EntityIBE_BN256_ParamsOID):
 		rv := &EntityKey_IBE_Params_BN256{
 			canonicalForm: e,
+			PublicKey:     &ibe.MasterPublicKey{},
 		}
 		err := rv.PublicKey.UnmarshalBinary(e.Key.Content.(serdes.EntityParamsIBE_BN256))
 		if err != nil {
@@ -55,6 +56,23 @@ func EntityKeySchemeFor(e *serdes.EntityPublicKey) EntityKeyScheme {
 		err := rv.Params.UnmarshalBinary(obj.Params)
 		if err != nil {
 			return &UnsupportedKeyScheme{canonicalForm: e}
+		}
+		return rv
+	case e.Key.OID.Equal(serdes.EntityOAQUE_BN256_S20_ParamsOID):
+		rv := &EntityKey_OAQUE_BN256_S20_Params{
+			canonicalForm: e,
+			Params:        &oaque.Params{},
+		}
+		blob := e.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20)
+		ok := rv.Params.Unmarshal(blob)
+		if !ok {
+			return &UnsupportedKeyScheme{canonicalForm: e}
+		}
+		return rv
+	case e.Key.OID.Equal(serdes.EntityIBE_BN256_PublicOID):
+		rv := &EntityKey_OAQUE_BN256_S20{
+			canonicalForm: e,
+			todo
 		}
 		return rv
 	}
@@ -279,7 +297,6 @@ func (ek *EntityKey_Ed25519) VerifyAttestation(ctx context.Context, data []byte,
 	}
 	return fmt.Errorf("ed25519 signature invalid")
 }
-
 func (ek *EntityKey_Ed25519) VerifyMessage(ctx context.Context, data []byte, signature []byte) error {
 	if !ek.HasCapability(CapSigning) {
 		return fmt.Errorf("this key cannot perform signing")
@@ -323,6 +340,9 @@ func (ek *EntitySecretKey_Ed25519) SecretCanonicalForm(ctx context.Context) (*se
 }
 func (ek *EntitySecretKey_Ed25519) DecryptMessage(ctx context.Context, data []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot perform encryption")
+}
+func (ek *EntitySecretKey_Ed25519) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
+	return nil, fmt.Errorf("this key does not support such decryption")
 }
 func (ek *EntitySecretKey_Ed25519) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeyScheme, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
@@ -470,6 +490,9 @@ func (ek *EntitySecretKey_Curve25519) DecryptMessage(ctx context.Context, data [
 	}
 	return plaintext, nil
 }
+func (ek *EntitySecretKey_Curve25519) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
+	return nil, fmt.Errorf("this key does not support such decryption")
+}
 func (ek *EntitySecretKey_Curve25519) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeyScheme, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
 }
@@ -479,7 +502,6 @@ func (ek *EntitySecretKey_Curve25519) Public() (EntityKeyScheme, error) {
 		PublicKey:     ek.PublicKey,
 	}, nil
 }
-
 func (ek *EntitySecretKey_Curve25519) SignMessage(ctx context.Context, content []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot perform signing")
 }
@@ -514,6 +536,9 @@ func (k *UnsupportedSecretKeyScheme) DecryptMessage(ctx context.Context, data []
 	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
 }
 func (k *UnsupportedSecretKeyScheme) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeyScheme, error) {
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
+}
+func (k *UnsupportedSecretKeyScheme) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
 	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
 }
 func (k *UnsupportedSecretKeyScheme) Public() (EntityKeyScheme, error) {
@@ -611,6 +636,26 @@ func (ek *EntitySecretKey_IBE_Master_BN256) SecretCanonicalForm(ctx context.Cont
 }
 func (ek *EntitySecretKey_IBE_Master_BN256) DecryptMessage(ctx context.Context, data []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot decrypt directly (generate a child key)")
+}
+func (ek *EntitySecretKey_IBE_Master_BN256) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
+	id, ok := identity.([]byte)
+	if !ok {
+		return nil, fmt.Errorf("this key only supports []byte identities")
+	}
+	privkey := ibe.Extract(ek.PrivateKey, id)
+	if privkey == nil {
+		return nil, fmt.Errorf("something is wrong with this key")
+	}
+	c := ibe.Ciphertext{}
+	err := c.UnmarshalBinary(ciphertext)
+	if err != nil {
+		return nil, err
+	}
+	content, ok := ibe.Decrypt(privkey, c)
+	if !ok {
+		return nil, fmt.Errorf("message failed to decrypt")
+	}
+	return content, nil
 }
 func (ek *EntitySecretKey_IBE_Master_BN256) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeyScheme, error) {
 	id, ok := identity.([]byte)
@@ -740,6 +785,9 @@ func (k *EntitySecretKey_IBE_BN256) DecryptMessage(ctx context.Context, cipherte
 		return nil, fmt.Errorf("message failed to decrypt")
 	}
 	return content, nil
+}
+func (ek *EntitySecretKey_IBE_BN256) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
+	return nil, fmt.Errorf("this key cannot generate child keys")
 }
 func (k *EntitySecretKey_IBE_BN256) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeyScheme, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
@@ -920,7 +968,7 @@ func (k *EntityKey_OAQUE_BN256_S20) GenerateChildKey(ctx context.Context, identi
 		}
 	}
 	ch := serdes.EntityPublicOAQUE_BN256_s20{
-		Params:       k.canonicalForm.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20),
+		Params:       k.canonicalForm.Key.Content.(serdes.EntityPublicOAQUE_BN256_s20).Params,
 		AttributeSet: id,
 	}
 	cf := serdes.EntityPublicKey{
@@ -955,6 +1003,46 @@ func (k *EntitySecretKey_OAQUE_BN256_S20) CanonicalForm(ctx context.Context) (*s
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20) SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error) {
 	return k.canonicalForm, nil
+}
+func (k *EntitySecretKey_OAQUE_BN256_S20) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
+	id, ok := identity.([][]byte)
+	if !ok {
+		return nil, fmt.Errorf("only [][]byte identities are supported")
+	}
+	if len(id) != 20 {
+		return nil, fmt.Errorf("only 20 slot identities are supported")
+	}
+	for idx, slot := range id {
+		if len(k.AttributeSet[idx]) > 0 {
+			if !bytes.Equal(k.AttributeSet[idx], slot) {
+				return nil, fmt.Errorf("child keys can only be MORE qualified")
+			}
+		}
+	}
+	al := slotsToAttrMap(id)
+	privkey := oaque.NonDelegableKey(k.Params, k.PrivateKey, al)
+	if len(ciphertext) < 18 {
+		return nil, fmt.Errorf("invalid ciphertext")
+	}
+	oaqueCiphertextLength := int(binary.BigEndian.Uint16(ciphertext[0:2]))
+	if len(ciphertext) < oaqueCiphertextLength+2 {
+		return nil, fmt.Errorf("invalid ciphertext")
+	}
+	oaqueCiphertextBA := ciphertext[2 : oaqueCiphertextLength+2]
+	ct := oaque.Ciphertext{}
+	ok = ct.Unmarshal(oaqueCiphertextBA)
+	if !ok {
+		return nil, fmt.Errorf("invalid ciphertext")
+	}
+	groupEl := oaque.Decrypt(privkey, &ct)
+	sharedSecret := cryptutils.GTToSecretKey(groupEl, make([]byte, 16+12))
+	aesk := sharedSecret[:16]
+	nonce := sharedSecret[16:]
+	innerPlaintext, ok := aesGCMDecrypt(aesk, ciphertext[oaqueCiphertextLength+2:], nonce)
+	if !ok {
+		return nil, fmt.Errorf("failed to decrypt")
+	}
+	return innerPlaintext, nil
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20) DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error) {
 	if len(ciphertext) < 18 {
@@ -1074,6 +1162,9 @@ func (k *EntitySecretKey_OAQUE_BN256_S20_Master) CanonicalForm(ctx context.Conte
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20_Master) SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error) {
 	return k.canonicalForm, nil
+}
+func (ek *EntitySecretKey_OAQUE_BN256_S20_Master) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
+	return ek.DecryptMessage(ctx, ciphertext)
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20_Master) DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error) {
 	if len(ciphertext) < 18 {
