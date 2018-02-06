@@ -10,29 +10,32 @@ import (
 
 func AttestationBodySchemeFor(ex *asn1.External) AttestationBodyScheme {
 	if ex.OID.Equal(serdes.UnencryptedBodyOID) {
-		return &PlaintextBodyScheme{CanonicalForm: ex}
+		return &PlaintextBodyScheme{}
 	}
 	if ex.OID.Equal(serdes.WR1BodyOID) {
-		return &WR1BodyScheme{CanonicalForm: ex}
+		return &WR1BodyScheme{}
 	}
-	return &UnsupportedBodyScheme{CanonicalForm: ex}
+	return &UnsupportedBodyScheme{}
 }
 
 // plaintext
 var _ AttestationBodyScheme = &PlaintextBodyScheme{}
 
 type PlaintextBodyScheme struct {
-	CanonicalForm *asn1.External
+	//CanonicalForm *asn1.External
 }
 
+func NewPlaintextBodyScheme() *PlaintextBodyScheme {
+	return &PlaintextBodyScheme{}
+}
 func (pt *PlaintextBodyScheme) Supported() bool {
 	return true
 }
-func (pt *PlaintextBodyScheme) DecryptBody(ctx context.Context, dc DecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, err error) {
-	rv := pt.CanonicalForm.Content.(serdes.AttestationBody)
-	return &rv, nil
+func (pt *PlaintextBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
+	rv := canonicalForm.TBS.Body.Content.(serdes.AttestationBody)
+	return &rv, nil, nil
 }
-func (pt *PlaintextBodyScheme) EncryptBody(ctx context.Context, ec EncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
+func (pt *PlaintextBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
 	return intermediateForm, nil
 }
 
@@ -40,70 +43,62 @@ func (pt *PlaintextBodyScheme) EncryptBody(ctx context.Context, ec EncryptionCon
 var _ AttestationBodyScheme = &UnsupportedBodyScheme{}
 
 type UnsupportedBodyScheme struct {
-	CanonicalForm *asn1.External
 }
 
-func (u *UnsupportedBodyScheme) Is(oid asn1.ObjectIdentifier) bool {
-	return u.CanonicalForm.OID.Equal(oid)
-}
 func (u *UnsupportedBodyScheme) Supported() bool {
 	return false
 }
-func (u *UnsupportedBodyScheme) DecryptBody(ctx context.Context, dc DecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, err error) {
-	return nil, fmt.Errorf("body scheme %s is unsupported", u.CanonicalForm.OID.String())
+func (u *UnsupportedBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
+	return nil, nil, fmt.Errorf("body scheme is unsupported")
 }
-func (u *UnsupportedBodyScheme) EncryptBody(ctx context.Context, ec EncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
-	return nil, fmt.Errorf("body scheme %s is unsupported", u.CanonicalForm.OID.String())
+func (u *UnsupportedBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
+	return nil, fmt.Errorf("body scheme is unsupported")
 }
 
 // wr1
 type WR1DecryptionContext interface {
-	WR1VerifierBodyKey(ctx context.Context) AttestationVerifierKeyScheme
+	WR1VerifierBodyKey(ctx context.Context) AttestationVerifierKeySchemeInstance
 	WR1EntityFromHash(ctx context.Context, hash HashScheme) (Entity, error)
-	WR1OAQUEKeysForContent(ctx context.Context, dst HashScheme, slots [][]byte, onResult func(k EntitySecretKeyScheme) bool) error
-	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashScheme, onResult func(k EntitySecretKeyScheme) bool) error
+	WR1OAQUEKeysForContent(ctx context.Context, dst HashScheme, slots [][]byte, onResult func(k EntitySecretKeySchemeInstance) bool) error
+	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashScheme, onResult func(k EntitySecretKeySchemeInstance) bool) error
 }
 type WR1BodyScheme struct {
-	CanonicalForm *asn1.External
 }
 
-func (w *WR1BodyScheme) Is(oid asn1.ObjectIdentifier) bool {
-	return oid.Equal(serdes.WR1BodyOID)
-}
 func (w *WR1BodyScheme) Supported() bool {
 	return true
 }
-func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc DecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, err error) {
-	return nil, fmt.Errorf("body scheme %s is not fully unsupported", w.CanonicalForm.OID.String())
+func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
+	return nil, nil, fmt.Errorf("body scheme is not fully unsupported")
 }
-func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec EncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
-	return nil, fmt.Errorf("body scheme %s is unsupported", w.CanonicalForm.OID.String())
+func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
+	return nil, fmt.Errorf("body scheme is unsupported")
 }
 
 type PSKBodyDecryptionContext interface {
-	GetDecryptPSK(ctx context.Context, dst HashScheme, public EntityKeyScheme, onResult func(k EntitySecretKeyScheme) bool) error
+	GetDecryptPSK(ctx context.Context, dst HashScheme, public EntityKeySchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 }
 type PSKBodyEncryptionContext interface {
-	GetEncryptPSK(ctx context.Context, body *serdes.WaveAttestation, onResult func(k EntitySecretKeyScheme) bool) error
+	GetEncryptPSK(ctx context.Context, body *serdes.WaveAttestation, onResult func(k EntitySecretKeySchemeInstance) bool) error
 }
 type PSKBodyScheme struct {
 	CanonicalForm *asn1.External
 }
 
-func (psk *PSKBodyScheme) Is(oid asn1.ObjectIdentifier) bool {
-	return oid.Equal(serdes.PSKBodySchemeOID)
-}
 func (psk *PSKBodyScheme) Supported() bool {
 	return true
 }
-func (psk *PSKBodyScheme) DecryptBody(ctx context.Context, dc DecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, err error) {
+func (psk *PSKBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
 	ciphertext := canonicalForm.TBS.Body.Content.(serdes.PSKBodyCiphertext)
-	pk := EntityKeySchemeFor(&ciphertext.EncryptedUnder)
+	pk, err := EntityKeySchemeInstanceFor(&ciphertext.EncryptedUnder)
+	if err != nil {
+		return nil, nil, err
+	}
 	subject := HashSchemeFor(canonicalForm.TBS.Subject)
 	pskdc := dc.(PSKBodyDecryptionContext)
 	decodedForm = nil
 	err = fmt.Errorf("no suitable PSK found")
-	pskdc.GetDecryptPSK(ctx, subject, pk, func(k EntitySecretKeyScheme) bool {
+	pskdc.GetDecryptPSK(ctx, subject, pk, func(k EntitySecretKeySchemeInstance) bool {
 		der, serr := k.DecryptMessage(ctx, ciphertext.AttestationBodyCiphetext)
 		if serr == nil {
 			rv := serdes.AttestationBody{}
@@ -124,11 +119,11 @@ func (psk *PSKBodyScheme) DecryptBody(ctx context.Context, dc DecryptionContext,
 	})
 	return
 }
-func (psk *PSKBodyScheme) EncryptBody(ctx context.Context, ec EncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
+func (psk *PSKBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
 	pskec := ec.(PSKBodyEncryptionContext)
 	encryptedForm = nil
 	err = fmt.Errorf("no appropriate PSK found")
-	pskec.GetEncryptPSK(ctx, intermediateForm, func(k EntitySecretKeyScheme) bool {
+	pskec.GetEncryptPSK(ctx, intermediateForm, func(k EntitySecretKeySchemeInstance) bool {
 		ct := serdes.PSKBodyCiphertext{}
 		pub, serr := k.Public()
 		if serr != nil {

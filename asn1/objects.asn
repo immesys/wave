@@ -59,8 +59,9 @@ BEGIN
   AttestationVerifierBody ::= SEQUENCE {
     -- the creator of the DOT
     attester EntityHash,
-    -- the subject of the attestation
-    subject EntityHash,
+    -- the subject of the attestation, in outside...
+    -- subject EntityHash,
+
     -- the policy domain. If omitted, the policy is global. A policy domain
     -- is an Entity that represents the scope of the attestation. The exact
     -- semantics are specific to the scheme, but there may be cross-policy
@@ -364,6 +365,13 @@ BEGIN
     params Params-BN256-IBE,
     id OCTET STRING
   }
+  -- Encapsulates parameters to PBKDF2. Sha3-512 is assumed as the hash function
+  -- in this particular scheme
+  KeyringAESCiphertext ::= SEQUENCE {
+    ciphertext OCTET STRING,
+    salt OCTET STRING,
+    iterations INTEGER
+  }
 
 --------------------------------------------------------------------------------
 -- Universal OIDs
@@ -546,8 +554,8 @@ entity-keyring-scheme OBJECT IDENTIFIER ::= { wave-id 15 }
 plaintext-keyring-id OBJECT IDENTIFIER ::= { entity-keyring-scheme 1 }
 aes128-gcm-pbkdf2 OBJECT IDENTIFIER ::= { entity-keyring-scheme 2 }
 EntityKeyringSchemes TYPE-IDENTIFIER ::= {
-  {EntityKeyring IDENTIFIED BY ed25519-secret-id} |
-  {OCTET STRING IDENTIFIED BY aes128-gcm-pbkdf2},
+  {EntityKeyring IDENTIFIED BY plaintext-keyring-id} |
+  {KeyringAESCiphertext IDENTIFIED BY aes128-gcm-pbkdf2},
   ...
 }
 

@@ -15,7 +15,8 @@ type PNewEntity struct {
 	//If not specified, defaults to Now
 	ValidFrom *time.Time
 	//If not specified defaults to Now+30 days
-	ValidUntil *time.Time
+	ValidUntil                   *time.Time
+	CommitmentRevocationLocation LocationSchemeInstance
 }
 type RNewEntity struct {
 	PublicDER []byte
@@ -47,9 +48,8 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	//add the WR1 keys
 	kr := serdes.EntityKeyring{}
 
-	//Ed25519
-
-	ed25519KE, err := NewEntityKeyScheme(serdes.EntityEd25519OID)
+	//Ed25519 attest/certify
+	ed25519KE, err := NewEntityKeySchemeInstance(serdes.EntityEd25519OID, CapAttestation, CapCertification)
 	if err != nil {
 		return nil, err
 	}
@@ -59,23 +59,22 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	}
 	kr.Keys = append(kr.Keys, *cf)
 
-	//
-	// publicEd25519, privateEd25519, err := ed25519.GenerateKey(rand.Reader)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// ke := serdes.EntityKeyringEntry{
-	// 	Public: serdes.EntityPublicKey{
-	// 		Capabilities: []int{int(CapAttestation), int(CapCertification)},
-	// 		Key:          asn1.NewExternal(serdes.EntityPublicEd25519(publicEd25519)),
-	// 	},
-	// 	Private: asn1.NewExternal(serdes.EntitySecretEd25519(privateEd25519)),
-	// }
-	// kr.Keys = append(kr.Keys, ke)
+	//Ed25519 message signing
+	{
+		ed25519KE, err := NewEntityKeySchemeInstance(serdes.EntityEd25519OID, CapSigning)
+		if err != nil {
+			return nil, err
+		}
+		cf, err := ed25519KE.SecretCanonicalForm(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		kr.Keys = append(kr.Keys, *cf)
+	}
 
 	//Curve25519
 	{
-		curve25519KE, err := NewEntityKeyScheme(serdes.EntityCurve25519OID)
+		curve25519KE, err := NewEntityKeySchemeInstance(serdes.EntityCurve25519OID, CapEncryption)
 		if err != nil {
 			return nil, err
 		}
@@ -85,26 +84,9 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 		}
 		kr.Keys = append(kr.Keys, *cf)
 	}
-	//
-	// {
-	// 	var secret [32]byte
-	// 	_, err = rand.Read(secret[:])
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	var public [32]byte
-	// 	curve25519.ScalarBaseMult(&public, &secret)
-	// 	ke := serdes.EntityKeyringEntry{
-	// 		Public: serdes.EntityPublicKey{
-	// 			Capabilities: []int{int(CapEncryption)},
-	// 			Key:          asn1.NewExternal(serdes.EntityPublicCurve25519(public[:])),
-	// 		},
-	// 		Private: asn1.NewExternal(serdes.EntitySecretCurve25519(secret[:])),
-	// 	}
-	// 	kr.Keys = append(kr.Keys, ke)
-	// }
+	// IBE
 	{
-		ibeKE, err := NewEntityKeyScheme(serdes.EntityIBE_BN256_ParamsOID)
+		ibeKE, err := NewEntityKeySchemeInstance(serdes.EntityIBE_BN256_ParamsOID, CapEncryption)
 		if err != nil {
 			return nil, err
 		}
@@ -114,29 +96,9 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 		}
 		kr.Keys = append(kr.Keys, *cf)
 	}
-	//
-	// //IBE
-	// {
-	// 	params, master := ibe.Setup(rand.Reader)
-	// 	paramsblob, err := params.MarshalBinary()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	masterblob, err := master.MarshalBinary()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	ke := serdes.EntityKeyringEntry{
-	// 		Public: serdes.EntityPublicKey{
-	// 			Capabilities: []int{int(CapEncryption)},
-	// 			Key:          asn1.NewExternal(serdes.EntityParamsIBE_BN256(paramsblob)),
-	// 		},
-	// 		Private: asn1.NewExternal(serdes.EntitySecretMasterIBE_BN256(masterblob)),
-	// 	}
-	// 	kr.Keys = append(kr.Keys, ke)
-	// }
+	// OAQUE
 	{
-		oaqueKE, err := NewEntityKeyScheme(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+		oaqueKE, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID, CapEncryption)
 		if err != nil {
 			return nil, err
 		}
@@ -146,27 +108,7 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 		}
 		kr.Keys = append(kr.Keys, *cf)
 	}
-	//
-	// //OAQUE
-	// {
-	// 	params, master, err := crypto.GenerateOAQUEKeys()
-	// 	paramsblob := params.Marshal()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	masterblob := master.Marshal()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	ke := serdes.EntityKeyringEntry{
-	// 		Public: serdes.EntityPublicKey{
-	// 			Capabilities: []int{int(CapEncryption), int(CapAuthorization)},
-	// 			Key:          asn1.NewExternal(serdes.EntityParamsOQAUE_BN256_s20(paramsblob)),
-	// 		},
-	// 		Private: asn1.NewExternal(serdes.EntitySecretMasterOQAUE_BN256_s20(masterblob)),
-	// 	}
-	// 	kr.Keys = append(kr.Keys, ke)
-	// }
+
 	//Put the keyring into the secret entity object
 	en.Keyring = asn1.NewExternal(kr)
 
@@ -176,8 +118,6 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	}
 	//Put the canonical certification key in
 	en.Entity.TBS.VerifyingKey = kr.Keys[0].Public
-
-	//TODO commitmentrevocation
 
 	//Serialize TBS and sign it
 	der, err := asn1.Marshal(en.Entity.TBS)
@@ -203,6 +143,8 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	//spew.Dump(secretEntity)
 	return &RNewEntity{
 		PublicDER: publicDER,
 		SecretDER: secretDER,
@@ -216,6 +158,41 @@ type RParseEntity struct {
 	Entity *Entity
 }
 
+func parseEntityFromObject(ctx context.Context, en *serdes.WaveEntity) (*Entity, error) {
+
+	//Ok we have an entity object, lets check the signature
+	ks, err := EntityKeySchemeInstanceFor(&en.TBS.VerifyingKey)
+	if err != nil {
+		return nil, err
+	}
+	if !ks.Supported() {
+		return nil, fmt.Errorf("entity uses unsupported key scheme")
+	}
+
+	err = ks.VerifyCertify(ctx, en.TBS.Raw, en.Signature)
+	if err != nil {
+		return nil, fmt.Errorf("entity signature check failed: %v", err)
+	}
+
+	//Entity appears ok, lets unpack it further
+	rv := &Entity{}
+	rv.CanonicalForm = en
+	rv.VerifyingKey = ks
+	//TODO
+	//rv.revocations
+	//TODO
+	//rv.extensions
+
+	for _, key := range en.TBS.Keys {
+		lkey := key
+		ks, err := EntityKeySchemeInstanceFor(&lkey)
+		if err != nil {
+			panic(err)
+		}
+		rv.Keys = append(rv.Keys, ks)
+	}
+	return rv, nil
+}
 func ParseEntity(ctx context.Context, p *PParseEntity) (*RParseEntity, error) {
 	wo := serdes.WaveWireObject{}
 	trailing, err := asn1.Unmarshal(p.DER, &wo.Content)
@@ -229,32 +206,79 @@ func ParseEntity(ctx context.Context, p *PParseEntity) (*RParseEntity, error) {
 	if !ok {
 		return nil, fmt.Errorf("object not an entity")
 	}
-
-	//Ok we have an entity object, lets check the signature
-	ks := EntityKeySchemeFor(&en.TBS.VerifyingKey)
-	if !ks.Supported() {
-		return nil, fmt.Errorf("entity uses unsupported key scheme")
-	}
-
-	err = ks.VerifyCertify(ctx, en.TBS.Raw, en.Signature)
+	rv, err := parseEntityFromObject(ctx, &en)
 	if err != nil {
-		return nil, fmt.Errorf("entity signature check failed: %v", err)
+		return nil, err
 	}
-
-	//Entity appears ok, lets unpack it further
-	rv := &Entity{}
-	rv.canonicalForm = &en
-	rv.verifyingKey = ks
-	//TODO
-	//rv.revocations
-	//TODO
-	//rv.extensions
-
-	for _, key := range en.TBS.Keys {
-		rv.keys = append(rv.keys, EntityKeySchemeFor(&key))
-	}
-
 	return &RParseEntity{
 		Entity: rv,
 	}, nil
+}
+
+type PParseEntitySecrets struct {
+	DER        []byte
+	Passphrase *string
+}
+type RParseEntitySecrets struct {
+	EntitySecrets *EntitySecrets
+}
+
+func ParseEntitySecrets(ctx context.Context, p *PParseEntitySecrets) (*RParseEntitySecrets, error) {
+	wo := serdes.WaveWireObject{}
+	trailing, err := asn1.Unmarshal(p.DER, &wo.Content)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode: %v", err)
+	}
+	if len(trailing) != 0 {
+		return nil, fmt.Errorf("could not decode: trailing content")
+	}
+	es, ok := wo.Content.Content.(serdes.WaveEntitySecret)
+	if !ok {
+		return nil, fmt.Errorf("object not an entity")
+	}
+	en, err := parseEntityFromObject(ctx, &es.Entity)
+	if err != nil {
+		return nil, err
+	}
+	krscheme, err := EntityKeyringSchemeInstanceFor(es.Keyring)
+	if err != nil {
+		return nil, err
+	}
+	if !krscheme.Supported() {
+		return nil, fmt.Errorf("keyring scheme is unsupported")
+	}
+	//Try
+	if _, ok := krscheme.(*AESKeyring); ok && p.Passphrase == nil {
+		return nil, fmt.Errorf("passphrase required")
+	}
+	keyring, err := krscheme.DecryptKeyring(context.Background(), p.Passphrase)
+	if err != nil {
+		return nil, err
+	}
+	rv := EntitySecrets{
+		Entity: en,
+	}
+	for _, key := range keyring.Keys {
+		lkey := key
+		eks, err := EntitySecretKeySchemeInstanceFor(&lkey)
+		if err != nil {
+			return nil, err
+		}
+		rv.Keyring = append(rv.Keyring, eks)
+	}
+
+	return &RParseEntitySecrets{
+		EntitySecrets: &rv,
+	}, nil
+}
+
+func NewParsedEntitySecrets(ctx context.Context, p *PNewEntity) (*RParseEntitySecrets, error) {
+	rn, err := NewEntity(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	rv, err := ParseEntitySecrets(ctx, &PParseEntitySecrets{
+		DER: rn.SecretDER,
+	})
+	return rv, err
 }

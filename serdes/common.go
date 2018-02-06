@@ -53,7 +53,7 @@ var (
 	EntitySecretIBE_BN256OID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 6}
 	EntityKeyringSchemeOID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15}
 	PlaintextKeyringOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 1}
-	AES128_GCM_PBKDF2OID                  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 2}
+	KeyringAES128_GCM_PBKDF2OID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 2}
 )
 
 const CapCertification = 1
@@ -109,6 +109,7 @@ func init() {
 		{WR1EncryptionKey_OAQUE_BN256_s20OID, WR1EncryptionKey_OAQUE_BN256_s20{}},
 		{PlaintextKeyringOID, EntityKeyring{}},
 		{EntitySecretOID, WaveEntitySecret{}},
+		{KeyringAES128_GCM_PBKDF2OID, KeyringAESCiphertext{}},
 		{PSKBodySchemeOID, PSKBodyCiphertext{}},
 	}
 	for _, t := range tpz {

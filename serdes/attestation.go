@@ -24,7 +24,7 @@ type AttestationBody struct {
 
 type AttestationVerifierBody struct {
 	Attester asn1.External //EntityHash
-	Subject  asn1.External //EntityHash
+	//Subject  asn1.External //EntityHash
 	Validity struct {
 		NotBefore time.Time `asn1:"utc"`
 		NotAfter  time.Time `asn1:"utc"`

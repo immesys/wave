@@ -12,7 +12,7 @@ import (
 )
 
 func TestEd25519(t *testing.T) {
-	eks, err := NewEntityKeyScheme(serdes.EntityEd25519OID)
+	eks, err := NewEntityKeySchemeInstance(serdes.EntityEd25519OID, CapCertification)
 	require.NoError(t, err)
 	msg := make([]byte, 32)
 	rand.Read(msg)
@@ -28,22 +28,59 @@ func TestEd25519(t *testing.T) {
 	//verify 2
 	cf, err := pub.CanonicalForm(context.Background())
 	require.NoError(t, err)
-	pub2 := EntityKeySchemeFor(cf)
+	pub2, err := EntityKeySchemeInstanceFor(cf)
+	require.NoError(t, err)
 	err = pub2.VerifyCertify(context.Background(), msg, sig)
 	require.NoError(t, err)
 
 	//verify 3
 	cf2, err := eks.SecretCanonicalForm(context.Background())
 	require.NoError(t, err)
-	eks2 := EntitySecretKeySchemeFor(cf2)
+	eks2, err := EntitySecretKeySchemeInstanceFor(cf2)
+	require.NoError(t, err)
 	pub3, err := eks2.Public()
 	require.NoError(t, err)
 	err = pub3.VerifyCertify(context.Background(), msg, sig)
 	require.NoError(t, err)
 }
 
+func TestEd25519Caps(t *testing.T) {
+	eks, err := NewEntityKeySchemeInstance(serdes.EntityEd25519OID, CapCertification)
+	require.NoError(t, err)
+	msg := make([]byte, 32)
+	rand.Read(msg)
+	sig, err := eks.SignCertify(context.Background(), msg)
+	require.NoError(t, err)
+
+	//verify 1
+	pub, err := eks.Public()
+	require.NoError(t, err)
+	err = pub.VerifyCertify(context.Background(), msg, sig)
+	require.NoError(t, err)
+
+	//verify 2
+	_, err = eks.SignAttestation(context.Background(), msg)
+	require.Error(t, err)
+
+	cf2, err := eks.SecretCanonicalForm(context.Background())
+	require.NoError(t, err)
+	eks2, err := EntitySecretKeySchemeInstanceFor(cf2)
+	require.NoError(t, err)
+	pub3, err := eks2.Public()
+	require.NoError(t, err)
+
+	orig := eks.(*EntitySecretKey_Ed25519).canonicalForm.Public.Capabilities
+	eks.(*EntitySecretKey_Ed25519).canonicalForm.Public.Capabilities = []int{int(CapSigning)}
+	sig2, err := eks.SignMessage(context.Background(), msg)
+	require.NoError(t, err)
+	eks.(*EntitySecretKey_Ed25519).canonicalForm.Public.Capabilities = orig
+	//The signature is correct but it must fail due to caps
+	err = pub3.VerifyMessage(context.Background(), msg, sig2)
+	require.Error(t, err)
+}
+
 func TestCurve25519(t *testing.T) {
-	eks, err := NewEntityKeyScheme(serdes.EntityCurve25519OID)
+	eks, err := NewEntityKeySchemeInstance(serdes.EntityCurve25519OID)
 	require.NoError(t, err)
 
 	pub, err := eks.Public()
@@ -64,13 +101,14 @@ func TestCurve25519(t *testing.T) {
 	cf, err := eks.SecretCanonicalForm(context.Background())
 	require.NoError(t, err)
 	ciphertext[0] ^= 0x80
-	eks2 := EntitySecretKeySchemeFor(cf)
+	eks2, err := EntitySecretKeySchemeInstanceFor(cf)
+	require.NoError(t, err)
 	readback, err = eks2.DecryptMessage(context.Background(), ciphertext)
 	require.NoError(t, err)
 	require.EqualValues(t, msg, readback)
 
-	pub2 := EntityKeySchemeFor(&cf.Public)
-
+	pub2, err := EntityKeySchemeInstanceFor(&cf.Public)
+	require.NoError(t, err)
 	ciphertext2, err := pub2.EncryptMessage(context.Background(), msg)
 	require.NoError(t, err)
 	readback2, err := eks2.DecryptMessage(context.Background(), ciphertext2)
@@ -79,7 +117,7 @@ func TestCurve25519(t *testing.T) {
 }
 
 func TestIBE_BN256(t *testing.T) {
-	master, err := NewEntityKeyScheme(serdes.EntityIBE_BN256_ParamsOID)
+	master, err := NewEntityKeySchemeInstance(serdes.EntityIBE_BN256_ParamsOID)
 	require.NoError(t, err)
 
 	params, err := master.Public()
@@ -100,6 +138,10 @@ func TestIBE_BN256(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, msg, readback)
 
+	readback3, err := master.DecryptMessageAsChild(context.Background(), ciphertext, []byte("foo"))
+	require.NoError(t, err)
+	require.EqualValues(t, msg, readback3)
+
 	ciphertext[3] ^= 0x80
 	readback2, err := childpriv.DecryptMessage(context.Background(), ciphertext)
 	require.Error(t, err)
@@ -114,7 +156,8 @@ func TestIBE_BN256(t *testing.T) {
 	readbackmaster := serdes.EntityKeyringEntry{}
 	_, err = asn1.Unmarshal(masterder, &readbackmaster)
 	require.NoError(t, err)
-	master2 := EntitySecretKeySchemeFor(&readbackmaster)
+	master2, err := EntitySecretKeySchemeInstanceFor(&readbackmaster)
+	require.NoError(t, err)
 	childpriv2, err := master2.GenerateChildSecretKey(context.Background(), []byte("foo"))
 	require.NoError(t, err)
 	plaintext2, err := childpriv2.DecryptMessage(context.Background(), ciphertext)
@@ -129,7 +172,8 @@ func TestIBE_BN256(t *testing.T) {
 	readbackchild := serdes.EntityKeyringEntry{}
 	_, err = asn1.Unmarshal(childer, &readbackchild)
 	require.NoError(t, err)
-	childpriv3 := EntitySecretKeySchemeFor(&readbackchild)
+	childpriv3, err := EntitySecretKeySchemeInstanceFor(&readbackchild)
+	require.NoError(t, err)
 	plaintext3, err := childpriv3.DecryptMessage(context.Background(), ciphertext)
 	require.NoError(t, err)
 	require.EqualValues(t, msg, plaintext3)
@@ -144,7 +188,8 @@ func TestIBE_BN256(t *testing.T) {
 	readbackpub := serdes.EntityPublicKey{}
 	_, err = asn1.Unmarshal(pubder, &readbackpub)
 	require.NoError(t, err)
-	pubeks2 := EntityKeySchemeFor(&readbackpub)
+	pubeks2, err := EntityKeySchemeInstanceFor(&readbackpub)
+	require.NoError(t, err)
 	ciphertext2, err := pubeks2.EncryptMessage(context.Background(), msg)
 	require.NoError(t, err)
 	plaintext4, err := childpriv.DecryptMessage(context.Background(), ciphertext2)
@@ -153,7 +198,7 @@ func TestIBE_BN256(t *testing.T) {
 }
 
 func TestOAQUE(t *testing.T) {
-	master, err := NewEntityKeyScheme(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID)
 	require.NoError(t, err)
 	params, err := master.Public()
 	require.NoError(t, err)
@@ -183,8 +228,55 @@ func TestOAQUE(t *testing.T) {
 	require.EqualValues(t, msg, rb2)
 }
 
+func TestOAQUEKeySchemeFor(t *testing.T) {
+	masterorig, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	require.NoError(t, err)
+	mastercf, err := masterorig.SecretCanonicalForm(context.Background())
+	require.NoError(t, err)
+	master, err := EntitySecretKeySchemeInstanceFor(mastercf)
+	require.NoError(t, err)
+	paramsorig, err := master.Public()
+	require.NoError(t, err)
+	paramscf, err := paramsorig.CanonicalForm(context.Background())
+	require.NoError(t, err)
+	params, err := EntityKeySchemeInstanceFor(paramscf)
+	require.NoError(t, err)
+	_ = params
+
+	slots := make([][]byte, 20)
+	slots[0] = []byte("foo")
+	k1orig, err := master.GenerateChildSecretKey(context.Background(), slots)
+	require.NoError(t, err)
+	k1cf, err := k1orig.SecretCanonicalForm(context.Background())
+	require.NoError(t, err)
+	k1, err := EntitySecretKeySchemeInstanceFor(k1cf)
+	require.NoError(t, err)
+
+	k1puborig, err := k1.Public()
+	require.NoError(t, err)
+	k1pubcf, err := k1puborig.CanonicalForm(context.Background())
+	require.NoError(t, err)
+	k1pub, err := EntityKeySchemeInstanceFor(k1pubcf)
+	require.NoError(t, err)
+
+	msg := make([]byte, 64)
+	rand.Read(msg)
+
+	ciphertext, err := k1pub.EncryptMessage(context.Background(), msg)
+	require.NoError(t, err)
+
+	rb1, err := k1.DecryptMessage(context.Background(), ciphertext)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, rb1)
+
+	// ciphertext2, err := k1pub2.EncryptMessage(context.Background(), msg)
+	// rb2, err := k1.DecryptMessage(context.Background(), ciphertext2)
+	// require.NoError(t, err)
+	// require.EqualValues(t, msg, rb2)
+}
+
 func TestOAQUEDelegation(t *testing.T) {
-	master, err := NewEntityKeyScheme(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID)
 	require.NoError(t, err)
 	//	params, err := master.Public()
 	//	require.NoError(t, err)
