@@ -31,6 +31,8 @@ var _ HashScheme = &HashScheme_Sha3_256{}
 
 type HashScheme_Sha3_256 struct{}
 
+var SHA3 = &HashScheme_Sha3_256{}
+
 func (hs *HashScheme_Sha3_256) Supported() bool {
 	return true
 }
@@ -42,6 +44,8 @@ func (hs *HashScheme_Sha3_256) Instance(ctx context.Context, input []byte) (Hash
 var _ HashScheme = &HashScheme_Keccak_256{}
 
 type HashScheme_Keccak_256 struct{}
+
+var KECCAK256 = &HashScheme_Keccak_256{}
 
 func (hs *HashScheme_Keccak_256) Supported() bool {
 	return true

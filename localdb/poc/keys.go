@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
-	"github.com/immesys/wave/dot"
 	"github.com/immesys/wave/localdb/types"
+	dot "github.com/immesys/wave/olddot"
 	"github.com/immesys/wave/params"
 )
 
@@ -22,7 +22,7 @@ func (p *poc) getPartitionLabelKeyP(ctx context.Context, dst []byte, index int) 
 		return nil, nil
 	}
 	plks := &PLKState{}
-	_, err = plks.UnmarshalMsg(ba)
+	err = unmarshalGob(ba, plks)
 	if err != nil {
 		panic(err)
 	}

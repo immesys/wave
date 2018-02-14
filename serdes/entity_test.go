@@ -163,7 +163,7 @@ func TestAttestationEncode(t *testing.T) {
 	b := AttestationBody{}
 	b.VerifierBody.Attester = asn1.NewExternal(Keccak_256("world"))
 	b.VerifierBody.Policy = asn1.NewExternal(TrustLevel{3})
-	b.VerifierBody.Subject = asn1.NewExternal(subject)
+	//b.VerifierBody.Subject = asn1.NewExternal(subject)
 	b.VerifierBody.Validity.NotAfter = time.Now().Add(50 * time.Minute)
 	b.VerifierBody.Validity.NotBefore = time.Now()
 
@@ -368,7 +368,7 @@ func BenchmarkAttestationEncode(bm *testing.B) {
 		b := AttestationBody{}
 		b.VerifierBody.Attester = asn1.NewExternal(Keccak_256("world"))
 		b.VerifierBody.Policy = asn1.NewExternal(TrustLevel{3})
-		b.VerifierBody.Subject = asn1.NewExternal(subject)
+		//b.VerifierBody.Subject = asn1.NewExternal(subject)
 		b.VerifierBody.Validity.NotAfter = time.Now().Add(50 * time.Minute)
 		b.VerifierBody.Validity.NotBefore = time.Now()
 		//b.ProverPolicyAddendums = append(b.ProverPolicyAddendums, asn1.NewExternal(WR1PartitionKey_OAQUE_BN256_s20("hello")))

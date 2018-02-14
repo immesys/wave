@@ -1,11 +1,13 @@
+// +build ignore
+
 package poc
 
 import (
 	"bytes"
 	"context"
 
-	"github.com/immesys/wave/dot"
 	"github.com/immesys/wave/localdb/types"
+	dot "github.com/immesys/wave/olddot"
 )
 
 func (p *poc) saveDotState(ctx context.Context, ds *DotState) error {

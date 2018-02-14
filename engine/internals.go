@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/immesys/wave/entity"
+	"github.com/immesys/wave/iapi"
 	localdb "github.com/immesys/wave/localdb/types"
 	"github.com/immesys/wave/storage"
 )
@@ -29,7 +29,7 @@ type Engine struct {
 
 	ws          localdb.WaveState
 	st          storage.Storage
-	perspective *entity.Entity
+	perspective *iapi.Entity
 
 	//If a dot enters labelled, it must be tested against all keys
 	//to ensure none of them match before entering labelled.
@@ -57,7 +57,7 @@ type Engine struct {
 	totalCompletedSyncs int64
 }
 
-func NewEngine(ctx context.Context, state localdb.WaveState, bchain storage.Storage, perspective *entity.Entity) (*Engine, error) {
+func NewEngine(ctx context.Context, state localdb.WaveState, bchain storage.Storage, perspective *iapi.Entity) (*Engine, error) {
 	subctx, cancel := context.WithCancel(ctx)
 	var err error
 	rv := Engine{

@@ -1,0 +1,127 @@
+// +build ignore
+
+package types
+
+import (
+	"context"
+)
+
+type Attestation interface{}
+type Entity interface{}
+
+type SecretKey interface{}
+type Hash interface {
+	Value(ctx context.Context) ([]byte, error)
+}
+
+type KeyValue struct {
+	Key   string
+	Value []byte
+}
+type LowLevelStorage interface {
+	//If the key does not exist, return nil value and nil err
+	Load(ctx context.Context, key string) (val []byte, err error)
+	//For both of these functions, you either have to fully consume the value channel,
+	//or cancel the context.
+	LoadPrefix(ctx context.Context, key string) (results chan KeyValue, err chan error)
+	//Values will be nil
+	LoadPrefixKeys(ctx context.Context, key string) (results chan KeyValue, err chan error)
+	Store(ctx context.Context, key string, val []byte) (err error)
+}
+
+type PendingAttestationResult struct {
+	Err         error
+	Attestation Attestation
+	Sha3Hash    []byte
+	//Only for pending without partition
+	LabelKeyIndex *int
+}
+
+type InterestingEntityResult struct {
+	Hash Hash
+	Err  error
+}
+
+// type ReverseLookupResult struct {
+// 	Hash   []byte
+// 	IsDOT  bool
+// 	Attestatopm    *dot.DOT
+// 	Entity *entity.Entity
+// 	Err    error
+// }
+
+type LookupFromResult struct {
+	Attestation Attestation
+	Err         error
+}
+
+type LookupFromFilter struct {
+	Valid     *bool
+	Namespace []byte
+	GlobalNS  *bool
+}
+
+type State struct {
+	ValidActive bool
+	Expired     bool
+	Revoked     bool
+	EntRevoked  bool
+}
+
+type WaveState interface {
+
+	//Perspective functions
+
+	//This is idempotent, an entity in any state other than unknown will
+	//be ignored by this function
+	MoveEntityInterestingP(ctx context.Context, ent Entity) error
+	//This does not return revoked or expired entities, even though the
+	//function above considers them "interesting"
+	GetInterestingEntitiesP(ctx context.Context) chan InterestingEntityResult
+	IsEntityInterestingP(ctx context.Context, hash Hash) (bool, error)
+
+	//The backing data gets populated by the MoveX objects, so this is
+	//can give false negatives. The channel must be consumed completely
+	//or the context cancelled
+	//GetInterestingByRevocationHashP(ctx context.Context, rvkhash []byte) chan ReverseLookupResult
+
+	GetPartitionLabelKeyP(ctx context.Context, subject Hash, index int) (SecretKey, error)
+	InsertPartitionLabelKeyP(ctx context.Context, attester Hash, key SecretKey) (new bool, err error)
+
+	WR1KeysForP(ctx context.Context, subject Hash, slots [][]byte, onResult func(k SecretKey) bool) error
+	//TODO this must be idempotenty, like don't add in a secret if we have a more
+	//powerful one already
+	InsertWR1KeysForP(ctx context.Context, attester Hash, k SecretKey) error
+
+	MoveAttestationPendingP(ctx context.Context, at Attestation, labelKeyIndex int) error
+	//Assume dot already inserted into pending, but update the labelKeyIndex
+	UpdateAttestationPendingP(ctx context.Context, at Attestation, labelKeyIndex int) error
+	MoveAttestationLabelledP(ctx context.Context, at Attestation) error
+	MoveAttestationActiveP(ctx context.Context, at Attestation) error
+	MoveAttestationExpiredP(ctx context.Context, at Attestation) error
+	MoveAttestationEntRevokedP(ctx context.Context, at Attestation) error
+	MoveAttestationMalformedP(ctx context.Context, hash Hash) error
+	GetLabelledAttestationsP(ctx context.Context, subject Hash, partition [][]byte) chan PendingAttestationResult
+	//If possible, only return pending dots with a secret index less than siLT
+	GetPendingAttestationsP(ctx context.Context, subject Hash, lkiLT int) chan PendingAttestationResult
+	GetEntityPartitionLabelKeyIndexP(ctx context.Context, enthash Hash) (bool, int, error)
+	GetAttestationP(ctx context.Context, hash Hash) (at Attestation, err error)
+	GetActiveAttestationsFromP(ctx context.Context, attester Hash, filter *LookupFromFilter) chan LookupFromResult
+	GetEntityAttestationIndexP(ctx context.Context, hsh Hash) (okay bool, dotIndex int, err error)
+	SetEntityAttestationIndexP(ctx context.Context, hsh Hash, dotIndex int) error
+
+	//Global (non perspective) functions
+	MoveEntityRevokedG(ctx context.Context, ent Entity) error
+	MoveEntityExpiredG(ctx context.Context, ent Entity) error
+	MoveAttestationRevokedG(ctx context.Context, at Attestation) error
+
+	//This only returns entities we happen to have because they were interesting
+	//to someone, so the caller must handle a nil,nil result and go hit the chain
+	GetEntityByHashG(ctx context.Context, hsh Hash) (Entity, error)
+}
+
+//TODO
+// wave state is global, the P methods expect a perspective key in the context
+// wave state should not cache anything that requires external cache invalidation
+// wave state will not go to the chain storage if it misses, the caller must
+// handle that and pass the result back down

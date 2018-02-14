@@ -1,9 +1,10 @@
+// +build ignore
+
 package poc
 
 import (
 	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
-	"github.com/immesys/wave/dot"
-	"github.com/immesys/wave/entity"
+	"github.com/immesys/wave/iapi"
 )
 
 //go:generate msgp -io=false -tests=false
@@ -21,22 +22,22 @@ const (
 )
 
 type EntityState struct {
-	Entity           *entity.Entity
+	Entity           *iapi.Entity
 	State            int
 	DotIndex         int
 	MaxLabelKeyIndex int
 }
 
-type DotState struct {
-	Dot           *dot.DOT
+type AttestationState struct {
+	Dot           *iapi.Attestation
 	State         int
 	LabelKeyIndex int
 }
 
-type RevocationState struct {
-	IsEntity   bool
-	TargetHash []byte
-}
+// type RevocationState struct {
+// 	IsEntity   bool
+// 	TargetHash []byte
+// }
 
 type PLKState struct {
 	Slots     [][]byte

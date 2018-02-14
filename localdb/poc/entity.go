@@ -1,3 +1,5 @@
+// +build ignore
+
 package poc
 
 import (
@@ -8,18 +10,18 @@ import (
 	"github.com/immesys/wave/localdb/types"
 )
 
-func (p *poc) addRevocationHash(ctx context.Context, isEntity bool, targetHash []byte, rvkHash []byte) error {
-	rs := &RevocationState{
-		IsEntity:   isEntity,
-		TargetHash: targetHash,
-	}
-	k := p.PKey(ctx, "rvk", ToB64(rvkHash))
-	ba, err := rs.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-	return p.u.Store(ctx, k, ba)
-}
+// func (p *poc) addRevocationHash(ctx context.Context, isEntity bool, targetHash []byte, rvkHash []byte) error {
+// 	rs := &RevocationState{
+// 		IsEntity:   isEntity,
+// 		TargetHash: targetHash,
+// 	}
+// 	k := p.PKey(ctx, "rvk", ToB64(rvkHash))
+// 	ba, err := rs.MarshalMsg(nil)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return p.u.Store(ctx, k, ba)
+// }
 func (p *poc) saveEntityState(ctx context.Context, es *EntityState) error {
 	k := p.PKey(ctx, "entity", ToB64(es.Entity.Hash))
 	ba, err := es.MarshalMsg(nil)

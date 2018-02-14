@@ -2,13 +2,11 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 
-	"github.com/immesys/wave/dot"
 	"github.com/immesys/wave/entity"
+	"github.com/immesys/wave/iapi"
 	localdb "github.com/immesys/wave/localdb/types"
-	"github.com/immesys/wave/storage"
 )
 
 //functions that the engine needs from above
@@ -58,8 +56,8 @@ type Filter struct {
 
 type LookupResult struct {
 	//The dot but also its validity
-	DOT      *dot.DOT
-	Validity *Validity
+	Attestation *iapi.Attestation
+	Validity    *Validity
 }
 
 // received proof:
@@ -118,25 +116,25 @@ func (e *Engine) LookupDOTSFrom(ctx context.Context, entityHash []byte, filter *
 }
 
 type SyncStatus struct {
-	WaitSyncEmpty       chan struct{}
-	CurrentBlock        int64
-	CurrentTime         int64
+	WaitSyncEmpty chan struct{}
+	// CurrentBlock        int64
+	// CurrentTime         int64
 	TotalSyncRequests   int64
 	TotalCompletedSyncs int64
 }
 
 func (e *Engine) SyncStatus(ctx context.Context) (*SyncStatus, error) {
-	si, err := e.st.GetStateInformation(ctx)
-	if err != nil {
-		return nil, err
-	}
+	// si, err := e.st.GetStateInformation(ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	e.totalMutex.Lock()
 	sq := e.totalEqual
 	e.totalMutex.Unlock()
 	return &SyncStatus{
-		WaitSyncEmpty:       sq,
-		CurrentBlock:        si.CurrentBlock,
-		CurrentTime:         si.CurrentTime,
+		WaitSyncEmpty: sq,
+		// CurrentBlock:        si.CurrentBlock,
+		// CurrentTime:         si.CurrentTime,
 		TotalSyncRequests:   atomic.LoadInt64(&e.totalSyncRequests),
 		TotalCompletedSyncs: atomic.LoadInt64(&e.totalCompletedSyncs),
 	}, nil
@@ -164,37 +162,38 @@ func (e *Engine) SubscribeRevocations(ctx context.Context, interesting [][]byte)
 
 //This should try find and decrypt a dot given the hash and aesk. No information from our
 //perspective (active entity) is used
-func (e *Engine) LookupDotNoPerspective(ctx context.Context, hash []byte, aesk []byte, location storage.Location) (*dot.DOT, *Validity, error) {
-	if len(aesk) != dot.AESKeyholeSize {
-		return nil, nil, fmt.Errorf("invalid AES Keyhole parameter")
-	}
-	dotreg, _, err := e.st.RetrieveDOTByHash(ctx, hash, location)
-	if err != nil {
-		return nil, nil, err
-	}
-	if dotreg == nil {
-		return nil, nil, nil
-	}
-	//decode it using aesk
-	dctx := NewEngineDecryptionContext(e, nil)
-	dres, err := dot.DecryptDOTWithAESK(ctx, dotreg.Data, aesk, dctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	if dres.BadOrMalformed {
-		return nil, &Validity{
-			Valid:     false,
-			Malformed: true,
-		}, nil
-	}
-	validity, err := e.CheckDot(ctx, dres.DOT)
-	if err != nil {
-		return nil, nil, err
-	}
-	return dres.DOT, validity, nil
+func (e *Engine) LookupAttestationNoPerspective(ctx context.Context, hash []byte, k iapi.AttestationVerifierKeySchemeInstance, location iapi.LocationSchemeInstance) (*iapi.Attestation, *Validity, error) {
+
+	//REFACTOR if len(aesk) != dot.AESKeyholeSize {
+	//REFACTOR 	return nil, nil, fmt.Errorf("invalid AES Keyhole parameter")
+	//REFACTOR }
+	//REFACTOR dotreg, _, err := e.st.RetrieveDOTByHash(ctx, hash, location)
+	//REFACTOR if err != nil {
+	//REFACTOR 	return nil, nil, err
+	//REFACTOR }
+	//REFACTOR if dotreg == nil {
+	//REFACTOR 	return nil, nil, nil
+	//REFACTOR }
+	//REFACTOR //decode it using aesk
+	//REFACTOR dctx := NewEngineDecryptionContext(e, nil)
+	//REFACTOR dres, err := dot.DecryptDOTWithAESK(ctx, dotreg.Data, aesk, dctx)
+	//REFACTOR if err != nil {
+	//REFACTOR 	return nil, nil, err
+	//REFACTOR }
+	//REFACTOR if dres.BadOrMalformed {
+	//REFACTOR 	return nil, &Validity{
+	//REFACTOR 		Valid:     false,
+	//REFACTOR 		Malformed: true,
+	//REFACTOR 	}, nil
+	//REFACTOR }
+	//REFACTOR validity, err := e.CheckDot(ctx, dres.DOT)
+	//REFACTOR if err != nil {
+	//REFACTOR 	return nil, nil, err
+	//REFACTOR }
+	//REFACTOR return dres.DOT, validity, nil
 }
 
-func (e *Engine) LookupDotInPerspective(ctx context.Context, hash []byte) (*dot.DOT, *Validity, error) {
+func (e *Engine) LookupDotInPerspective(ctx context.Context, hash []byte) (*iapi.Attestation, *Validity, error) {
 	subctx := context.WithValue(ctx, PerspectiveKey, e.perspective)
 	dot, err := e.ws.GetDotP(subctx, hash)
 	if err != nil {
@@ -208,50 +207,51 @@ func (e *Engine) LookupDotInPerspective(ctx context.Context, hash []byte) (*dot.
 }
 
 //Unlike checkDot, this should not touch the DB, it is a read-only operation
-func (e *Engine) CheckDot(ctx context.Context, d *dot.DOT) (*Validity, error) {
-	srcokay, err := e.CheckEntity(ctx, d.SRC)
-	if err != nil {
-		return nil, err
-	}
-	dstokay, err := e.CheckEntity(ctx, d.DST)
-	if err != nil {
-		return nil, err
-	}
-	expired, err := d.Expired()
-	if err != nil {
-		return nil, err
-	}
-	revoked, err := e.IsRevoked(e.ctx, d.PlaintextHeader.RevocationHash)
-	if err != nil {
-		return nil, err
-	}
+func (e *Engine) CheckDot(ctx context.Context, d *iapi.Attestation) (*Validity, error) {
+	panic("ni")
+	//REFACTOR srcokay, err := e.CheckEntity(ctx, d.SRC)
+	//REFACTOR if err != nil {
+	//REFACTOR 	return nil, err
+	//REFACTOR }
+	//REFACTOR dstokay, err := e.CheckEntity(ctx, d.DST)
+	//REFACTOR if err != nil {
+	//REFACTOR 	return nil, err
+	//REFACTOR }
+	//REFACTOR expired, err := d.Expired()
+	//REFACTOR if err != nil {
+	//REFACTOR 	return nil, err
+	//REFACTOR }
+	//REFACTOR revoked, err := e.IsRevoked(e.ctx, d.PlaintextHeader.RevocationHash)
+	//REFACTOR if err != nil {
+	//REFACTOR 	return nil, err
+	//REFACTOR }
 
-	if !srcokay.Valid {
-		return &Validity{
-			Valid:      false,
-			SrcInvalid: true,
-		}, nil
-	}
-	if !dstokay.Valid {
-		return &Validity{
-			Valid:      false,
-			DstInvalid: true,
-		}, nil
-	}
+	//REFACTOR if !srcokay.Valid {
+	//REFACTOR 	return &Validity{
+	//REFACTOR 		Valid:      false,
+	//REFACTOR 		SrcInvalid: true,
+	//REFACTOR 	}, nil
+	//REFACTOR }
+	//REFACTOR if !dstokay.Valid {
+	//REFACTOR 	return &Validity{
+	//REFACTOR 		Valid:      false,
+	//REFACTOR 		DstInvalid: true,
+	//REFACTOR 	}, nil
+	//REFACTOR }
 
-	if revoked {
-		return &Validity{
-			Valid:   false,
-			Revoked: true,
-		}, nil
-	}
-	if expired {
-		return &Validity{
-			Valid:   false,
-			Expired: true,
-		}, nil
-	}
-	return &Validity{Valid: true}, nil
+	//REFACTOR if revoked {
+	//REFACTOR 	return &Validity{
+	//REFACTOR 		Valid:   false,
+	//REFACTOR 		Revoked: true,
+	//REFACTOR 	}, nil
+	//REFACTOR }
+	//REFACTOR if expired {
+	//REFACTOR 	return &Validity{
+	//REFACTOR 		Valid:   false,
+	//REFACTOR 		Expired: true,
+	//REFACTOR 	}, nil
+	//REFACTOR }
+	//REFACTOR return &Validity{Valid: true}, nil
 }
 func (e *Engine) CheckEntity(ctx context.Context, ent *entity.Entity) (*Validity, error) {
 	if ent.Expired() {

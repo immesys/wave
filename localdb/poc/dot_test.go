@@ -1,10 +1,12 @@
+// +build ignore
+
 package poc
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/immesys/wave/entity"
+	entity "github.com/immesys/wave/nentity"
 	"github.com/immesys/wave/params"
 )
 

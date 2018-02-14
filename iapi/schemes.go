@@ -20,7 +20,7 @@ type RevocationScheme interface {
 type BodyDecryptionContext interface {
 }
 type BodyEncryptionContext interface {
-	EntityFromHash(ctx context.Context, hash HashScheme) (Entity, error)
+	//EntityFromHash(ctx context.Context, hash HashScheme) (Entity, error)
 }
 type AttestationBodyScheme interface {
 	Scheme
