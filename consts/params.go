@@ -1,4 +1,4 @@
-package params
+package consts
 
 //The oaque keys are used for the
 //pdots, and for namespace E2EE
@@ -13,6 +13,6 @@ const OidPrefix = "2.25.45143053631457624761134634438852551742"
 const OidEntity = "2.25.45143053631457624761134634438852551742.1"
 const OidDot = "2.25.45143053631457624761134634438852551742.2"
 
-type engineContextKey string
+type constContextKey string
 
-var PerspectiveKey engineContextKey = "perspective"
+var PerspectiveKey constContextKey = "perspective"

@@ -7,8 +7,8 @@ import (
 	"encoding/gob"
 	"strings"
 
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
-	"github.com/immesys/wave/params"
 )
 
 type poc struct {
@@ -39,7 +39,7 @@ func split(s string) []string {
 }
 
 func (p *poc) PKey(ctx context.Context, stuff ...string) string {
-	perspective := ctx.Value(params.PerspectiveKey)
+	perspective := ctx.Value(consts.PerspectiveKey)
 	//Do it as hex to ensure we can use "/" as a separator
 	//for the sake of a perspective key it is ok to have only one type of hash
 	hshi, err := perspective.(*iapi.EntitySecrets).Entity.Hash(ctx, iapi.KECCAK256)

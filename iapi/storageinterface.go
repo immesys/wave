@@ -1,0 +1,72 @@
+package iapi
+
+import (
+	"context"
+	"errors"
+)
+
+type StorageDriverCharacteristics struct {
+	//In WAVE a perspective is a particular view of the global graph that
+	//is defined by a perspective entity. If the storage provider requires
+	//a distinct instantiation per perspective, set this to true. Regardless
+	//of this setting, the perspective entity is available via
+	//  ctx.Value(consts.PerspectiveKey).(*iapi.EntitySecrets)
+	// default is False
+	PerspectiveDependant *bool
+
+	// When generating the default config file for the user,
+	// what are the default config options
+	DefaultConfiguration map[string]string
+
+	// If there is no specific hash scheme (the provider is agnostic)
+	// then leave this nil
+	PreferredHashScheme HashScheme
+}
+
+//Should be returned by Get if the object is not found
+var ErrObjectNotFound = errors.New("object not found")
+
+//Should be returned by any of the four main functions if not implemented
+var ErrNotImplemented = errors.New("not implemented")
+
+//Should be returned by IterateQueue if there are no more entries
+var ErrNoMore = errors.New("no more")
+
+type StorageDriverInterface interface {
+
+	// //This will be called on nil, the storage should return its static
+	// //characteristics which will be used by the aggregate storage driver
+	// //layer to work out how to interface with this provider
+	// Characteristics() *StorageDriverCharacteristics
+
+	//This will be called on a specific instantiation of the driver to
+	//work out which storage requests to route its way
+	Location(context.Context) LocationSchemeInstance
+
+	//Given a set of key/value options from the user's configuration file,
+	//create an instance of this storage driver. Initialize will be called
+	//on an empty struct instance (e.g (&MyStorage{}).Initialize(cfg))
+	Initialize(ctx context.Context, config map[string]string) error
+
+	//Retrieve the status of this storage driver (ready for use etc)
+	//You should only return an error on context timeout, any other
+	//error is probably indicative of an non-operational status and should be
+	//returned as such
+	Status(ctx context.Context) (operational bool, info map[string]string, err error)
+
+	//Put the given object into storage. This does not queue any notifications
+	//It should return the Hash of the object using the providers preferred
+	//hash scheme. It should only return when the object
+	Put(ctx context.Context, content []byte) (HashSchemeInstance, error)
+
+	//Get the given object from storage. A nonexistant object should return
+	//ErrObjectNotFound.
+	Get(ctx context.Context, hash HashSchemeInstance) (content []byte, err error)
+
+	//Place the given object into the given queue.
+	Enqueue(ctx context.Context, queueId HashSchemeInstance, object HashSchemeInstance) error
+
+	//Iterate over the given queue. Returns nil, "", ErrNoMore if there are no more
+	//entries. Must accept "" as iteratorToken to mean the first entry
+	IterateQueue(ctx context.Context, queueId HashSchemeInstance, iteratorToken string) (object HashSchemeInstance, nextToken string, err error)
+}
