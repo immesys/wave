@@ -69,11 +69,11 @@ func TestEd25519Caps(t *testing.T) {
 	pub3, err := eks2.Public()
 	require.NoError(t, err)
 
-	orig := eks.(*EntitySecretKey_Ed25519).canonicalForm.Public.Capabilities
-	eks.(*EntitySecretKey_Ed25519).canonicalForm.Public.Capabilities = []int{int(CapSigning)}
+	orig := eks.(*EntitySecretKey_Ed25519).SerdesForm.Public.Capabilities
+	eks.(*EntitySecretKey_Ed25519).SerdesForm.Public.Capabilities = []int{int(CapSigning)}
 	sig2, err := eks.SignMessage(context.Background(), msg)
 	require.NoError(t, err)
-	eks.(*EntitySecretKey_Ed25519).canonicalForm.Public.Capabilities = orig
+	eks.(*EntitySecretKey_Ed25519).SerdesForm.Public.Capabilities = orig
 	//The signature is correct but it must fail due to caps
 	err = pub3.VerifyMessage(context.Background(), msg, sig2)
 	require.Error(t, err)

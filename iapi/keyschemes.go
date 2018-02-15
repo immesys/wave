@@ -42,20 +42,20 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 	switch {
 	case e.Key.OID.Equal(serdes.EntityEd25519OID):
 		return &EntityKey_Ed25519{
-			canonicalForm: e,
-			PublicKey:     ed25519.PublicKey(e.Key.Content.(serdes.EntityPublicEd25519)),
+			SerdesForm: e,
+			PublicKey:  ed25519.PublicKey(e.Key.Content.(serdes.EntityPublicEd25519)),
 		}, nil
 	case e.Key.OID.Equal(serdes.EntityCurve25519OID):
 		ba := [32]byte{}
 		copy(ba[:], e.Key.Content.(serdes.EntityPublicCurve25519))
 		return &EntityKey_Curve25519{
-			canonicalForm: e,
-			PublicKey:     ba,
+			SerdesForm: e,
+			PublicKey:  ba,
 		}, nil
 	case e.Key.OID.Equal(serdes.EntityIBE_BN256_ParamsOID):
 		rv := &EntityKey_IBE_Params_BN256{
-			canonicalForm: e,
-			PublicKey:     &ibe.MasterPublicKey{},
+			SerdesForm: e,
+			PublicKey:  &ibe.MasterPublicKey{},
 		}
 		err := rv.PublicKey.UnmarshalBinary(e.Key.Content.(serdes.EntityParamsIBE_BN256))
 		if err != nil {
@@ -64,8 +64,8 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 		return rv, nil
 	case e.Key.OID.Equal(serdes.EntityIBE_BN256_PublicOID):
 		rv := &EntityKey_IBE_BN256{
-			canonicalForm: e,
-			Params:        &ibe.MasterPublicKey{},
+			SerdesForm: e,
+			Params:     &ibe.MasterPublicKey{},
 		}
 		obj := e.Key.Content.(serdes.EntityPublicIBE_BN256)
 		rv.ID = obj.ID
@@ -76,8 +76,8 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 		return rv, nil
 	case e.Key.OID.Equal(serdes.EntityOAQUE_BN256_S20_ParamsOID):
 		rv := &EntityKey_OAQUE_BN256_S20_Params{
-			canonicalForm: e,
-			Params:        &oaque.Params{},
+			SerdesForm: e,
+			Params:     &oaque.Params{},
 		}
 		blob := e.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20)
 		ok := rv.Params.Unmarshal(blob)
@@ -87,8 +87,8 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 		return rv, nil
 	case e.Key.OID.Equal(serdes.EntityOAQUE_BN256_S20_AttributeSetOID):
 		rv := &EntityKey_OAQUE_BN256_S20{
-			canonicalForm: e,
-			Params:        &oaque.Params{},
+			SerdesForm: e,
+			Params:     &oaque.Params{},
 		}
 		obj := e.Key.Content.(serdes.EntityPublicOAQUE_BN256_s20)
 		rv.AttributeSet = obj.AttributeSet
@@ -98,15 +98,15 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 		}
 		return rv, nil
 	}
-	return &UnsupportedKeyScheme{canonicalForm: e}, nil
+	return &UnsupportedKeyScheme{SerdesForm: e}, nil
 }
 func EntitySecretKeySchemeInstanceFor(e *serdes.EntityKeyringEntry) (EntitySecretKeySchemeInstance, error) {
 	switch {
 	case e.Private.OID.Equal(serdes.EntitySecretEd25519OID):
 		return &EntitySecretKey_Ed25519{
-			canonicalForm: e,
-			PublicKey:     ed25519.PublicKey(e.Public.Key.Content.(serdes.EntityPublicEd25519)),
-			PrivateKey:    ed25519.PrivateKey(e.Private.Content.(serdes.EntitySecretEd25519)),
+			SerdesForm: e,
+			PublicKey:  ed25519.PublicKey(e.Public.Key.Content.(serdes.EntityPublicEd25519)),
+			PrivateKey: ed25519.PrivateKey(e.Private.Content.(serdes.EntitySecretEd25519)),
 		}, nil
 	case e.Private.OID.Equal(serdes.EntitySecretCurve25519OID):
 		pub := [32]byte{}
@@ -114,9 +114,9 @@ func EntitySecretKeySchemeInstanceFor(e *serdes.EntityKeyringEntry) (EntitySecre
 		copy(pub[:], e.Public.Key.Content.(serdes.EntityPublicCurve25519))
 		copy(prv[:], e.Private.Content.(serdes.EntitySecretCurve25519))
 		return &EntitySecretKey_Curve25519{
-			canonicalForm: e,
-			PublicKey:     pub,
-			PrivateKey:    prv,
+			SerdesForm: e,
+			PublicKey:  pub,
+			PrivateKey: prv,
 		}, nil
 	case e.Private.OID.Equal(serdes.EntitySecretIBE_BN256_MasterOID):
 		mk := ibe.MasterPrivateKey{}
@@ -130,9 +130,9 @@ func EntitySecretKeySchemeInstanceFor(e *serdes.EntityKeyringEntry) (EntitySecre
 			return nil, err
 		}
 		return &EntitySecretKey_IBE_Master_BN256{
-			canonicalForm: e,
-			PublicKey:     &params,
-			PrivateKey:    &mk,
+			SerdesForm: e,
+			PublicKey:  &params,
+			PrivateKey: &mk,
 		}, nil
 	case e.Private.OID.Equal(serdes.EntitySecretIBE_BN256OID):
 		obj := e.Public.Key.Content.(serdes.EntityPublicIBE_BN256)
@@ -147,10 +147,10 @@ func EntitySecretKeySchemeInstanceFor(e *serdes.EntityKeyringEntry) (EntitySecre
 			return nil, err
 		}
 		return &EntitySecretKey_IBE_BN256{
-			canonicalForm: e,
-			Params:        &params,
-			PrivateKey:    &priv,
-			ID:            obj.ID,
+			SerdesForm: e,
+			Params:     &params,
+			PrivateKey: &priv,
+			ID:         obj.ID,
 		}, nil
 	case e.Private.OID.Equal(serdes.EntitySecretOAQUE_BN256_S20OID):
 		obj := e.Public.Key.Content.(serdes.EntityPublicOAQUE_BN256_s20)
@@ -165,10 +165,10 @@ func EntitySecretKeySchemeInstanceFor(e *serdes.EntityKeyringEntry) (EntitySecre
 			return nil, fmt.Errorf("cannot unmarshal oaque params")
 		}
 		return &EntitySecretKey_OAQUE_BN256_S20{
-			canonicalForm: e,
-			Params:        &params,
-			PrivateKey:    &priv,
-			AttributeSet:  obj.AttributeSet,
+			SerdesForm:   e,
+			Params:       &params,
+			PrivateKey:   &priv,
+			AttributeSet: obj.AttributeSet,
 		}, nil
 	case e.Private.OID.Equal(serdes.EntitySecretOAQUE_BN256_S20_MasterOID):
 		mk := oaque.MasterKey{}
@@ -183,12 +183,12 @@ func EntitySecretKeySchemeInstanceFor(e *serdes.EntityKeyringEntry) (EntitySecre
 			return nil, fmt.Errorf("cannot unmarshal oaque master")
 		}
 		return &EntitySecretKey_OAQUE_BN256_S20_Master{
-			canonicalForm: e,
-			Params:        &params,
-			PrivateKey:    &mk,
+			SerdesForm: e,
+			Params:     &params,
+			PrivateKey: &mk,
 		}, nil
 	}
-	return &UnsupportedSecretKeyScheme{canonicalForm: e}, nil
+	return &UnsupportedSecretKeyScheme{SerdesForm: e}, nil
 }
 func NewEntityKeySchemeInstance(oid asn1.ObjectIdentifier, capabilities ...Capability) (EntitySecretKeySchemeInstance, error) {
 	checkcap := func(expected ...Capability) ([]int, error) {
@@ -225,7 +225,7 @@ func NewEntityKeySchemeInstance(oid asn1.ObjectIdentifier, capabilities ...Capab
 			},
 			Private: asn1.NewExternal(serdes.EntitySecretEd25519(privateEd25519)),
 		}
-		return &EntitySecretKey_Ed25519{canonicalForm: &ke,
+		return &EntitySecretKey_Ed25519{SerdesForm: &ke,
 			PublicKey:  publicEd25519,
 			PrivateKey: privateEd25519}, nil
 	case oid.Equal(serdes.EntityCurve25519OID):
@@ -247,7 +247,7 @@ func NewEntityKeySchemeInstance(oid asn1.ObjectIdentifier, capabilities ...Capab
 			},
 			Private: asn1.NewExternal(serdes.EntitySecretCurve25519(secret[:])),
 		}
-		return &EntitySecretKey_Curve25519{canonicalForm: &ke,
+		return &EntitySecretKey_Curve25519{SerdesForm: &ke,
 			PublicKey:  public,
 			PrivateKey: secret}, nil
 	case oid.Equal(serdes.EntityIBE_BN256_ParamsOID):
@@ -272,9 +272,9 @@ func NewEntityKeySchemeInstance(oid asn1.ObjectIdentifier, capabilities ...Capab
 			Private: asn1.NewExternal(serdes.EntitySecretMasterIBE_BN256(masterblob)),
 		}
 		return &EntitySecretKey_IBE_Master_BN256{
-			canonicalForm: &ke,
-			PrivateKey:    master,
-			PublicKey:     params,
+			SerdesForm: &ke,
+			PrivateKey: master,
+			PublicKey:  params,
 		}, nil
 
 	case oid.Equal(serdes.EntityOAQUE_BN256_S20_ParamsOID):
@@ -299,9 +299,9 @@ func NewEntityKeySchemeInstance(oid asn1.ObjectIdentifier, capabilities ...Capab
 			Private: asn1.NewExternal(serdes.EntitySecretMasterOQAUE_BN256_s20(masterblob)),
 		}
 		return &EntitySecretKey_OAQUE_BN256_S20_Master{
-			canonicalForm: &ke,
-			Params:        params,
-			PrivateKey:    master,
+			SerdesForm: &ke,
+			Params:     params,
+			PrivateKey: master,
 		}, nil
 	}
 	return nil, fmt.Errorf("unknown key scheme")
@@ -310,17 +310,17 @@ func NewEntityKeySchemeInstance(oid asn1.ObjectIdentifier, capabilities ...Capab
 var _ EntityKeySchemeInstance = &UnsupportedKeyScheme{}
 
 type UnsupportedKeyScheme struct {
-	canonicalForm *serdes.EntityPublicKey
+	SerdesForm *serdes.EntityPublicKey
 }
 
 func (k *UnsupportedKeyScheme) Supported() bool {
 	return false
 }
 func (k *UnsupportedKeyScheme) IdentifyingBlob(ctx context.Context) (string, error) {
-	return "", fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Key.OID.String())
+	return "", fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Key.OID.String())
 }
 func (k *UnsupportedKeyScheme) HasCapability(c Capability) bool {
-	for _, has := range k.canonicalForm.Capabilities {
+	for _, has := range k.SerdesForm.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -328,29 +328,29 @@ func (k *UnsupportedKeyScheme) HasCapability(c Capability) bool {
 	return false
 }
 func (k *UnsupportedKeyScheme) VerifyCertify(ctx context.Context, data []byte, signature []byte) error {
-	return fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Key.OID.String())
+	return fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Key.OID.String())
 }
 func (k *UnsupportedKeyScheme) VerifyAttestation(ctx context.Context, data []byte, signature []byte) error {
-	return fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Key.OID.String())
+	return fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Key.OID.String())
 }
 func (k *UnsupportedKeyScheme) VerifyMessage(ctx context.Context, data []byte, signature []byte) error {
-	return fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Key.OID.String())
+	return fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Key.OID.String())
 }
 func (k *UnsupportedKeyScheme) GenerateChildKey(ctx context.Context, identity interface{}) (EntityKeySchemeInstance, error) {
-	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Key.OID.String())
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Key.OID.String())
 }
 func (k *UnsupportedKeyScheme) EncryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error) {
-	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Key.OID.String())
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Key.OID.String())
 }
 func (k *UnsupportedKeyScheme) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return k.canonicalForm, nil
+	return k.SerdesForm, nil
 }
 
 var _ EntityKeySchemeInstance = &EntityKey_Ed25519{}
 
 type EntityKey_Ed25519 struct {
-	canonicalForm *serdes.EntityPublicKey
-	PublicKey     ed25519.PublicKey
+	SerdesForm *serdes.EntityPublicKey
+	PublicKey  ed25519.PublicKey
 }
 
 func (ek *EntityKey_Ed25519) IdentifyingBlob(ctx context.Context) (string, error) {
@@ -360,7 +360,7 @@ func (ek *EntityKey_Ed25519) Supported() bool {
 	return true
 }
 func (ek *EntityKey_Ed25519) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Capabilities {
+	for _, has := range ek.SerdesForm.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -401,19 +401,19 @@ func (ek *EntityKey_Ed25519) EncryptMessage(ctx context.Context, data []byte) ([
 	return nil, fmt.Errorf("this key cannot perform encryption")
 }
 func (ek *EntityKey_Ed25519) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return ek.canonicalForm, nil
+	return ek.SerdesForm, nil
 }
 
 var _ EntitySecretKeySchemeInstance = &EntitySecretKey_Ed25519{}
 
 type EntitySecretKey_Ed25519 struct {
-	canonicalForm *serdes.EntityKeyringEntry
-	PublicKey     ed25519.PublicKey
-	PrivateKey    ed25519.PrivateKey
+	SerdesForm *serdes.EntityKeyringEntry
+	PublicKey  ed25519.PublicKey
+	PrivateKey ed25519.PrivateKey
 }
 
 func (ek *EntitySecretKey_Ed25519) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Public.Capabilities {
+	for _, has := range ek.SerdesForm.Public.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -421,10 +421,10 @@ func (ek *EntitySecretKey_Ed25519) HasCapability(c Capability) bool {
 	return false
 }
 func (ek *EntitySecretKey_Ed25519) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return &ek.canonicalForm.Public, nil
+	return &ek.SerdesForm.Public, nil
 }
 func (ek *EntitySecretKey_Ed25519) SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error) {
-	return ek.canonicalForm, nil
+	return ek.SerdesForm, nil
 }
 func (ek *EntitySecretKey_Ed25519) DecryptMessage(ctx context.Context, data []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot perform encryption")
@@ -440,12 +440,12 @@ func (ek *EntitySecretKey_Ed25519) Equal(rhs EntitySecretKeySchemeInstance) bool
 	if !ok {
 		return false
 	}
-	return bytes.Equal(ek.canonicalForm.Private.Bytes, ekrhs.canonicalForm.Private.Bytes)
+	return bytes.Equal(ek.SerdesForm.Private.Bytes, ekrhs.SerdesForm.Private.Bytes)
 }
 func (ek *EntitySecretKey_Ed25519) Public() (EntityKeySchemeInstance, error) {
 	return &EntityKey_Ed25519{
-		canonicalForm: &ek.canonicalForm.Public,
-		PublicKey:     ek.PublicKey,
+		SerdesForm: &ek.SerdesForm.Public,
+		PublicKey:  ek.PublicKey,
 	}, nil
 }
 
@@ -476,8 +476,8 @@ func (ek *EntitySecretKey_Ed25519) SignAttestation(ctx context.Context, content 
 var _ EntityKeySchemeInstance = &EntityKey_Curve25519{}
 
 type EntityKey_Curve25519 struct {
-	canonicalForm *serdes.EntityPublicKey
-	PublicKey     [32]byte
+	SerdesForm *serdes.EntityPublicKey
+	PublicKey  [32]byte
 }
 
 func (ek *EntityKey_Curve25519) IdentifyingBlob(ctx context.Context) (string, error) {
@@ -487,7 +487,7 @@ func (ek *EntityKey_Curve25519) Supported() bool {
 	return true
 }
 func (ek *EntityKey_Curve25519) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Capabilities {
+	for _, has := range ek.SerdesForm.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -537,19 +537,19 @@ func (ek *EntityKey_Curve25519) EncryptMessage(ctx context.Context, data []byte)
 	return rv, nil
 }
 func (ek *EntityKey_Curve25519) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return ek.canonicalForm, nil
+	return ek.SerdesForm, nil
 }
 
 var _ EntitySecretKeySchemeInstance = &EntitySecretKey_Curve25519{}
 
 type EntitySecretKey_Curve25519 struct {
-	canonicalForm *serdes.EntityKeyringEntry
-	PrivateKey    [32]byte
-	PublicKey     [32]byte
+	SerdesForm *serdes.EntityKeyringEntry
+	PrivateKey [32]byte
+	PublicKey  [32]byte
 }
 
 func (ek *EntitySecretKey_Curve25519) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Public.Capabilities {
+	for _, has := range ek.SerdesForm.Public.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -557,10 +557,10 @@ func (ek *EntitySecretKey_Curve25519) HasCapability(c Capability) bool {
 	return false
 }
 func (ek *EntitySecretKey_Curve25519) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return &ek.canonicalForm.Public, nil
+	return &ek.SerdesForm.Public, nil
 }
 func (ek *EntitySecretKey_Curve25519) SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error) {
-	return ek.canonicalForm, nil
+	return ek.SerdesForm, nil
 }
 func (ek *EntitySecretKey_Curve25519) DecryptMessage(ctx context.Context, data []byte) ([]byte, error) {
 	ephemeral_public_key := [32]byte{}
@@ -593,15 +593,15 @@ func (ek *EntitySecretKey_Curve25519) Equal(rhs EntitySecretKeySchemeInstance) b
 	if !ok {
 		return false
 	}
-	return bytes.Equal(ek.canonicalForm.Private.Bytes, ekrhs.canonicalForm.Private.Bytes)
+	return bytes.Equal(ek.SerdesForm.Private.Bytes, ekrhs.SerdesForm.Private.Bytes)
 }
 func (ek *EntitySecretKey_Curve25519) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
 }
 func (ek *EntitySecretKey_Curve25519) Public() (EntityKeySchemeInstance, error) {
 	return &EntityKey_Curve25519{
-		canonicalForm: &ek.canonicalForm.Public,
-		PublicKey:     ek.PublicKey,
+		SerdesForm: &ek.SerdesForm.Public,
+		PublicKey:  ek.PublicKey,
 	}, nil
 }
 func (ek *EntitySecretKey_Curve25519) SignMessage(ctx context.Context, content []byte) ([]byte, error) {
@@ -617,11 +617,11 @@ func (ek *EntitySecretKey_Curve25519) SignAttestation(ctx context.Context, conte
 var _ EntitySecretKeySchemeInstance = &UnsupportedSecretKeyScheme{}
 
 type UnsupportedSecretKeyScheme struct {
-	canonicalForm *serdes.EntityKeyringEntry
+	SerdesForm *serdes.EntityKeyringEntry
 }
 
 func (ek *UnsupportedSecretKeyScheme) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Public.Capabilities {
+	for _, has := range ek.SerdesForm.Public.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -629,41 +629,41 @@ func (ek *UnsupportedSecretKeyScheme) HasCapability(c Capability) bool {
 	return false
 }
 func (k *UnsupportedSecretKeyScheme) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return &k.canonicalForm.Public, nil
+	return &k.SerdesForm.Public, nil
 }
 func (k *UnsupportedSecretKeyScheme) SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error) {
-	return k.canonicalForm, nil
+	return k.SerdesForm, nil
 }
 func (k *UnsupportedSecretKeyScheme) DecryptMessage(ctx context.Context, data []byte) ([]byte, error) {
-	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Private.OID.String())
 }
 func (k *UnsupportedSecretKeyScheme) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
-	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Private.OID.String())
 }
 func (k *UnsupportedSecretKeyScheme) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
-	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Private.OID.String())
 }
 func (k *UnsupportedSecretKeyScheme) Public() (EntityKeySchemeInstance, error) {
-	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Private.OID.String())
 }
 func (k *UnsupportedSecretKeyScheme) Equal(rhs EntitySecretKeySchemeInstance) bool {
 	return false
 }
 func (k *UnsupportedSecretKeyScheme) SignMessage(ctx context.Context, content []byte) ([]byte, error) {
-	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Private.OID.String())
 }
 func (k *UnsupportedSecretKeyScheme) SignCertify(ctx context.Context, content []byte) ([]byte, error) {
-	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Private.OID.String())
 }
 func (k *UnsupportedSecretKeyScheme) SignAttestation(ctx context.Context, content []byte) ([]byte, error) {
-	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
+	return nil, fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Private.OID.String())
 }
 
 var _ EntityKeySchemeInstance = &EntityKey_IBE_Params_BN256{}
 
 type EntityKey_IBE_Params_BN256 struct {
-	canonicalForm *serdes.EntityPublicKey
-	PublicKey     *ibe.MasterPublicKey
+	SerdesForm *serdes.EntityPublicKey
+	PublicKey  *ibe.MasterPublicKey
 }
 
 func (ek *EntityKey_IBE_Params_BN256) IdentifyingBlob(ctx context.Context) (string, error) {
@@ -677,7 +677,7 @@ func (ek *EntityKey_IBE_Params_BN256) Supported() bool {
 	return true
 }
 func (ek *EntityKey_IBE_Params_BN256) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Capabilities {
+	for _, has := range ek.SerdesForm.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -696,15 +696,15 @@ func (k *EntityKey_IBE_Params_BN256) GenerateChildKey(ctx context.Context, ident
 		return nil, fmt.Errorf("only []byte identities are supported")
 	}
 	ch := serdes.EntityPublicIBE_BN256{
-		Params: k.canonicalForm.Key.Content.(serdes.EntityParamsIBE_BN256),
+		Params: k.SerdesForm.Key.Content.(serdes.EntityParamsIBE_BN256),
 		ID:     id,
 	}
 	cf := serdes.EntityPublicKey{
 		//The child key inherits the capabilities from the parent
-		Capabilities: k.canonicalForm.Capabilities,
+		Capabilities: k.SerdesForm.Capabilities,
 		Key:          asn1.NewExternal(ch),
 	}
-	return &EntityKey_IBE_BN256{canonicalForm: &cf, Params: k.PublicKey, ID: id}, nil
+	return &EntityKey_IBE_BN256{SerdesForm: &cf, Params: k.PublicKey, ID: id}, nil
 }
 func (ek *EntityKey_IBE_Params_BN256) VerifyMessage(ctx context.Context, data []byte, signature []byte) error {
 	return fmt.Errorf("this key cannot perform signing")
@@ -713,19 +713,58 @@ func (ek *EntityKey_IBE_Params_BN256) EncryptMessage(ctx context.Context, data [
 	return nil, fmt.Errorf("this key cannot perform encryption")
 }
 func (ek *EntityKey_IBE_Params_BN256) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return ek.canonicalForm, nil
+	return ek.SerdesForm, nil
+}
+
+func (ek *EntityKey_IBE_Params_BN256) GobEncode() ([]byte, error) {
+	pubkey, err := ek.PublicKey.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	err = enc.Encode(ek.SerdesForm)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(pubkey)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func (ek *EntityKey_IBE_Params_BN256) GobDecode(ba []byte) error {
+	buf := bytes.NewBuffer(ba)
+	dec := gob.NewDecoder(buf)
+	ek.SerdesForm = &serdes.EntityPublicKey{}
+	err := dec.Decode(ek.SerdesForm)
+	if err != nil {
+		return err
+	}
+	marshald := make([]byte, 0)
+	err = dec.Decode(&marshald)
+	if err != nil {
+		return err
+	}
+
+	ek.PublicKey = &ibe.MasterPublicKey{}
+	err = ek.PublicKey.UnmarshalBinary(marshald)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var _ EntitySecretKeySchemeInstance = &EntitySecretKey_IBE_Master_BN256{}
 
 type EntitySecretKey_IBE_Master_BN256 struct {
-	canonicalForm *serdes.EntityKeyringEntry
-	PrivateKey    *ibe.MasterPrivateKey
-	PublicKey     *ibe.MasterPublicKey
+	SerdesForm *serdes.EntityKeyringEntry
+	PrivateKey *ibe.MasterPrivateKey
+	PublicKey  *ibe.MasterPublicKey
 }
 
 func (ek *EntitySecretKey_IBE_Master_BN256) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Public.Capabilities {
+	for _, has := range ek.SerdesForm.Public.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -733,10 +772,10 @@ func (ek *EntitySecretKey_IBE_Master_BN256) HasCapability(c Capability) bool {
 	return false
 }
 func (ek *EntitySecretKey_IBE_Master_BN256) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return &ek.canonicalForm.Public, nil
+	return &ek.SerdesForm.Public, nil
 }
 func (ek *EntitySecretKey_IBE_Master_BN256) SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error) {
-	return ek.canonicalForm, nil
+	return ek.SerdesForm, nil
 }
 func (ek *EntitySecretKey_IBE_Master_BN256) DecryptMessage(ctx context.Context, data []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot decrypt directly (generate a child key)")
@@ -775,28 +814,28 @@ func (ek *EntitySecretKey_IBE_Master_BN256) GenerateChildSecretKey(ctx context.C
 		return nil, fmt.Errorf("something is wrong with this key")
 	}
 	publicCF := serdes.EntityPublicIBE_BN256{
-		Params: ek.canonicalForm.Public.Key.Content.(serdes.EntityParamsIBE_BN256),
+		Params: ek.SerdesForm.Public.Key.Content.(serdes.EntityParamsIBE_BN256),
 		ID:     id,
 	}
 	cf := &serdes.EntityKeyringEntry{
 		Public: serdes.EntityPublicKey{
 			//inherit
-			Capabilities: ek.canonicalForm.Public.Capabilities,
+			Capabilities: ek.SerdesForm.Public.Capabilities,
 			Key:          asn1.NewExternal(publicCF),
 		},
 		Private: asn1.NewExternal(serdes.EntitySecretIBE_BN256(privblob)),
 	}
 	return &EntitySecretKey_IBE_BN256{
-		canonicalForm: cf,
-		Params:        ek.PublicKey,
-		PrivateKey:    privkey,
-		ID:            id,
+		SerdesForm: cf,
+		Params:     ek.PublicKey,
+		PrivateKey: privkey,
+		ID:         id,
 	}, nil
 }
 func (ek *EntitySecretKey_IBE_Master_BN256) Public() (EntityKeySchemeInstance, error) {
 	return &EntityKey_IBE_Params_BN256{
-		canonicalForm: &ek.canonicalForm.Public,
-		PublicKey:     ek.PublicKey,
+		SerdesForm: &ek.SerdesForm.Public,
+		PublicKey:  ek.PublicKey,
 	}, nil
 }
 func (ek *EntitySecretKey_IBE_Master_BN256) Equal(rhs EntitySecretKeySchemeInstance) bool {
@@ -804,7 +843,7 @@ func (ek *EntitySecretKey_IBE_Master_BN256) Equal(rhs EntitySecretKeySchemeInsta
 	if !ok {
 		return false
 	}
-	return bytes.Equal(ek.canonicalForm.Private.Bytes, ekrhs.canonicalForm.Private.Bytes)
+	return bytes.Equal(ek.SerdesForm.Private.Bytes, ekrhs.SerdesForm.Private.Bytes)
 }
 func (ek *EntitySecretKey_IBE_Master_BN256) SignMessage(ctx context.Context, content []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot perform signing")
@@ -815,13 +854,68 @@ func (ek *EntitySecretKey_IBE_Master_BN256) SignCertify(ctx context.Context, con
 func (ek *EntitySecretKey_IBE_Master_BN256) SignAttestation(ctx context.Context, content []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot perform attestation")
 }
+func (ek *EntitySecretKey_IBE_Master_BN256) GobEncode() ([]byte, error) {
+	pubkey, err := ek.PublicKey.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	privkey, err := ek.PrivateKey.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	err = enc.Encode(ek.SerdesForm)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(pubkey)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(privkey)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func (ek *EntitySecretKey_IBE_Master_BN256) GobDecode(ba []byte) error {
+	buf := bytes.NewBuffer(ba)
+	dec := gob.NewDecoder(buf)
+	ek.SerdesForm = &serdes.EntityKeyringEntry{}
+	err := dec.Decode(ek.SerdesForm)
+	if err != nil {
+		return err
+	}
+	marshaldpub := make([]byte, 0)
+	err = dec.Decode(&marshaldpub)
+	if err != nil {
+		return err
+	}
+	marshaldpriv := make([]byte, 0)
+	err = dec.Decode(&marshaldpriv)
+	if err != nil {
+		return err
+	}
+	ek.PublicKey = &ibe.MasterPublicKey{}
+	err = ek.PublicKey.UnmarshalBinary(marshaldpub)
+	if err != nil {
+		return err
+	}
+	ek.PrivateKey = &ibe.MasterPrivateKey{}
+	err = ek.PrivateKey.UnmarshalBinary(marshaldpriv)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 var _ EntityKeySchemeInstance = &EntityKey_IBE_BN256{}
 
 type EntityKey_IBE_BN256 struct {
-	canonicalForm *serdes.EntityPublicKey
-	Params        *ibe.MasterPublicKey
-	ID            []byte
+	SerdesForm *serdes.EntityPublicKey
+	Params     *ibe.MasterPublicKey
+	ID         []byte
 }
 
 func (k *EntityKey_IBE_BN256) Supported() bool {
@@ -835,7 +929,7 @@ func (k *EntityKey_IBE_BN256) IdentifyingBlob(ctx context.Context) (string, erro
 	return string(js) + "/" + string(k.ID), nil
 }
 func (k *EntityKey_IBE_BN256) HasCapability(c Capability) bool {
-	for _, has := range k.canonicalForm.Capabilities {
+	for _, has := range k.SerdesForm.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -859,20 +953,66 @@ func (k *EntityKey_IBE_BN256) GenerateChildKey(ctx context.Context, identity int
 	return nil, fmt.Errorf("this key cannot generate child keys")
 }
 func (k *EntityKey_IBE_BN256) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return k.canonicalForm, nil
+	return k.SerdesForm, nil
+}
+
+func (ek *EntityKey_IBE_BN256) GobEncode() ([]byte, error) {
+	pubkey, err := ek.Params.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	err = enc.Encode(ek.SerdesForm)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(pubkey)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(ek.ID)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func (ek *EntityKey_IBE_BN256) GobDecode(ba []byte) error {
+	buf := bytes.NewBuffer(ba)
+	dec := gob.NewDecoder(buf)
+	ek.SerdesForm = &serdes.EntityPublicKey{}
+	err := dec.Decode(ek.SerdesForm)
+	if err != nil {
+		return err
+	}
+	marshald := make([]byte, 0)
+	err = dec.Decode(&marshald)
+	if err != nil {
+		return err
+	}
+	err = dec.Decode(&ek.ID)
+	if err != nil {
+		return err
+	}
+	ek.Params = &ibe.MasterPublicKey{}
+	err = ek.Params.UnmarshalBinary(marshald)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var _ EntitySecretKeySchemeInstance = &EntitySecretKey_IBE_BN256{}
 
 type EntitySecretKey_IBE_BN256 struct {
-	canonicalForm *serdes.EntityKeyringEntry
-	PrivateKey    *ibe.IdentityPrivateKey
-	Params        *ibe.MasterPublicKey
-	ID            []byte
+	SerdesForm *serdes.EntityKeyringEntry
+	PrivateKey *ibe.IdentityPrivateKey
+	Params     *ibe.MasterPublicKey
+	ID         []byte
 }
 
 func (ek *EntitySecretKey_IBE_BN256) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Public.Capabilities {
+	for _, has := range ek.SerdesForm.Public.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -880,10 +1020,10 @@ func (ek *EntitySecretKey_IBE_BN256) HasCapability(c Capability) bool {
 	return false
 }
 func (k *EntitySecretKey_IBE_BN256) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return &k.canonicalForm.Public, nil
+	return &k.SerdesForm.Public, nil
 }
 func (k *EntitySecretKey_IBE_BN256) SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error) {
-	return k.canonicalForm, nil
+	return k.SerdesForm, nil
 }
 func (k *EntitySecretKey_IBE_BN256) DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error) {
 	c := ibe.Ciphertext{}
@@ -905,9 +1045,9 @@ func (k *EntitySecretKey_IBE_BN256) GenerateChildSecretKey(ctx context.Context, 
 }
 func (k *EntitySecretKey_IBE_BN256) Public() (EntityKeySchemeInstance, error) {
 	return &EntityKey_IBE_BN256{
-		canonicalForm: &k.canonicalForm.Public,
-		Params:        k.Params,
-		ID:            k.ID,
+		SerdesForm: &k.SerdesForm.Public,
+		Params:     k.Params,
+		ID:         k.ID,
 	}, nil
 }
 func (ek *EntitySecretKey_IBE_BN256) Equal(rhs EntitySecretKeySchemeInstance) bool {
@@ -915,7 +1055,7 @@ func (ek *EntitySecretKey_IBE_BN256) Equal(rhs EntitySecretKeySchemeInstance) bo
 	if !ok {
 		return false
 	}
-	return bytes.Equal(ek.canonicalForm.Public.Key.Bytes, ekrhs.canonicalForm.Public.Key.Bytes)
+	return bytes.Equal(ek.SerdesForm.Public.Key.Bytes, ekrhs.SerdesForm.Public.Key.Bytes)
 }
 func (k *EntitySecretKey_IBE_BN256) SignMessage(ctx context.Context, content []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot sign")
@@ -927,11 +1067,75 @@ func (k *EntitySecretKey_IBE_BN256) SignAttestation(ctx context.Context, content
 	return nil, fmt.Errorf("this key cannot sign")
 }
 
+func (ek *EntitySecretKey_IBE_BN256) GobEncode() ([]byte, error) {
+	pubkey, err := ek.Params.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	privkey, err := ek.PrivateKey.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	err = enc.Encode(ek.SerdesForm)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(pubkey)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(ek.ID)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(privkey)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func (ek *EntitySecretKey_IBE_BN256) GobDecode(ba []byte) error {
+	buf := bytes.NewBuffer(ba)
+	dec := gob.NewDecoder(buf)
+	ek.SerdesForm = &serdes.EntityKeyringEntry{}
+	err := dec.Decode(ek.SerdesForm)
+	if err != nil {
+		return err
+	}
+	marshald := make([]byte, 0)
+	err = dec.Decode(&marshald)
+	if err != nil {
+		return err
+	}
+	err = dec.Decode(&ek.ID)
+	if err != nil {
+		return err
+	}
+	marshaldpriv := make([]byte, 0)
+	err = dec.Decode(&marshaldpriv)
+	if err != nil {
+		return err
+	}
+	ek.Params = &ibe.MasterPublicKey{}
+	err = ek.Params.UnmarshalBinary(marshald)
+	if err != nil {
+		return err
+	}
+	ek.PrivateKey = &ibe.IdentityPrivateKey{}
+	err = ek.PrivateKey.UnmarshalBinary(marshaldpriv)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 var _ EntityKeySchemeInstance = &EntityKey_OAQUE_BN256_S20_Params{}
 
 type EntityKey_OAQUE_BN256_S20_Params struct {
-	canonicalForm *serdes.EntityPublicKey
-	Params        *oaque.Params
+	SerdesForm *serdes.EntityPublicKey
+	Params     *oaque.Params
 }
 
 func (k *EntityKey_OAQUE_BN256_S20_Params) Supported() bool {
@@ -942,7 +1146,7 @@ func (k *EntityKey_OAQUE_BN256_S20_Params) IdentifyingBlob(ctx context.Context) 
 	return string(ba), nil
 }
 func (k *EntityKey_OAQUE_BN256_S20_Params) HasCapability(c Capability) bool {
-	for _, has := range k.canonicalForm.Capabilities {
+	for _, has := range k.SerdesForm.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -970,17 +1174,54 @@ func (k *EntityKey_OAQUE_BN256_S20_Params) GenerateChildKey(ctx context.Context,
 		return nil, fmt.Errorf("only 20 slot identities are supported")
 	}
 	ch := serdes.EntityPublicOAQUE_BN256_s20{
-		Params:       k.canonicalForm.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20),
+		Params:       k.SerdesForm.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20),
 		AttributeSet: id,
 	}
 	cf := serdes.EntityPublicKey{
-		Capabilities: k.canonicalForm.Capabilities,
+		Capabilities: k.SerdesForm.Capabilities,
 		Key:          asn1.NewExternal(ch),
 	}
-	return &EntityKey_OAQUE_BN256_S20{canonicalForm: &cf, Params: k.Params, AttributeSet: id}, nil
+	return &EntityKey_OAQUE_BN256_S20{SerdesForm: &cf, Params: k.Params, AttributeSet: id}, nil
 }
 func (k *EntityKey_OAQUE_BN256_S20_Params) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return k.canonicalForm, nil
+	return k.SerdesForm, nil
+}
+
+func (ek *EntityKey_OAQUE_BN256_S20_Params) GobEncode() ([]byte, error) {
+	pubkey := ek.Params.Marshal()
+
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	err := enc.Encode(ek.SerdesForm)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(pubkey)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func (ek *EntityKey_OAQUE_BN256_S20_Params) GobDecode(ba []byte) error {
+	buf := bytes.NewBuffer(ba)
+	dec := gob.NewDecoder(buf)
+	ek.SerdesForm = &serdes.EntityPublicKey{}
+	err := dec.Decode(ek.SerdesForm)
+	if err != nil {
+		return err
+	}
+	marshald := make([]byte, 0)
+	err = dec.Decode(&marshald)
+	if err != nil {
+		return err
+	}
+
+	ek.Params = &oaque.Params{}
+	ok := ek.Params.Unmarshal(marshald)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
+	}
+	return nil
 }
 
 func aesGCMEncrypt(key []byte, blob []byte, nonce []byte) []byte {
@@ -1019,9 +1260,9 @@ func aesGCMDecrypt(key []byte, ciphertext []byte, nonce []byte) ([]byte, bool) {
 var _ EntityKeySchemeInstance = &EntityKey_OAQUE_BN256_S20{}
 
 type EntityKey_OAQUE_BN256_S20 struct {
-	canonicalForm *serdes.EntityPublicKey
-	Params        *oaque.Params
-	AttributeSet  [][]byte
+	SerdesForm   *serdes.EntityPublicKey
+	Params       *oaque.Params
+	AttributeSet [][]byte
 }
 
 func (k *EntityKey_OAQUE_BN256_S20) Supported() bool {
@@ -1033,7 +1274,7 @@ func (k *EntityKey_OAQUE_BN256_S20) IdentifyingBlob(ctx context.Context) (string
 	return string(ba) + "/" + string(subid), nil
 }
 func (k *EntityKey_OAQUE_BN256_S20) HasCapability(c Capability) bool {
-	for _, has := range k.canonicalForm.Capabilities {
+	for _, has := range k.SerdesForm.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -1085,30 +1326,74 @@ func (k *EntityKey_OAQUE_BN256_S20) GenerateChildKey(ctx context.Context, identi
 		}
 	}
 	ch := serdes.EntityPublicOAQUE_BN256_s20{
-		Params:       k.canonicalForm.Key.Content.(serdes.EntityPublicOAQUE_BN256_s20).Params,
+		Params:       k.SerdesForm.Key.Content.(serdes.EntityPublicOAQUE_BN256_s20).Params,
 		AttributeSet: id,
 	}
 	cf := serdes.EntityPublicKey{
-		Capabilities: k.canonicalForm.Capabilities,
+		Capabilities: k.SerdesForm.Capabilities,
 		Key:          asn1.NewExternal(ch),
 	}
-	return &EntityKey_OAQUE_BN256_S20{canonicalForm: &cf, Params: k.Params, AttributeSet: id}, nil
+	return &EntityKey_OAQUE_BN256_S20{SerdesForm: &cf, Params: k.Params, AttributeSet: id}, nil
 }
 func (k *EntityKey_OAQUE_BN256_S20) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return k.canonicalForm, nil
+	return k.SerdesForm, nil
+}
+
+func (ek *EntityKey_OAQUE_BN256_S20) GobEncode() ([]byte, error) {
+	pubkey := ek.Params.Marshal()
+
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	err := enc.Encode(ek.SerdesForm)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(pubkey)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(ek.AttributeSet)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func (ek *EntityKey_OAQUE_BN256_S20) GobDecode(ba []byte) error {
+	buf := bytes.NewBuffer(ba)
+	dec := gob.NewDecoder(buf)
+	ek.SerdesForm = &serdes.EntityPublicKey{}
+	err := dec.Decode(ek.SerdesForm)
+	if err != nil {
+		return err
+	}
+	marshald := make([]byte, 0)
+	err = dec.Decode(&marshald)
+	if err != nil {
+		return err
+	}
+	err = dec.Decode(&ek.AttributeSet)
+	if err != nil {
+		return err
+	}
+	ek.Params = &oaque.Params{}
+	ok := ek.Params.Unmarshal(marshald)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
+	}
+	return nil
 }
 
 var _ EntitySecretKeySchemeInstance = &EntitySecretKey_OAQUE_BN256_S20{}
 
 type EntitySecretKey_OAQUE_BN256_S20 struct {
-	canonicalForm *serdes.EntityKeyringEntry
-	PrivateKey    *oaque.PrivateKey
-	Params        *oaque.Params
-	AttributeSet  [][]byte
+	SerdesForm   *serdes.EntityKeyringEntry
+	PrivateKey   *oaque.PrivateKey
+	Params       *oaque.Params
+	AttributeSet [][]byte
 }
 
 func (ek *EntitySecretKey_OAQUE_BN256_S20) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Public.Capabilities {
+	for _, has := range ek.SerdesForm.Public.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -1116,10 +1401,10 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20) HasCapability(c Capability) bool {
 	return false
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return &k.canonicalForm.Public, nil
+	return &k.SerdesForm.Public, nil
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20) SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error) {
-	return k.canonicalForm, nil
+	return k.SerdesForm, nil
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
 	id, ok := identity.([][]byte)
@@ -1166,7 +1451,7 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20) Equal(rhs EntitySecretKeySchemeInstan
 	if !ok {
 		return false
 	}
-	return bytes.Equal(ek.canonicalForm.Public.Key.Bytes, ekrhs.canonicalForm.Public.Key.Bytes)
+	return bytes.Equal(ek.SerdesForm.Public.Key.Bytes, ekrhs.SerdesForm.Public.Key.Bytes)
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20) DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error) {
 	if len(ciphertext) < 18 {
@@ -1230,28 +1515,28 @@ func (k *EntitySecretKey_OAQUE_BN256_S20) GenerateChildSecretKey(ctx context.Con
 	privblob := privkey.Marshal()
 
 	publicCF := serdes.EntityPublicOAQUE_BN256_s20{
-		Params:       k.canonicalForm.Public.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20),
+		Params:       k.SerdesForm.Public.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20),
 		AttributeSet: id,
 	}
 	cf := &serdes.EntityKeyringEntry{
 		Public: serdes.EntityPublicKey{
-			Capabilities: k.canonicalForm.Public.Capabilities,
+			Capabilities: k.SerdesForm.Public.Capabilities,
 			Key:          asn1.NewExternal(publicCF),
 		},
 		Private: asn1.NewExternal(serdes.EntitySecretOQAUE_BN256_s20(privblob)),
 	}
 	return &EntitySecretKey_OAQUE_BN256_S20{
-		canonicalForm: cf,
-		Params:        k.Params,
-		PrivateKey:    privkey,
-		AttributeSet:  id,
+		SerdesForm:   cf,
+		Params:       k.Params,
+		PrivateKey:   privkey,
+		AttributeSet: id,
 	}, nil
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20) Public() (EntityKeySchemeInstance, error) {
 	return &EntityKey_OAQUE_BN256_S20{
-		canonicalForm: &k.canonicalForm.Public,
-		Params:        k.Params,
-		AttributeSet:  k.AttributeSet,
+		SerdesForm:   &k.SerdesForm.Public,
+		Params:       k.Params,
+		AttributeSet: k.AttributeSet,
 	}, nil
 }
 
@@ -1264,17 +1549,71 @@ func (k *EntitySecretKey_OAQUE_BN256_S20) SignCertify(ctx context.Context, conte
 func (k *EntitySecretKey_OAQUE_BN256_S20) SignAttestation(ctx context.Context, content []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot sign")
 }
+func (ek *EntitySecretKey_OAQUE_BN256_S20) GobEncode() ([]byte, error) {
+	pubkey := ek.Params.Marshal()
+	privkey := ek.PrivateKey.Marshal()
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	err := enc.Encode(ek.SerdesForm)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(pubkey)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(ek.AttributeSet)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(privkey)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func (ek *EntitySecretKey_OAQUE_BN256_S20) GobDecode(ba []byte) error {
+	buf := bytes.NewBuffer(ba)
+	dec := gob.NewDecoder(buf)
+	ek.SerdesForm = &serdes.EntityKeyringEntry{}
+	err := dec.Decode(ek.SerdesForm)
+	if err != nil {
+		return err
+	}
+	marshald := make([]byte, 0)
+	err = dec.Decode(&marshald)
+	if err != nil {
+		return err
+	}
+	err = dec.Decode(&ek.AttributeSet)
+	if err != nil {
+		return err
+	}
+	marshaldpriv := make([]byte, 0)
+	err = dec.Decode(&marshaldpriv)
+	if err != nil {
+		return err
+	}
+	ek.Params = &oaque.Params{}
+	ok := ek.Params.Unmarshal(marshald)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
+	}
+	ek.PrivateKey = &oaque.PrivateKey{}
+	ek.PrivateKey.Unmarshal(marshaldpriv)
+	return nil
+}
 
 var _ EntitySecretKeySchemeInstance = &EntitySecretKey_OAQUE_BN256_S20_Master{}
 
 type EntitySecretKey_OAQUE_BN256_S20_Master struct {
-	canonicalForm *serdes.EntityKeyringEntry
-	PrivateKey    *oaque.MasterKey
-	Params        *oaque.Params
+	SerdesForm *serdes.EntityKeyringEntry
+	PrivateKey *oaque.MasterKey
+	Params     *oaque.Params
 }
 
 func (ek *EntitySecretKey_OAQUE_BN256_S20_Master) HasCapability(c Capability) bool {
-	for _, has := range ek.canonicalForm.Public.Capabilities {
+	for _, has := range ek.SerdesForm.Public.Capabilities {
 		if has == int(c) {
 			return true
 		}
@@ -1282,10 +1621,10 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20_Master) HasCapability(c Capability) bo
 	return false
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20_Master) CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error) {
-	return &k.canonicalForm.Public, nil
+	return &k.SerdesForm.Public, nil
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20_Master) SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error) {
-	return k.canonicalForm, nil
+	return k.SerdesForm, nil
 }
 func (ek *EntitySecretKey_OAQUE_BN256_S20_Master) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
 	return ek.DecryptMessage(ctx, ciphertext)
@@ -1319,7 +1658,7 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20_Master) Equal(rhs EntitySecretKeySchem
 	if !ok {
 		return false
 	}
-	return bytes.Equal(ek.canonicalForm.Private.Bytes, ekrhs.canonicalForm.Private.Bytes)
+	return bytes.Equal(ek.SerdesForm.Private.Bytes, ekrhs.SerdesForm.Private.Bytes)
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20_Master) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
 	id, ok := identity.([][]byte)
@@ -1337,28 +1676,28 @@ func (k *EntitySecretKey_OAQUE_BN256_S20_Master) GenerateChildSecretKey(ctx cont
 	privblob := privkey.Marshal()
 
 	publicCF := serdes.EntityPublicOAQUE_BN256_s20{
-		Params:       k.canonicalForm.Public.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20),
+		Params:       k.SerdesForm.Public.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20),
 		AttributeSet: id,
 	}
 	cf := &serdes.EntityKeyringEntry{
 		Public: serdes.EntityPublicKey{
-			Capabilities: k.canonicalForm.Public.Capabilities,
+			Capabilities: k.SerdesForm.Public.Capabilities,
 			Key:          asn1.NewExternal(publicCF),
 		},
 		Private: asn1.NewExternal(serdes.EntitySecretOQAUE_BN256_s20(privblob)),
 	}
 	return &EntitySecretKey_OAQUE_BN256_S20{
-		canonicalForm: cf,
-		Params:        k.Params,
-		PrivateKey:    privkey,
-		AttributeSet:  id,
+		SerdesForm:   cf,
+		Params:       k.Params,
+		PrivateKey:   privkey,
+		AttributeSet: id,
 	}, nil
 }
 
 func (k *EntitySecretKey_OAQUE_BN256_S20_Master) Public() (EntityKeySchemeInstance, error) {
 	return &EntityKey_OAQUE_BN256_S20_Params{
-		canonicalForm: &k.canonicalForm.Public,
-		Params:        k.Params,
+		SerdesForm: &k.SerdesForm.Public,
+		Params:     k.Params,
 	}, nil
 }
 
@@ -1370,4 +1709,54 @@ func (k *EntitySecretKey_OAQUE_BN256_S20_Master) SignCertify(ctx context.Context
 }
 func (k *EntitySecretKey_OAQUE_BN256_S20_Master) SignAttestation(ctx context.Context, content []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot sign")
+}
+
+func (ek *EntitySecretKey_OAQUE_BN256_S20_Master) GobEncode() ([]byte, error) {
+	pubkey := ek.Params.Marshal()
+	privkey := ek.PrivateKey.Marshal()
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	err := enc.Encode(ek.SerdesForm)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(pubkey)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Encode(privkey)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func (ek *EntitySecretKey_OAQUE_BN256_S20_Master) GobDecode(ba []byte) error {
+	buf := bytes.NewBuffer(ba)
+	dec := gob.NewDecoder(buf)
+	ek.SerdesForm = &serdes.EntityKeyringEntry{}
+	err := dec.Decode(ek.SerdesForm)
+	if err != nil {
+		return err
+	}
+	marshald := make([]byte, 0)
+	err = dec.Decode(&marshald)
+	if err != nil {
+		return err
+	}
+	marshaldpriv := make([]byte, 0)
+	err = dec.Decode(&marshaldpriv)
+	if err != nil {
+		return err
+	}
+	ek.Params = &oaque.Params{}
+	ok := ek.Params.Unmarshal(marshald)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
+	}
+	ek.PrivateKey = &oaque.MasterKey{}
+	ok = ek.PrivateKey.Unmarshal(marshaldpriv)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
+	}
+	return nil
 }

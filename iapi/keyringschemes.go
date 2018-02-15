@@ -16,13 +16,13 @@ import (
 func EntityKeyringSchemeInstanceFor(e asn1.External) (EntityKeyringSchemeInstance, error) {
 	switch {
 	case e.OID.Equal(serdes.PlaintextKeyringOID):
-		return &KeyringPlaintext{canonicalForm: &e}, nil
+		return &KeyringPlaintext{SerdesForm: &e}, nil
 	case e.OID.Equal(serdes.KeyringAES128_GCM_PBKDF2OID):
 		ct, ok := e.Content.(serdes.KeyringAESCiphertext)
 		if !ok {
 			return nil, fmt.Errorf("invalid keyring")
 		}
-		return &AESKeyring{canonicalForm: &e, ciphertext: ct}, nil
+		return &AESKeyring{SerdesForm: &e, ciphertext: ct}, nil
 	}
 	return &UnsupportedKeyringScheme{}, nil
 }
@@ -50,17 +50,17 @@ func (kr *UnsupportedKeyringScheme) EncryptKeyring(ctx context.Context, plaintex
 }
 
 type KeyringPlaintext struct {
-	canonicalForm *asn1.External
+	SerdesForm *asn1.External
 }
 
 func (kr *KeyringPlaintext) Supported() bool {
 	return true
 }
 func (kr *KeyringPlaintext) DecryptKeyring(ctx context.Context, params interface{}) (decodedForm *serdes.EntityKeyring, err error) {
-	if kr.canonicalForm == nil {
+	if kr.SerdesForm == nil {
 		return nil, fmt.Errorf("this is not a curried keyring instance")
 	}
-	rv, ok := kr.canonicalForm.Content.(serdes.EntityKeyring)
+	rv, ok := kr.SerdesForm.Content.(serdes.EntityKeyring)
 	if !ok {
 		return nil, fmt.Errorf("keyring is invalid")
 	}
@@ -72,15 +72,15 @@ func (kr *KeyringPlaintext) EncryptKeyring(ctx context.Context, plaintext *serde
 }
 
 type AESKeyring struct {
-	canonicalForm *asn1.External
-	ciphertext    serdes.KeyringAESCiphertext
+	SerdesForm *asn1.External
+	ciphertext serdes.KeyringAESCiphertext
 }
 
 func (kr *AESKeyring) Supported() bool {
 	return true
 }
 func (kr *AESKeyring) DecryptKeyring(ctx context.Context, params interface{}) (decodedForm *serdes.EntityKeyring, err error) {
-	if kr.canonicalForm == nil {
+	if kr.SerdesForm == nil {
 		return nil, fmt.Errorf("this is not a curried keyring instance")
 	}
 	passphrase, ok := params.(string)

@@ -65,7 +65,6 @@ func (p *poc) moveEntity(ctx context.Context, ent *iapi.Entity, state int) error
 //Perspective functions
 func (p *poc) MoveEntityInterestingP(ctx context.Context, ent *iapi.Entity) error {
 	//Ensure we are idempotent, don't want to clobber other state
-	fmt.Printf("thing was: %x\n", ent.Keccak256())
 	es, err := p.loadEntity(ctx, ent.Keccak256())
 	if err != nil {
 		return err

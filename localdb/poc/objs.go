@@ -1,5 +1,7 @@
 package poc
 
+import "github.com/immesys/wave/iapi"
+
 const (
 	_ = iota
 	StateInteresting
@@ -13,8 +15,8 @@ const (
 )
 
 type EntityState struct {
-	//Entity           *iapi.Entity
-	EntityDER        []byte
+	Entity *iapi.Entity
+	//EntityDER        []byte
 	Hash             []byte
 	State            int
 	QueueIndex       int
@@ -22,9 +24,10 @@ type EntityState struct {
 }
 
 type AttestationState struct {
-	Hash           []byte
-	AttestationDER []byte
-	//Attestation   *iapi.Attestation
+	Hash []byte
+	//AttestationDER []byte
+
+	Attestation   *iapi.Attestation
 	State         int
 	LabelKeyIndex int
 }
@@ -36,15 +39,15 @@ type AttestationState struct {
 
 type PLKState struct {
 	Slots [][]byte
-	//Key       iapi.EntitySecretKeySchemeInstance
-	KeyDER    []byte
+	Key   iapi.EntitySecretKeySchemeInstance
+	//KeyDER    []byte
 	Namespace []byte
 }
 
 type ContentKeyState struct {
-	Slots  [][]byte
-	KeyDER []byte
-	//Key   iapi.SlottedSecretKey
+	Slots [][]byte
+	//KeyDER []byte
+	Key iapi.SlottedSecretKey
 }
 type PendingLabels struct {
 	Slots [][]byte
