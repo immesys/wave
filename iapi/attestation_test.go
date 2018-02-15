@@ -26,7 +26,7 @@ func TestBasicAttestation(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	readback, err := DecodeAttestation(context.Background(), &PDecodeAttestation{
+	readback, err := ParseAttestation(context.Background(), &PParseAttestation{
 		DER: rv.DER,
 	})
 	require.NoError(t, err)

@@ -47,13 +47,13 @@ type PolicyAddendumSchemeInstance interface {
 type HashScheme interface {
 	Scheme
 	//Digest(ctx context.Context, input []byte) ([]byte, error)
-	Instance(ctx context.Context, input []byte) (HashSchemeInstance, error)
+	Instance(input []byte) (HashSchemeInstance, error)
 }
 type HashSchemeInstance interface {
 	Scheme
 	//For curried hash scheme instances
-	Value(ctx context.Context) ([]byte, error)
-	CanonicalForm(ctx context.Context) (*asn1.External, error)
+	Value() []byte
+	CanonicalForm() (*asn1.External, error)
 }
 
 //PolicyScheme gets its own file
@@ -84,6 +84,11 @@ type EntitySecretKeySchemeInstance interface {
 	DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error)
 	GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error)
 	SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error)
+	Equal(rhs EntitySecretKeySchemeInstance) bool
+}
+type SlottedSecretKey interface {
+	EntitySecretKeySchemeInstance
+	Slots() [][]byte
 }
 
 type Capability int

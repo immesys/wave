@@ -7,20 +7,20 @@ import (
 	"encoding/gob"
 	"strings"
 
-	"github.com/immesys/wave/engine"
-	"github.com/immesys/wave/localdb/types"
+	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/params"
 )
 
 type poc struct {
-	u types.LowLevelStorage
+	u iapi.LowLevelStorage
 }
 
-func NewPOC(lls types.LowLevelStorage) types.WaveState {
+func NewPOC(lls iapi.LowLevelStorage) iapi.WaveState {
 	return &poc{u: lls}
 }
 
 //Ensure we match the interface
-var _ types.WaveState = &poc{}
+var _ iapi.WaveState = &poc{}
 
 func ToB64(arr []byte) string {
 	return base64.URLEncoding.EncodeToString(arr)
@@ -39,17 +39,15 @@ func split(s string) []string {
 }
 
 func (p *poc) PKey(ctx context.Context, stuff ...string) string {
-	perspective := ctx.Value(engine.PerspectiveKey)
+	perspective := ctx.Value(params.PerspectiveKey)
 	//Do it as hex to ensure we can use "/" as a separator
 	//for the sake of a perspective key it is ok to have only one type of hash
-	hshi, err := perspective.(*iapi.Entity).Hash(iapi.Keccak256)
+	hshi, err := perspective.(*iapi.EntitySecrets).Entity.Hash(ctx, iapi.KECCAK256)
 	if err != nil {
 		panic(err)
 	}
-	hsh, err := hshi.Value(ctx)
-	if err != nil {
-		panic(err)
-	}
+	hsh := hshi.Value()
+
 	ph := ToB64(hsh)
 	parts := []string{ph}
 	parts = append(parts, stuff...)
@@ -58,7 +56,7 @@ func (p *poc) PKey(ctx context.Context, stuff ...string) string {
 
 func unmarshalGob(ba []byte, into interface{}) error {
 	buf := bytes.NewBuffer(ba)
-	dec := gob.NewDecoder(&buf) // Will read from network.
+	dec := gob.NewDecoder(buf) // Will read from network.
 	return dec.Decode(into)
 }
 func marshalGob(from interface{}) ([]byte, error) {

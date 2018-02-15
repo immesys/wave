@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"math/big"
 
@@ -23,6 +24,20 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+func init() {
+	gob.Register(&EntityKey_Ed25519{})
+	gob.Register(&EntitySecretKey_Ed25519{})
+	gob.Register(&EntityKey_Curve25519{})
+	gob.Register(&EntitySecretKey_Ed25519{})
+	gob.Register(&EntityKey_IBE_Params_BN256{})
+	gob.Register(&EntitySecretKey_IBE_Master_BN256{})
+	gob.Register(&EntityKey_IBE_BN256{})
+	gob.Register(&EntitySecretKey_IBE_BN256{})
+	gob.Register(&EntityKey_OAQUE_BN256_S20_Params{})
+	gob.Register(&EntitySecretKey_OAQUE_BN256_S20_Master{})
+	gob.Register(&EntityKey_OAQUE_BN256_S20{})
+	gob.Register(&EntitySecretKey_OAQUE_BN256_S20{})
+}
 func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInstance, error) {
 	switch {
 	case e.Key.OID.Equal(serdes.EntityEd25519OID):
@@ -420,6 +435,13 @@ func (ek *EntitySecretKey_Ed25519) DecryptMessageAsChild(ctx context.Context, ci
 func (ek *EntitySecretKey_Ed25519) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
 }
+func (ek *EntitySecretKey_Ed25519) Equal(rhs EntitySecretKeySchemeInstance) bool {
+	ekrhs, ok := rhs.(*EntitySecretKey_Ed25519)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(ek.canonicalForm.Private.Bytes, ekrhs.canonicalForm.Private.Bytes)
+}
 func (ek *EntitySecretKey_Ed25519) Public() (EntityKeySchemeInstance, error) {
 	return &EntityKey_Ed25519{
 		canonicalForm: &ek.canonicalForm.Public,
@@ -566,6 +588,13 @@ func (ek *EntitySecretKey_Curve25519) DecryptMessage(ctx context.Context, data [
 func (ek *EntitySecretKey_Curve25519) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
 	return nil, fmt.Errorf("this key does not support such decryption")
 }
+func (ek *EntitySecretKey_Curve25519) Equal(rhs EntitySecretKeySchemeInstance) bool {
+	ekrhs, ok := rhs.(*EntitySecretKey_Curve25519)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(ek.canonicalForm.Private.Bytes, ekrhs.canonicalForm.Private.Bytes)
+}
 func (ek *EntitySecretKey_Curve25519) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
 }
@@ -617,7 +646,9 @@ func (k *UnsupportedSecretKeyScheme) DecryptMessageAsChild(ctx context.Context, 
 func (k *UnsupportedSecretKeyScheme) Public() (EntityKeySchemeInstance, error) {
 	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
 }
-
+func (k *UnsupportedSecretKeyScheme) Equal(rhs EntitySecretKeySchemeInstance) bool {
+	return false
+}
 func (k *UnsupportedSecretKeyScheme) SignMessage(ctx context.Context, content []byte) ([]byte, error) {
 	return nil, fmt.Errorf("key scheme %s is unsupported", k.canonicalForm.Private.OID.String())
 }
@@ -678,7 +709,6 @@ func (k *EntityKey_IBE_Params_BN256) GenerateChildKey(ctx context.Context, ident
 func (ek *EntityKey_IBE_Params_BN256) VerifyMessage(ctx context.Context, data []byte, signature []byte) error {
 	return fmt.Errorf("this key cannot perform signing")
 }
-
 func (ek *EntityKey_IBE_Params_BN256) EncryptMessage(ctx context.Context, data []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot perform encryption")
 }
@@ -769,7 +799,13 @@ func (ek *EntitySecretKey_IBE_Master_BN256) Public() (EntityKeySchemeInstance, e
 		PublicKey:     ek.PublicKey,
 	}, nil
 }
-
+func (ek *EntitySecretKey_IBE_Master_BN256) Equal(rhs EntitySecretKeySchemeInstance) bool {
+	ekrhs, ok := rhs.(*EntitySecretKey_IBE_Master_BN256)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(ek.canonicalForm.Private.Bytes, ekrhs.canonicalForm.Private.Bytes)
+}
 func (ek *EntitySecretKey_IBE_Master_BN256) SignMessage(ctx context.Context, content []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot perform signing")
 }
@@ -874,7 +910,13 @@ func (k *EntitySecretKey_IBE_BN256) Public() (EntityKeySchemeInstance, error) {
 		ID:            k.ID,
 	}, nil
 }
-
+func (ek *EntitySecretKey_IBE_BN256) Equal(rhs EntitySecretKeySchemeInstance) bool {
+	ekrhs, ok := rhs.(*EntitySecretKey_IBE_BN256)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(ek.canonicalForm.Public.Key.Bytes, ekrhs.canonicalForm.Public.Key.Bytes)
+}
 func (k *EntitySecretKey_IBE_BN256) SignMessage(ctx context.Context, content []byte) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot sign")
 }
@@ -1119,6 +1161,13 @@ func (k *EntitySecretKey_OAQUE_BN256_S20) DecryptMessageAsChild(ctx context.Cont
 	}
 	return innerPlaintext, nil
 }
+func (ek *EntitySecretKey_OAQUE_BN256_S20) Equal(rhs EntitySecretKeySchemeInstance) bool {
+	ekrhs, ok := rhs.(*EntitySecretKey_OAQUE_BN256_S20)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(ek.canonicalForm.Public.Key.Bytes, ekrhs.canonicalForm.Public.Key.Bytes)
+}
 func (k *EntitySecretKey_OAQUE_BN256_S20) DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error) {
 	if len(ciphertext) < 18 {
 		return nil, fmt.Errorf("invalid ciphertext")
@@ -1265,7 +1314,13 @@ func (k *EntitySecretKey_OAQUE_BN256_S20_Master) DecryptMessage(ctx context.Cont
 	}
 	return innerPlaintext, nil
 }
-
+func (ek *EntitySecretKey_OAQUE_BN256_S20_Master) Equal(rhs EntitySecretKeySchemeInstance) bool {
+	ekrhs, ok := rhs.(*EntitySecretKey_OAQUE_BN256_S20_Master)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(ek.canonicalForm.Private.Bytes, ekrhs.canonicalForm.Private.Bytes)
+}
 func (k *EntitySecretKey_OAQUE_BN256_S20_Master) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
 	id, ok := identity.([][]byte)
 	if !ok {

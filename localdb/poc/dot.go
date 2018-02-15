@@ -1,25 +1,47 @@
-// +build ignore
-
 package poc
 
 import (
 	"bytes"
 	"context"
 
-	"github.com/immesys/wave/localdb/types"
-	dot "github.com/immesys/wave/olddot"
+	"github.com/immesys/asn1"
+	"github.com/immesys/wave/iapi"
 )
 
-func (p *poc) saveDotState(ctx context.Context, ds *DotState) error {
-	k := p.PKey(ctx, "dot", ToB64(ds.Dot.Hash))
-	ba, err := ds.MarshalMsg(nil)
+func keccakFromHI(h iapi.HashSchemeInstance) []byte {
+	val := h.Value()
+
+	return val
+}
+func keccakFromAtt(att *iapi.Attestation) []byte {
+	hsh, err := att.Hash(context.Background(), iapi.KECCAK256)
+	if err != nil {
+		panic(err)
+	}
+	val := hsh.Value()
+	return val
+}
+func keccakFromExt(e *asn1.External) []byte {
+	hi, err := iapi.HashSchemeInstanceFor(e)
+	if err != nil {
+		panic(err)
+	}
+	val := hi.Value()
+	return val
+}
+func (p *poc) saveAttestationState(ctx context.Context, ds *AttestationState) error {
+	k := p.PKey(ctx, "att", ToB64(ds.Hash))
+	if ds.Hash == nil {
+		panic("need hash")
+	}
+	ba, err := marshalGob(ds)
 	if err != nil {
 		return err
 	}
 	return p.u.Store(ctx, k, ba)
 }
-func (p *poc) loadDotState(ctx context.Context, hash []byte) (*DotState, error) {
-	k := p.PKey(ctx, "dot", ToB64(hash))
+func (p *poc) loadAttestationState(ctx context.Context, hash []byte) (*AttestationState, error) {
+	k := p.PKey(ctx, "att", ToB64(hash))
 	ba, err := p.u.Load(ctx, k)
 	if err != nil {
 		return nil, err
@@ -27,16 +49,16 @@ func (p *poc) loadDotState(ctx context.Context, hash []byte) (*DotState, error) 
 	if ba == nil {
 		return nil, nil
 	}
-	ds := &DotState{}
-	_, err = ds.UnmarshalMsg(ba)
+	ds := &AttestationState{}
+	err = unmarshalGob(ba, ds)
 	if err != nil {
 		panic(err)
 	}
 	return ds, nil
 }
 
-func (p *poc) setDotStateField(ctx context.Context, dh []byte, state int) error {
-	ds, err := p.loadDotState(ctx, dh)
+func (p *poc) setAttestationStateField(ctx context.Context, dh []byte, state int) error {
+	ds, err := p.loadAttestationState(ctx, dh)
 	if err != nil {
 		return err
 	}
@@ -45,16 +67,18 @@ func (p *poc) setDotStateField(ctx context.Context, dh []byte, state int) error 
 		return nil
 	}
 	ds.State = state
-	return p.saveDotState(ctx, ds)
+	return p.saveAttestationState(ctx, ds)
 }
 
 //Note that we are treating this as a P function here, but it doesn't
 //really matter
-func (p *poc) MoveDotRevokedG(ctx context.Context, dot *dot.DOT) error {
-	return p.setDotStateField(ctx, dot.Hash, StateRevoked)
+func (p *poc) MoveAttestationRevokedG(ctx context.Context, att *iapi.Attestation) error {
+	hsh := keccakFromAtt(att)
+	return p.setAttestationStateField(ctx, hsh, StateRevoked)
 }
-func (p *poc) GetDotP(ctx context.Context, hash []byte) (d *dot.DOT, err error) {
-	ds, err := p.loadDotState(ctx, hash)
+func (p *poc) GetAttestationP(ctx context.Context, hi iapi.HashSchemeInstance) (d *iapi.Attestation, err error) {
+	hsh := keccakFromHI(hi)
+	ds, err := p.loadAttestationState(ctx, hsh)
 	if err != nil {
 		return nil, err
 	}
@@ -62,92 +86,101 @@ func (p *poc) GetDotP(ctx context.Context, hash []byte) (d *dot.DOT, err error) 
 		//We don't care anyway
 		return nil, nil
 	}
-	return ds.Dot, nil
+
+	return ds.Attestation, nil
 }
-func (p *poc) MoveDotMalformedP(ctx context.Context, hash []byte) error {
-	return p.setDotStateField(ctx, hash, StateMalformed)
+func (p *poc) MoveAttestationMalformedP(ctx context.Context, hi iapi.HashSchemeInstance) error {
+	hash := keccakFromHI(hi)
+	return p.setAttestationStateField(ctx, hash, StateMalformed)
 }
-func (p *poc) MoveDotExpiredP(ctx context.Context, dt *dot.DOT) error {
-	return p.setDotStateField(ctx, dt.Hash, StateExpired)
+func (p *poc) MoveAttestationExpiredP(ctx context.Context, att *iapi.Attestation) error {
+	hash := keccakFromAtt(att)
+	return p.setAttestationStateField(ctx, hash, StateExpired)
 }
-func (p *poc) MoveDotEntRevokedP(ctx context.Context, dt *dot.DOT) error {
-	return p.setDotStateField(ctx, dt.Hash, StateEntRevoked)
-}
-func (p *poc) GetInterestingByRevocationHashP(pctx context.Context, rvkhash []byte) chan types.ReverseLookupResult {
-	rv := make(chan types.ReverseLookupResult, 10)
-	ctx, cancel := context.WithCancel(pctx)
-	k := p.PKey(ctx, "rvk")
-	vch, ech := p.u.LoadPrefix(ctx, k)
-	go func() {
-		defer cancel()
-		for v := range vch {
-			rs := &RevocationState{}
-			_, err := rs.UnmarshalMsg(v.Value)
-			if err != nil {
-				panic(err)
-			}
-			rlr := types.ReverseLookupResult{
-				Hash:  rs.TargetHash,
-				IsDOT: !rs.IsEntity,
-			}
-			if rs.IsEntity {
-				ent, err := p.loadEntity(ctx, rs.TargetHash)
-				if err != nil {
-					panic(err)
-				}
-				if ent == nil {
-					panic("expected to find this")
-				}
-				rlr.Entity = ent.Entity
-			} else {
-				dot, err := p.loadDotState(ctx, rs.TargetHash)
-				if err != nil {
-					panic(err)
-				}
-				if dot == nil {
-					panic("expected to find this")
-				}
-				rlr.Dot = dot.Dot
-			}
-			select {
-			case rv <- rlr:
-			case <-ctx.Done():
-				rv <- types.ReverseLookupResult{
-					Err: ctx.Err(),
-				}
-				close(rv)
-				return
-			}
-		}
-		err := <-ech
-		if err != nil {
-			rv <- types.ReverseLookupResult{
-				Err: err,
-			}
-		}
-		close(rv)
-		return
-	}()
-	return rv
+func (p *poc) MoveAttestationEntRevokedP(ctx context.Context, att *iapi.Attestation) error {
+	hash := keccakFromAtt(att)
+	return p.setAttestationStateField(ctx, hash, StateEntRevoked)
 }
 
-func (p *poc) MoveDotPendingP(ctx context.Context, dt *dot.DOT, labelKeyIndex int) error {
-	ds, err := p.loadDotState(ctx, dt.Hash)
+//
+// func (p *poc) GetInterestingByRevocationHashP(pctx context.Context, rvkhash []byte) chan types.ReverseLookupResult {
+// 	rv := make(chan types.ReverseLookupResult, 10)
+// 	ctx, cancel := context.WithCancel(pctx)
+// 	k := p.PKey(ctx, "rvk")
+// 	vch, ech := p.u.LoadPrefix(ctx, k)
+// 	go func() {
+// 		defer cancel()
+// 		for v := range vch {
+// 			rs := &RevocationState{}
+// 			_, err := rs.UnmarshalMsg(v.Value)
+// 			if err != nil {
+// 				panic(err)
+// 			}
+// 			rlr := types.ReverseLookupResult{
+// 				Hash:  rs.TargetHash,
+// 				IsDOT: !rs.IsEntity,
+// 			}
+// 			if rs.IsEntity {
+// 				ent, err := p.loadEntity(ctx, rs.TargetHash)
+// 				if err != nil {
+// 					panic(err)
+// 				}
+// 				if ent == nil {
+// 					panic("expected to find this")
+// 				}
+// 				rlr.Entity = ent.Entity
+// 			} else {
+// 				dot, err := p.loadDotState(ctx, rs.TargetHash)
+// 				if err != nil {
+// 					panic(err)
+// 				}
+// 				if dot == nil {
+// 					panic("expected to find this")
+// 				}
+// 				rlr.Dot = dot.Dot
+// 			}
+// 			select {
+// 			case rv <- rlr:
+// 			case <-ctx.Done():
+// 				rv <- types.ReverseLookupResult{
+// 					Err: ctx.Err(),
+// 				}
+// 				close(rv)
+// 				return
+// 			}
+// 		}
+// 		err := <-ech
+// 		if err != nil {
+// 			rv <- types.ReverseLookupResult{
+// 				Err: err,
+// 			}
+// 		}
+// 		close(rv)
+// 		return
+// 	}()
+// 	return rv
+// }
+
+func (p *poc) MoveAttestationPendingP(ctx context.Context, att *iapi.Attestation, labelKeyIndex int) error {
+	hash := keccakFromAtt(att)
+	ds, err := p.loadAttestationState(ctx, hash)
 	if err != nil {
 		return err
 	}
 	if ds != nil {
 		panic("we moved a dot into pending when we already knew about it?")
 	}
-	ds = &DotState{
+	ds = &AttestationState{
 		State:         StatePending,
-		Dot:           dt,
+		Hash:          hash,
+		Attestation:   att,
 		LabelKeyIndex: labelKeyIndex,
 	}
-	return p.saveDotState(ctx, ds)
+	return p.saveAttestationState(ctx, ds)
 }
-func (p *poc) UpdateDotPendingP(ctx context.Context, dt *dot.DOT, labelKeyIndex int) error {
-	ds, err := p.loadDotState(ctx, dt.Hash)
+func (p *poc) UpdateAttestationPendingP(ctx context.Context, att *iapi.Attestation, labelKeyIndex int) error {
+	hash := keccakFromAtt(att)
+	ds, err := p.loadAttestationState(ctx, hash)
 	if err != nil {
 		return err
 	}
@@ -161,33 +194,41 @@ func (p *poc) UpdateDotPendingP(ctx context.Context, dt *dot.DOT, labelKeyIndex 
 		panic("label key index is LTE the current one")
 	}
 	ds.LabelKeyIndex = labelKeyIndex
-	return p.saveDotState(ctx, ds)
+	return p.saveAttestationState(ctx, ds)
 }
-func (p *poc) GetPendingDotsP(pctx context.Context, dst []byte, lkiLT int) chan types.PendingDOTResult {
-	rv := make(chan types.PendingDOTResult, 10)
+func (p *poc) GetPendingAttestationsP(pctx context.Context, dsthi iapi.HashSchemeInstance, lkiLT int) chan iapi.PendingAttestation {
+	dsthash := keccakFromHI(dsthi)
+	//TODO I don't think we do this properly, we are scanning too many dots here
+	//we should only scan those with a DST that matches
+	rv := make(chan iapi.PendingAttestation, 10)
 	ctx, cancel := context.WithCancel(pctx)
-	k := p.PKey(ctx, "dot")
+	k := p.PKey(ctx, "att")
 	vch, ech := p.u.LoadPrefix(ctx, k)
 	go func() {
 		defer cancel()
 		for v := range vch {
-			ds := &DotState{}
-			_, err := ds.UnmarshalMsg(v.Value)
+			ds := &AttestationState{}
+			err := unmarshalGob(v.Value, ds)
 			if err != nil {
 				panic(err)
+			}
+			dst := keccakFromExt(&ds.Attestation.CanonicalForm.TBS.Subject)
+			if !bytes.Equal(dst, dsthash) {
+				continue
 			}
 			if ds.LabelKeyIndex >= lkiLT {
 				continue
 			}
-			pdr := types.PendingDOTResult{
-				Dot:           ds.Dot,
-				Hash:          ds.Dot.Hash,
+			pdr := iapi.PendingAttestation{
+				Attestation:   ds.Attestation,
+				Keccak256:     ds.Hash,
 				LabelKeyIndex: &ds.LabelKeyIndex,
 			}
+
 			select {
 			case rv <- pdr:
 			case <-ctx.Done():
-				rv <- types.PendingDOTResult{
+				rv <- iapi.PendingAttestation{
 					Err: ctx.Err(),
 				}
 				close(rv)
@@ -196,7 +237,7 @@ func (p *poc) GetPendingDotsP(pctx context.Context, dst []byte, lkiLT int) chan 
 		}
 		err := <-ech
 		if err != nil {
-			rv <- types.PendingDOTResult{
+			rv <- iapi.PendingAttestation{
 				Err: err,
 			}
 		}
@@ -206,32 +247,37 @@ func (p *poc) GetPendingDotsP(pctx context.Context, dst []byte, lkiLT int) chan 
 	return rv
 }
 
-func (p *poc) MoveDotLabelledP(ctx context.Context, dt *dot.DOT) error {
-	err := p.insertPartitionToDotLink(ctx, dt.DST.Hash, dt.PartitionLabel, dt)
+func (p *poc) MoveAttestationLabelledP(ctx context.Context, att *iapi.Attestation) error {
+	dsthash := keccakFromExt(&att.CanonicalForm.TBS.Subject)
+	err := p.insertPartitionToAttestationLink(ctx, dsthash, att.WR1Partition, att)
 	if err != nil {
 		return err
 	}
-	ds := &DotState{
-		State: StateLabelled,
-		Dot:   dt,
+	ds := &AttestationState{
+		State:       StateLabelled,
+		Attestation: att,
+		Hash:        keccakFromAtt(att),
 	}
-	return p.saveDotState(ctx, ds)
+	return p.saveAttestationState(ctx, ds)
 }
-func (p *poc) insertActiveDotForwardLink(ctx context.Context, dt *dot.DOT) error {
-	k := p.PKey(ctx, "fdot", ToB64(dt.SRC.Hash), ToB64(dt.Hash))
+func (p *poc) insertActiveAttestationForwardLink(ctx context.Context, att *iapi.Attestation) error {
+	//dsthash := keccakFromExt(&att.CanonicalForm.TBS.Subject)
+	srchash := keccakFromExt(&att.DecryptedBody.VerifierBody.Attester)
+	k := p.PKey(ctx, "fdot", ToB64(srchash), ToB64(att.Keccack256()))
 	//We don't really need a value
 	return p.u.Store(ctx, k, []byte{1})
 }
-func (p *poc) MoveDotActiveP(ctx context.Context, dt *dot.DOT) error {
-	err := p.insertActiveDotForwardLink(ctx, dt)
+func (p *poc) MoveAttestationActiveP(ctx context.Context, att *iapi.Attestation) error {
+	err := p.insertActiveAttestationForwardLink(ctx, att)
 	if err != nil {
 		return err
 	}
-	ds := &DotState{
-		State: StateActive,
-		Dot:   dt,
+	ds := &AttestationState{
+		State:       StateActive,
+		Hash:        keccakFromAtt(att),
+		Attestation: att,
 	}
-	return p.saveDotState(ctx, ds)
+	return p.saveAttestationState(ctx, ds)
 }
 
 // func (p *poc) GetPartitionLabelKeyIndexP(ctx context.Context, dst []byte) (bool, int, error) {
@@ -249,19 +295,24 @@ func (p *poc) MoveDotActiveP(ctx context.Context, dt *dot.DOT) error {
 // }
 
 //TODO we are not properly cancelling context if there is error
-func (p *poc) GetActiveDotsFromP(pctx context.Context, src []byte, filter *types.LookupFromFilter) chan types.LookupFromResult {
-	rv := make(chan types.LookupFromResult, 10)
+func (p *poc) GetActiveAttestationsFromP(pctx context.Context, srchi iapi.HashSchemeInstance, filter *iapi.LookupFromFilter) chan iapi.LookupFromResult {
+	src := keccakFromHI(srchi)
+	rv := make(chan iapi.LookupFromResult, 10)
 	ctx, cancel := context.WithCancel(pctx)
-	k := p.PKey(ctx, "fdot")
+	k := p.PKey(ctx, "fdot", ToB64(src))
 	vch, ech := p.u.LoadPrefixKeys(ctx, k)
 	go func() {
 		defer cancel()
 		for v := range vch {
 			parts := split(v.Key)
+			// srch := FromB64(parts[len(parts)-2])
+			// if !bytes.Equal(src, srch) {
+			// 	continue
+			// }
 			dh := FromB64(parts[len(parts)-1])
-			ds, err := p.loadDotState(ctx, dh)
+			ds, err := p.loadAttestationState(ctx, dh)
 			if err != nil {
-				rv <- types.LookupFromResult{
+				rv <- iapi.LookupFromResult{
 					Err: err,
 				}
 				close(rv)
@@ -272,7 +323,6 @@ func (p *poc) GetActiveDotsFromP(pctx context.Context, src []byte, filter *types
 			if filter.Valid != nil {
 				if *filter.Valid {
 					if ds.State != StateActive {
-
 						continue
 					}
 				} else {
@@ -284,24 +334,27 @@ func (p *poc) GetActiveDotsFromP(pctx context.Context, src []byte, filter *types
 					//caller is looking for
 				}
 			}
-			if filter.GlobalNS != nil && *filter.GlobalNS {
-				//Only return dots with a global namespace
-				if len(ds.Dot.Content.NS) != 0 {
-					continue
+			//TODO
+			/*
+				if filter.GlobalNS != nil && *filter.GlobalNS {
+					//Only return dots with a global namespace
+					if len(ds.Dot.Content.NS) != 0 {
+						continue
+					}
+				} else if filter.Namespace != nil {
+					//Filter only a specific namespace (or global)
+					if len(ds.Dot.Content.NS) != 0 && !bytes.Equal(ds.Dot.Content.NS, filter.Namespace) {
+						continue
+					}
 				}
-			} else if filter.Namespace != nil {
-				//Filter only a specific namespace (or global)
-				if len(ds.Dot.Content.NS) != 0 && !bytes.Equal(ds.Dot.Content.NS, filter.Namespace) {
-					continue
-				}
-			}
-			lfr := types.LookupFromResult{
-				Dot: ds.Dot,
+			*/
+			lfr := iapi.LookupFromResult{
+				Attestation: ds.Attestation,
 			}
 			select {
 			case rv <- lfr:
 			case <-ctx.Done():
-				rv <- types.LookupFromResult{
+				rv <- iapi.LookupFromResult{
 					Err: ctx.Err(),
 				}
 				close(rv)
@@ -310,7 +363,7 @@ func (p *poc) GetActiveDotsFromP(pctx context.Context, src []byte, filter *types
 		}
 		err := <-ech
 		if err != nil {
-			rv <- types.LookupFromResult{
+			rv <- iapi.LookupFromResult{
 				Err: err,
 			}
 		}

@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
-	"github.com/immesys/wave/localdb/types"
-	dot "github.com/immesys/wave/olddot"
-	"github.com/immesys/wave/params"
+	"github.com/immesys/wave/iapi"
 )
 
 func (p *poc) getPartitionLabelKeyP(ctx context.Context, dst []byte, index int) (*PLKState, error) {
@@ -28,17 +25,16 @@ func (p *poc) getPartitionLabelKeyP(ctx context.Context, dst []byte, index int) 
 	}
 	return plks, nil
 }
-func (p *poc) GetPartitionLabelKeyP(ctx context.Context, dst []byte, index int) (*types.Secret, error) {
+func (p *poc) GetPartitionLabelKeyP(ctx context.Context, dsthi iapi.HashSchemeInstance, index int) (iapi.EntitySecretKeySchemeInstance, error) {
+	dst := keccakFromHI(dsthi)
 	plks, err := p.getPartitionLabelKeyP(ctx, dst, index)
 	if err != nil {
 		return nil, err
 	}
-	return &types.Secret{
-		Slots: plks.Slots,
-		Key:   plks.Key,
-	}, nil
+	return plks.Key, nil
 }
 
+/*
 func nsToSlots(ns []byte) [][]byte {
 	rv := make([][]byte, params.OAQUESlots)
 	rv[0] = []byte(dot.OAQUEMetaSlotPartitionLabel)
@@ -49,31 +45,32 @@ func nsToSlots(ns []byte) [][]byte {
 	}
 	return rv
 }
+*/
 
 //TODO some kind of mutex on the entity PLKS ? we have a bit of a race here with the index
-func (p *poc) InsertPartitionLabelKeyP(ctx context.Context, ent []byte, namespace []byte, key *oaque.PrivateKey) (new bool, err error) {
-	es, err := p.loadEntity(ctx, ent)
+func (p *poc) InsertPartitionLabelKeyP(ctx context.Context, ent iapi.HashSchemeInstance, key iapi.EntitySecretKeySchemeInstance) (new bool, err error) {
+	ehash := keccakFromHI(ent)
+	es, err := p.loadEntity(ctx, ehash)
 	if err != nil {
 		return false, err
 	}
 	//Scan through all PLKs to check if this one is new
 	for i := 0; i < es.MaxLabelKeyIndex; i++ {
-		plks, err := p.getPartitionLabelKeyP(ctx, ent, i)
+		plks, err := p.getPartitionLabelKeyP(ctx, ehash, i)
 		if err != nil {
 			return false, err
 		}
-		if bytes.Equal(plks.Namespace, namespace) {
+		if plks.Key.Equal(key) {
 			//We have this key already
 			return false, nil
 		}
 	}
 	//New key
-	k := p.PKey(ctx, "plk", ToB64(ent), fmt.Sprintf("%06d", es.MaxLabelKeyIndex))
+	k := p.PKey(ctx, "plk", ToB64(ehash), fmt.Sprintf("%06d", es.MaxLabelKeyIndex))
 	nplks := &PLKState{
-		Slots: nsToSlots(namespace),
-		Key:   key,
+		Key: key,
 	}
-	ba, err := nplks.MarshalMsg(nil)
+	ba, err := marshalGob(nplks)
 	if err != nil {
 		panic(err)
 	}
@@ -86,10 +83,10 @@ func (p *poc) InsertPartitionLabelKeyP(ctx context.Context, ent []byte, namespac
 }
 
 //This is to facilitate GetLAbelledDotsP. Gets called when moving dots to labelled
-func (p *poc) insertPartitionToDotLink(ctx context.Context, dst []byte, partition [][]byte, dt *dot.DOT) error {
-	k := p.PKey(ctx, "pdl", ToB64(dst), ToB64(dt.Hash))
+func (p *poc) insertPartitionToAttestationLink(ctx context.Context, dst []byte, partition [][]byte, dt *iapi.Attestation) error {
+	k := p.PKey(ctx, "pdl", ToB64(dst), ToB64(keccakFromAtt(dt)))
 	pl := &PendingLabels{Slots: partition}
-	ba, err := pl.MarshalMsg(nil)
+	ba, err := marshalGob(pl)
 	if err != nil {
 		panic(err)
 	}
@@ -97,8 +94,9 @@ func (p *poc) insertPartitionToDotLink(ctx context.Context, dst []byte, partitio
 }
 
 //In this case we want dots that are MORE qualified than the given partition
-func (p *poc) GetLabelledDotsP(pctx context.Context, dst []byte, partition [][]byte) chan types.PendingDOTResult {
-	rv := make(chan types.PendingDOTResult, 10)
+func (p *poc) GetLabelledAttestationsP(pctx context.Context, dsthi iapi.HashSchemeInstance, partition [][]byte) chan iapi.PendingAttestation {
+	dst := keccakFromHI(dsthi)
+	rv := make(chan iapi.PendingAttestation, 10)
 	ctx, cancel := context.WithCancel(pctx)
 	k := p.PKey(ctx, "pdl", ToB64(dst))
 	vch, ech := p.u.LoadPrefix(ctx, k)
@@ -107,7 +105,7 @@ func (p *poc) GetLabelledDotsP(pctx context.Context, dst []byte, partition [][]b
 		for v := range vch {
 
 			pl := &PendingLabels{}
-			_, err := pl.UnmarshalMsg(v.Value)
+			err := unmarshalGob(v.Value, pl)
 			if err != nil {
 				panic(err)
 			}
@@ -119,23 +117,23 @@ func (p *poc) GetLabelledDotsP(pctx context.Context, dst []byte, partition [][]b
 
 			parts := split(v.Key)
 			dh := FromB64(parts[len(parts)-1])
-			ds, err := p.loadDotState(ctx, dh)
+			ds, err := p.loadAttestationState(ctx, dh)
 			if err != nil {
-				rv <- types.PendingDOTResult{
+				rv <- iapi.PendingAttestation{
 					Err: err,
 				}
 				close(rv)
 				return
 			}
-			pdr := types.PendingDOTResult{
-				Dot:           ds.Dot,
-				Hash:          ds.Dot.Hash,
+			pdr := iapi.PendingAttestation{
+				Attestation:   ds.Attestation,
+				Keccak256:     ds.Hash,
 				LabelKeyIndex: &ds.LabelKeyIndex,
 			}
 			select {
 			case rv <- pdr:
 			case <-ctx.Done():
-				rv <- types.PendingDOTResult{
+				rv <- iapi.PendingAttestation{
 					Err: ctx.Err(),
 				}
 				close(rv)
@@ -144,7 +142,7 @@ func (p *poc) GetLabelledDotsP(pctx context.Context, dst []byte, partition [][]b
 		}
 		err := <-ech
 		if err != nil {
-			rv <- types.PendingDOTResult{
+			rv <- iapi.PendingAttestation{
 				Err: err,
 			}
 		}
@@ -170,7 +168,8 @@ func matchPartition(superset [][]byte, subset [][]byte) bool {
 	return true
 }
 
-func (p *poc) OAQUEKeysForP(ctx context.Context, dst []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
+func (p *poc) WR1KeysForP(ctx context.Context, dsthi iapi.HashSchemeInstance, slots [][]byte, onResult func(k iapi.SlottedSecretKey) bool) error {
+	dst := keccakFromHI(dsthi)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	k := p.PKey(ctx, "oaq", ToB64(dst))
@@ -180,16 +179,11 @@ func (p *poc) OAQUEKeysForP(ctx context.Context, dst []byte, slots [][]byte, onR
 			return ctx.Err()
 		}
 		cks := &ContentKeyState{}
-		_, err := cks.UnmarshalMsg(v.Value)
+		err := unmarshalGob(v.Value, cks)
 		if err != nil {
 			panic(err)
 		}
 
-		pl := &PendingLabels{}
-		_, err = pl.UnmarshalMsg(v.Value)
-		if err != nil {
-			panic(err)
-		}
 		//Only return this dot if the given partition is a superset
 		//of the dot
 		if !matchPartition(cks.Slots, slots) {
@@ -204,7 +198,9 @@ func (p *poc) OAQUEKeysForP(ctx context.Context, dst []byte, slots [][]byte, onR
 	}
 	return <-ech
 }
-func (p *poc) InsertOAQUEKeysForP(ctx context.Context, from []byte, slots [][]byte, key *oaque.PrivateKey) error {
+func (p *poc) InsertWR1KeysForP(ctx context.Context, fromhi iapi.HashSchemeInstance, key iapi.SlottedSecretKey) error {
+	from := keccakFromHI(fromhi)
+	slots := key.Slots()
 	bslots := make([]string, len(slots))
 	for i, s := range slots {
 		bslots[i] = ToB64(s)
@@ -215,7 +211,7 @@ func (p *poc) InsertOAQUEKeysForP(ctx context.Context, from []byte, slots [][]by
 		Slots: slots,
 		Key:   key,
 	}
-	ba, err := cks.MarshalMsg(nil)
+	ba, err := marshalGob(cks)
 	if err != nil {
 		panic(err)
 	}

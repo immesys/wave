@@ -7,14 +7,13 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/immesys/wave/engine"
-	"github.com/immesys/wave/entity"
+	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/localdb/lls"
-	"github.com/immesys/wave/localdb/types"
 	"github.com/immesys/wave/params"
+	"github.com/stretchr/testify/require"
 )
 
-var db types.WaveState
+var db iapi.WaveState
 
 func init() {
 	tdir, _ := ioutil.TempDir("", "llstest")
@@ -26,56 +25,59 @@ func init() {
 	db = NewPOC(llsdb)
 }
 func getPctx() context.Context {
-	perspective := entity.NewEntity(params.LocationUC)
-	ctx := context.WithValue(context.Background(), engine.PerspectiveKey, perspective)
+	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	if err != nil {
+		panic(err)
+	}
+	perspective := rne.EntitySecrets
+	ctx := context.WithValue(context.Background(), params.PerspectiveKey, perspective)
 	return ctx
 }
 func TestStoreLoadEntity(t *testing.T) {
 	ctx := getPctx()
-	ent := entity.NewEntity(params.LocationUC)
-	firstSer, err := ent.SerializePrivate()
+	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
+	perspective := rne.EntitySecrets
+	ent := perspective.Entity
+	firstSer, err := ent.DER()
+	require.NoError(t, err)
 	err = db.MoveEntityInterestingP(ctx, ent)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rent, err := db.GetEntityByHashG(ctx, ent.Hash)
-	if err != nil {
-		t.Fatal(err)
-	}
-	secondSer, err := rent.SerializePrivate()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	hi, err := ent.Hash(context.Background(), iapi.KECCAK256)
+	require.NoError(t, err)
+
+	rent, err := db.GetEntityByHashSchemeInstanceG(ctx, hi)
+	require.NoError(t, err)
+	secondSer, err := rent.DER()
+	require.NoError(t, err)
 	if !bytes.Equal(firstSer, secondSer) {
 		t.Fatalf("entities not equal when serialized")
 	}
 }
 
-func TestEntityDotIndex(t *testing.T) {
+func TestEntityQueueIndex(t *testing.T) {
 	ctx := getPctx()
-	ent := entity.NewEntity(params.LocationUC)
-	err := db.MoveEntityInterestingP(ctx, ent)
+	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	if err != nil {
+		panic(err)
+	}
+	perspective := rne.EntitySecrets
+	ent := perspective.Entity
+	err = db.MoveEntityInterestingP(ctx, ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	okay, doti, err := db.GetEntityDotIndexP(ctx, ent.Hash)
+	okay, doti, err := db.GetEntityQueueIndexP(ctx, ent.Keccak256HI())
+	require.NoError(t, err)
+	require.True(t, okay)
+	require.EqualValues(t, 0, doti)
+	err = db.SetEntityQueueIndexP(ctx, ent.Keccak256HI(), 5)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !okay {
-		t.Fatal(okay)
-	}
-	if doti != 0 {
-		t.Fatal(doti)
-	}
-	err = db.SetEntityDotIndexP(ctx, ent.Hash, 5)
-	if err != nil {
-		t.Fatal(err)
-	}
-	okay, doti, err = db.GetEntityDotIndexP(ctx, ent.Hash)
+	okay, doti, err = db.GetEntityQueueIndexP(ctx, ent.Keccak256HI())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +93,7 @@ func TestNonExistingEntityByHash(t *testing.T) {
 	ctx := getPctx()
 	hash := make([]byte, 32)
 	rand.Read(hash)
-	ent, err := db.GetEntityByHashG(ctx, hash)
+	ent, err := db.GetEntityByHashSchemeInstanceG(ctx, &iapi.HashSchemeInstance_Keccak_256{hash})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +106,7 @@ func TestNonExistingEntityDotIndex(t *testing.T) {
 	ctx := getPctx()
 	hash := make([]byte, 32)
 	rand.Read(hash)
-	okay, _, err := db.GetEntityDotIndexP(ctx, hash)
+	okay, _, err := db.GetEntityQueueIndexP(ctx, &iapi.HashSchemeInstance_Keccak_256{hash})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +119,7 @@ func TestNonExistingEntityInteresting(t *testing.T) {
 	ctx := getPctx()
 	hash := make([]byte, 32)
 	rand.Read(hash)
-	intr, err := db.IsEntityInterestingP(ctx, hash)
+	intr, err := db.IsEntityInterestingP(ctx, &iapi.HashSchemeInstance_Keccak_256{hash})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,12 +130,16 @@ func TestNonExistingEntityInteresting(t *testing.T) {
 
 func TestInterestingEntity(t *testing.T) {
 	ctx := getPctx()
-	ent := entity.NewEntity(params.LocationUC)
-	err := db.MoveEntityInterestingP(ctx, ent)
+	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	if err != nil {
+		panic(err)
+	}
+	ent := rne.EntitySecrets.Entity
+	err = db.MoveEntityInterestingP(ctx, ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	intr, err := db.IsEntityInterestingP(ctx, ent.Hash)
+	intr, err := db.IsEntityInterestingP(ctx, ent.Keccak256HI())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,11 +150,15 @@ func TestInterestingEntity(t *testing.T) {
 
 func TestInterestingEntitySequence(t *testing.T) {
 	ctx := getPctx()
-	dataset := make(map[[32]byte]*entity.Entity)
+	dataset := make(map[[32]byte]*iapi.Entity)
 	for i := 0; i < 100; i++ {
-		ent := entity.NewEntity(params.LocationUC)
-		dataset[ent.ArrayHash()] = ent
-		err := db.MoveEntityInterestingP(ctx, ent)
+		rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+		if err != nil {
+			panic(err)
+		}
+		ent := rne.EntitySecrets.Entity
+		dataset[ent.ArrayKeccak256()] = ent
+		err = db.MoveEntityInterestingP(ctx, ent)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -158,52 +168,54 @@ func TestInterestingEntitySequence(t *testing.T) {
 		if v.Err != nil {
 			t.Fatal(v.Err)
 		}
-		_, ok := dataset[entity.ArrayHash(v.Hash)]
+		_, ok := dataset[iapi.ToArr32(v.HashSchemeInstance.Value())]
 		if !ok {
 			t.Fatalf("bad hash")
 		}
-		delete(dataset, entity.ArrayHash(v.Hash))
+		delete(dataset, iapi.ToArr32(v.HashSchemeInstance.Value()))
 	}
 	if len(dataset) != 0 {
 		t.Fatalf("we did not get back all entities, there are %d left", len(dataset))
 	}
 }
-func TestEntityByRevocation(t *testing.T) {
-	ctx := getPctx()
-	ent := entity.NewEntity(params.LocationUC)
-	firstSer, err := ent.SerializePrivate()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = db.MoveEntityInterestingP(ctx, ent)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rvc := db.GetInterestingByRevocationHashP(ctx, ent.RevocationHash)
-	count := 0
-	for v := range rvc {
-		count++
-		if v.Err != nil {
-			t.Fatal(v.Err)
-		}
-		if v.IsDOT {
-			t.Fatalf("expected false")
-		}
-		if v.Entity == nil {
-			t.Fatalf("expected entty")
-		}
-		secondSer, err := v.Entity.SerializePrivate()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(firstSer, secondSer) {
-			t.Fatalf("entities not equal when serialized")
-		}
-	}
-	if count != 1 {
-		t.Fatalf("expected count to be 1")
-	}
-}
+
+//
+// func TestEntityByRevocation(t *testing.T) {
+// 	ctx := getPctx()
+// 	ent := entity.NewEntity(params.LocationUC)
+// 	firstSer, err := ent.SerializePrivate()
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	err = db.MoveEntityInterestingP(ctx, ent)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	rvc := db.GetInterestingByRevocationHashP(ctx, ent.RevocationHash)
+// 	count := 0
+// 	for v := range rvc {
+// 		count++
+// 		if v.Err != nil {
+// 			t.Fatal(v.Err)
+// 		}
+// 		if v.IsDOT {
+// 			t.Fatalf("expected false")
+// 		}
+// 		if v.Entity == nil {
+// 			t.Fatalf("expected entty")
+// 		}
+// 		secondSer, err := v.Entity.SerializePrivate()
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+// 		if !bytes.Equal(firstSer, secondSer) {
+// 			t.Fatalf("entities not equal when serialized")
+// 		}
+// 	}
+// 	if count != 1 {
+// 		t.Fatalf("expected count to be 1")
+// 	}
+// }
 
 // for dots
 // GetInterestingByRevocationHashP(ctx context.Context, rvkhash []byte) chan ReverseLookupResult

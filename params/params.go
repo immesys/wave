@@ -12,3 +12,7 @@ const OidPrefix = "2.25.45143053631457624761134634438852551742"
 
 const OidEntity = "2.25.45143053631457624761134634438852551742.1"
 const OidDot = "2.25.45143053631457624761134634438852551742.2"
+
+type engineContextKey string
+
+var PerspectiveKey engineContextKey = "perspective"

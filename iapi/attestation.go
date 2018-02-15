@@ -46,11 +46,11 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 		return nil, fmt.Errorf("unknown hash scheme")
 	}
 	att := serdes.WaveAttestation{}
-	externalSubjectHash, err := subjectHash.CanonicalForm(ctx)
+	externalSubjectHash, err := subjectHash.CanonicalForm()
 	if err != nil {
 		return nil, err
 	}
-	externalAttesterHash, err := attesterHash.CanonicalForm(ctx)
+	externalAttesterHash, err := attesterHash.CanonicalForm()
 	if err != nil {
 		return nil, err
 	}
@@ -135,16 +135,16 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	}, nil
 }
 
-type PDecodeAttestation struct {
+type PParseAttestation struct {
 	DER               []byte
 	DecryptionContext BodyDecryptionContext
 }
-type RDecodeAttestation struct {
+type RParseAttestation struct {
 	Attestation *Attestation
 	ExtraInfo   interface{}
 }
 
-func DecodeAttestation(ctx context.Context, p *PDecodeAttestation) (*RDecodeAttestation, error) {
+func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttestation, error) {
 	wo := serdes.WaveWireObject{}
 	trailing, err := asn1.Unmarshal(p.DER, &wo.Content)
 	if err != nil {
@@ -170,7 +170,7 @@ func DecodeAttestation(ctx context.Context, p *PDecodeAttestation) (*RDecodeAtte
 		CanonicalForm: &att,
 		DecryptedBody: decoded,
 	}
-	return &RDecodeAttestation{
+	return &RParseAttestation{
 		Attestation: &rv,
 		ExtraInfo:   extra,
 	}, nil

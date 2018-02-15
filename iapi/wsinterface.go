@@ -20,9 +20,9 @@ type LowLevelStorage interface {
 }
 
 type PendingAttestation struct {
-	Err                    error
-	Attestation            *Attestation
-	Sha3HashSchemeInstance []byte
+	Err         error
+	Attestation *Attestation
+	Keccak256   []byte
 	//Only for pending without partition
 	LabelKeyIndex *int
 }
@@ -64,7 +64,7 @@ type WaveState interface {
 
 	//This is idempotent, an entity in any state other than unknown will
 	//be ignored by this function
-	MoveEntityInterestingP(ctx context.Context, ent Entity) error
+	MoveEntityInterestingP(ctx context.Context, ent *Entity) error
 	//This does not return revoked or expired entities, even though the
 	//function above considers them "interesting"
 	GetInterestingEntitiesP(ctx context.Context) chan InterestingEntityResult
@@ -75,13 +75,14 @@ type WaveState interface {
 	//or the context cancelled
 	//GetInterestingByRevocationHashSchemeInstanceP(ctx context.Context, rvkHashSchemeInstance []byte) chan ReverseLookupResult
 
+	//This is a key that decrypts the partition label (WR1 uses IBE)
 	GetPartitionLabelKeyP(ctx context.Context, subject HashSchemeInstance, index int) (EntitySecretKeySchemeInstance, error)
 	InsertPartitionLabelKeyP(ctx context.Context, attester HashSchemeInstance, key EntitySecretKeySchemeInstance) (new bool, err error)
 
-	WR1KeysForP(ctx context.Context, subject HashSchemeInstance, slots [][]byte, onResult func(k EntitySecretKeySchemeInstance) bool) error
+	WR1KeysForP(ctx context.Context, subject HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
 	//TODO this must be idempotenty, like don't add in a secret if we have a more
 	//powerful one already
-	InsertWR1KeysForP(ctx context.Context, attester HashSchemeInstance, k EntitySecretKeySchemeInstance) error
+	InsertWR1KeysForP(ctx context.Context, attester HashSchemeInstance, k SlottedSecretKey) error
 
 	MoveAttestationPendingP(ctx context.Context, at *Attestation, labelKeyIndex int) error
 	//Assume dot already inserted into pending, but update the labelKeyIndex
@@ -97,17 +98,17 @@ type WaveState interface {
 	GetEntityPartitionLabelKeyIndexP(ctx context.Context, entHashSchemeInstance HashSchemeInstance) (bool, int, error)
 	GetAttestationP(ctx context.Context, HashSchemeInstance HashSchemeInstance) (at *Attestation, err error)
 	GetActiveAttestationsFromP(ctx context.Context, attester HashSchemeInstance, filter *LookupFromFilter) chan LookupFromResult
-	GetEntityAttestationIndexP(ctx context.Context, hsh HashSchemeInstance) (okay bool, dotIndex int, err error)
-	SetEntityAttestationIndexP(ctx context.Context, hsh HashSchemeInstance, dotIndex int) error
+	GetEntityQueueIndexP(ctx context.Context, hsh HashSchemeInstance) (okay bool, dotIndex int, err error)
+	SetEntityQueueIndexP(ctx context.Context, hsh HashSchemeInstance, dotIndex int) error
 
 	//Global (non perspective) functions
-	MoveEntityRevokedG(ctx context.Context, ent Entity) error
-	MoveEntityExpiredG(ctx context.Context, ent Entity) error
+	MoveEntityRevokedG(ctx context.Context, ent *Entity) error
+	MoveEntityExpiredG(ctx context.Context, ent *Entity) error
 	MoveAttestationRevokedG(ctx context.Context, at *Attestation) error
 
 	//This only returns entities we happen to have because they were interesting
 	//to someone, so the caller must handle a nil,nil result and go hit the chain
-	GetEntityByHashSchemeInstanceG(ctx context.Context, hsh HashSchemeInstance) (Entity, error)
+	GetEntityByHashSchemeInstanceG(ctx context.Context, hsh HashSchemeInstance) (*Entity, error)
 }
 
 //TODO

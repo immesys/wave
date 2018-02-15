@@ -7,10 +7,10 @@ import (
 	"io/ioutil"
 	"testing"
 
-	localdb "github.com/immesys/wave/localdb/types"
+	"github.com/immesys/wave/iapi"
 )
 
-var db localdb.LowLevelStorage
+var db iapi.LowLevelStorage
 
 func init() {
 	tdir, _ := ioutil.TempDir("", "llstest")
@@ -80,7 +80,7 @@ func TestStoreLoadRange(t *testing.T) {
 	//Test with binary keys to ensure DB can handle that mayhem
 	keyb := make([]byte, 32)
 	rand.Read(keyb)
-	dataset := []localdb.KeyValue{}
+	dataset := []iapi.KeyValue{}
 	for i := 0; i < 10; i++ {
 		keyarr := make([]byte, 64)
 		copy(keyarr, keyb)
@@ -89,7 +89,7 @@ func TestStoreLoadRange(t *testing.T) {
 		val := make([]byte, 32)
 		rand.Read(val)
 		key := string(keyarr)
-		dataset = append(dataset, localdb.KeyValue{Key: key, Value: val})
+		dataset = append(dataset, iapi.KeyValue{Key: key, Value: val})
 		err := db.Store(context.Background(), key, val)
 		if err != nil {
 			t.Fatalf("unexpected store error: %v", err)
@@ -161,7 +161,7 @@ func TestStoreLoadRange(t *testing.T) {
 func TestStoreLoadRangeCancel(t *testing.T) {
 	keyb := make([]byte, 32)
 	rand.Read(keyb)
-	dataset := []localdb.KeyValue{}
+	dataset := []iapi.KeyValue{}
 	for i := 0; i < 100; i++ {
 		keyarr := make([]byte, 64)
 		copy(keyarr, keyb)
@@ -170,7 +170,7 @@ func TestStoreLoadRangeCancel(t *testing.T) {
 		val := make([]byte, 32)
 		rand.Read(val)
 		key := string(keyarr)
-		dataset = append(dataset, localdb.KeyValue{Key: key, Value: val})
+		dataset = append(dataset, iapi.KeyValue{Key: key, Value: val})
 		err := db.Store(context.Background(), key, val)
 		if err != nil {
 			t.Fatalf("unexpected store error: %v", err)

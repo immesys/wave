@@ -3,7 +3,7 @@ package lls
 import (
 	"context"
 
-	localdb "github.com/immesys/wave/localdb/types"
+	"github.com/immesys/wave/iapi"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -13,9 +13,9 @@ type lls struct {
 }
 
 //Check it implements interface
-var _ localdb.LowLevelStorage = &lls{}
+var _ iapi.LowLevelStorage = &lls{}
 
-func NewLowLevelStorage(dbpath string) (localdb.LowLevelStorage, error) {
+func NewLowLevelStorage(dbpath string) (iapi.LowLevelStorage, error) {
 	db, err := leveldb.OpenFile(dbpath, nil)
 	if err != nil {
 		return nil, err
@@ -38,8 +38,8 @@ func (s *lls) Load(ctx context.Context, key string) ([]byte, error) {
 	}
 	return val, nil
 }
-func (s *lls) LoadPrefix(ctx context.Context, key string) (chan localdb.KeyValue, chan error) {
-	rvv := make(chan localdb.KeyValue, 10)
+func (s *lls) LoadPrefix(ctx context.Context, key string) (chan iapi.KeyValue, chan error) {
+	rvv := make(chan iapi.KeyValue, 10)
 	rve := make(chan error, 1)
 	if ctx.Err() != nil {
 		rve <- ctx.Err()
@@ -52,9 +52,9 @@ func (s *lls) LoadPrefix(ctx context.Context, key string) (chan localdb.KeyValue
 }
 
 //For some databases, e.g badger, this might be more efficient. For us its the same
-func (s *lls) LoadPrefixKeys(ctx context.Context, key string) (chan localdb.KeyValue, chan error) {
+func (s *lls) LoadPrefixKeys(ctx context.Context, key string) (chan iapi.KeyValue, chan error) {
 	//Deliberately remove values to prevent code from accidentally using them
-	rvv := make(chan localdb.KeyValue, 10)
+	rvv := make(chan iapi.KeyValue, 10)
 	rve := make(chan error, 1)
 	if ctx.Err() != nil {
 		rve <- ctx.Err()
@@ -65,10 +65,10 @@ func (s *lls) LoadPrefixKeys(ctx context.Context, key string) (chan localdb.KeyV
 	go s.loadPrefix(ctx, key, false, rvv, rve)
 	return rvv, rve
 }
-func (s *lls) loadPrefix(ctx context.Context, key string, includeValue bool, rvv chan localdb.KeyValue, rve chan error) {
+func (s *lls) loadPrefix(ctx context.Context, key string, includeValue bool, rvv chan iapi.KeyValue, rve chan error) {
 	iter := s.db.NewIterator(util.BytesPrefix([]byte(key)), nil)
 	for iter.Next() {
-		e := localdb.KeyValue{
+		e := iapi.KeyValue{
 			Key: string(iter.Key()),
 		}
 		if includeValue {

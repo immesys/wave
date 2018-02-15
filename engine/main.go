@@ -1,9 +1,5 @@
 package engine
 
-type engineContextKey string
-
-var PerspectiveKey engineContextKey = "perspective"
-
 //
 // things to do:
 //

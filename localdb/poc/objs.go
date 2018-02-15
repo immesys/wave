@@ -1,13 +1,4 @@
-// +build ignore
-
 package poc
-
-import (
-	"github.com/SoftwareDefinedBuildings/starwave/crypto/oaque"
-	"github.com/immesys/wave/iapi"
-)
-
-//go:generate msgp -io=false -tests=false
 
 const (
 	_ = iota
@@ -22,14 +13,18 @@ const (
 )
 
 type EntityState struct {
-	Entity           *iapi.Entity
+	//Entity           *iapi.Entity
+	EntityDER        []byte
+	Hash             []byte
 	State            int
-	DotIndex         int
+	QueueIndex       int
 	MaxLabelKeyIndex int
 }
 
 type AttestationState struct {
-	Dot           *iapi.Attestation
+	Hash           []byte
+	AttestationDER []byte
+	//Attestation   *iapi.Attestation
 	State         int
 	LabelKeyIndex int
 }
@@ -40,14 +35,16 @@ type AttestationState struct {
 // }
 
 type PLKState struct {
-	Slots     [][]byte
-	Key       *oaque.PrivateKey
+	Slots [][]byte
+	//Key       iapi.EntitySecretKeySchemeInstance
+	KeyDER    []byte
 	Namespace []byte
 }
 
 type ContentKeyState struct {
-	Slots [][]byte
-	Key   *oaque.PrivateKey
+	Slots  [][]byte
+	KeyDER []byte
+	//Key   iapi.SlottedSecretKey
 }
 type PendingLabels struct {
 	Slots [][]byte

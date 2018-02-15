@@ -1,13 +1,10 @@
-// +build ignore
-
 package poc
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/immesys/wave/entity"
-	"github.com/immesys/wave/localdb/types"
+	"github.com/immesys/wave/iapi"
 )
 
 // func (p *poc) addRevocationHash(ctx context.Context, isEntity bool, targetHash []byte, rvkHash []byte) error {
@@ -23,8 +20,11 @@ import (
 // 	return p.u.Store(ctx, k, ba)
 // }
 func (p *poc) saveEntityState(ctx context.Context, es *EntityState) error {
-	k := p.PKey(ctx, "entity", ToB64(es.Entity.Hash))
-	ba, err := es.MarshalMsg(nil)
+	if len(es.Hash) != 32 {
+		panic(es)
+	}
+	k := p.PKey(ctx, "entity", ToB64(es.Hash))
+	ba, err := marshalGob(es)
 	if err != nil {
 		return err
 	}
@@ -43,28 +43,30 @@ func (p *poc) loadEntity(ctx context.Context, hash []byte) (*EntityState, error)
 		return nil, nil
 	}
 	es := &EntityState{}
-	_, err = es.UnmarshalMsg(ba)
+	err = unmarshalGob(ba, es)
 	if err != nil {
 		panic(err)
 	}
 	return es, nil
 }
-func (p *poc) moveEntity(ctx context.Context, ent *entity.Entity, state int) error {
+func (p *poc) moveEntity(ctx context.Context, ent *iapi.Entity, state int) error {
 	es := &EntityState{
 		Entity: ent,
+		Hash:   ent.Keccak256(),
 		State:  state,
 	}
-	err := p.addRevocationHash(ctx, true, ent.Hash, ent.RevocationHash)
-	if err != nil {
-		return err
-	}
+	// err := p.addRevocationHash(ctx, true, ent.Hash, ent.RevocationHash)
+	// if err != nil {
+	// 	return err
+	// }
 	return p.saveEntityState(ctx, es)
 }
 
 //Perspective functions
-func (p *poc) MoveEntityInterestingP(ctx context.Context, ent *entity.Entity) error {
+func (p *poc) MoveEntityInterestingP(ctx context.Context, ent *iapi.Entity) error {
 	//Ensure we are idempotent, don't want to clobber other state
-	es, err := p.loadEntity(ctx, ent.Hash)
+	fmt.Printf("thing was: %x\n", ent.Keccak256())
+	es, err := p.loadEntity(ctx, ent.Keccak256())
 	if err != nil {
 		return err
 	}
@@ -74,8 +76,8 @@ func (p *poc) MoveEntityInterestingP(ctx context.Context, ent *entity.Entity) er
 	}
 	return p.moveEntity(ctx, ent, StateInteresting)
 }
-func (p *poc) GetInterestingEntitiesP(pctx context.Context) chan types.InterestingEntityResult {
-	rv := make(chan types.InterestingEntityResult, 10)
+func (p *poc) GetInterestingEntitiesP(pctx context.Context) chan iapi.InterestingEntityResult {
+	rv := make(chan iapi.InterestingEntityResult, 10)
 	ctx, cancel := context.WithCancel(pctx)
 	k := p.PKey(ctx, "entity")
 	vch, ech := p.u.LoadPrefixKeys(ctx, k)
@@ -88,11 +90,11 @@ func (p *poc) GetInterestingEntitiesP(pctx context.Context) chan types.Interesti
 				panic(hash)
 			}
 			select {
-			case rv <- types.InterestingEntityResult{
-				Hash: hash,
+			case rv <- iapi.InterestingEntityResult{
+				HashSchemeInstance: &iapi.HashSchemeInstance_Keccak_256{hash},
 			}:
 			case <-ctx.Done():
-				rv <- types.InterestingEntityResult{
+				rv <- iapi.InterestingEntityResult{
 					Err: ctx.Err(),
 				}
 				close(rv)
@@ -101,7 +103,7 @@ func (p *poc) GetInterestingEntitiesP(pctx context.Context) chan types.Interesti
 		}
 		err := <-ech
 		if err != nil {
-			rv <- types.InterestingEntityResult{
+			rv <- iapi.InterestingEntityResult{
 				Err: err,
 			}
 		}
@@ -111,7 +113,8 @@ func (p *poc) GetInterestingEntitiesP(pctx context.Context) chan types.Interesti
 	return rv
 }
 
-func (p *poc) GetEntityPartitionLabelKeyIndexP(ctx context.Context, dst []byte) (bool, int, error) {
+func (p *poc) GetEntityPartitionLabelKeyIndexP(ctx context.Context, dsthi iapi.HashSchemeInstance) (bool, int, error) {
+	dst := keccakFromHI(dsthi)
 	es, err := p.loadEntity(ctx, dst)
 	if err != nil {
 		return false, 0, err
@@ -122,7 +125,9 @@ func (p *poc) GetEntityPartitionLabelKeyIndexP(ctx context.Context, dst []byte) 
 	return true, es.MaxLabelKeyIndex, nil
 }
 
-func (p *poc) IsEntityInterestingP(ctx context.Context, hash []byte) (bool, error) {
+func (p *poc) IsEntityInterestingP(ctx context.Context, hi iapi.HashSchemeInstance) (bool, error) {
+	hash := keccakFromHI(hi)
+
 	es, err := p.loadEntity(ctx, hash)
 	if err != nil {
 		return false, err
@@ -132,7 +137,9 @@ func (p *poc) IsEntityInterestingP(ctx context.Context, hash []byte) (bool, erro
 	}
 	return es.State == StateInteresting, nil
 }
-func (p *poc) GetEntityDotIndexP(ctx context.Context, hsh []byte) (okay bool, dotIndex int, err error) {
+func (p *poc) GetEntityQueueIndexP(ctx context.Context, hi iapi.HashSchemeInstance) (okay bool, dotIndex int, err error) {
+	hsh := keccakFromHI(hi)
+
 	es, err := p.loadEntity(ctx, hsh)
 	if err != nil {
 		return false, 0, err
@@ -140,9 +147,10 @@ func (p *poc) GetEntityDotIndexP(ctx context.Context, hsh []byte) (okay bool, do
 	if es == nil {
 		return false, 0, nil
 	}
-	return true, es.DotIndex, nil
+	return true, es.QueueIndex, nil
 }
-func (p *poc) SetEntityDotIndexP(ctx context.Context, hsh []byte, dotIndex int) error {
+func (p *poc) SetEntityQueueIndexP(ctx context.Context, hi iapi.HashSchemeInstance, queueIndex int) error {
+	hsh := keccakFromHI(hi)
 	es, err := p.loadEntity(ctx, hsh)
 	if err != nil {
 		return err
@@ -150,11 +158,11 @@ func (p *poc) SetEntityDotIndexP(ctx context.Context, hsh []byte, dotIndex int) 
 	if es == nil {
 		return fmt.Errorf("we don't know this entity")
 	}
-	es.DotIndex = dotIndex
+	es.QueueIndex = queueIndex
 	return p.saveEntityState(ctx, es)
 }
-func (p *poc) MoveEntityRevokedG(ctx context.Context, ent *entity.Entity) error {
-	es, err := p.loadEntity(ctx, ent.Hash)
+func (p *poc) MoveEntityRevokedG(ctx context.Context, ent *iapi.Entity) error {
+	es, err := p.loadEntity(ctx, ent.Keccak256())
 	if err != nil {
 		return err
 	}
@@ -165,8 +173,8 @@ func (p *poc) MoveEntityRevokedG(ctx context.Context, ent *entity.Entity) error 
 	es.State = StateRevoked
 	return p.saveEntityState(ctx, es)
 }
-func (p *poc) MoveEntityExpiredG(ctx context.Context, ent *entity.Entity) error {
-	es, err := p.loadEntity(ctx, ent.Hash)
+func (p *poc) MoveEntityExpiredG(ctx context.Context, ent *iapi.Entity) error {
+	es, err := p.loadEntity(ctx, ent.Keccak256())
 	if err != nil {
 		return err
 	}
@@ -177,8 +185,9 @@ func (p *poc) MoveEntityExpiredG(ctx context.Context, ent *entity.Entity) error 
 	es.State = StateExpired
 	return p.saveEntityState(ctx, es)
 }
-func (p *poc) GetEntityByHashG(ctx context.Context, hsh []byte) (*entity.Entity, error) {
-	es, err := p.loadEntity(ctx, hsh)
+func (p *poc) GetEntityByHashSchemeInstanceG(ctx context.Context, hi iapi.HashSchemeInstance) (*iapi.Entity, error) {
+	hash := keccakFromHI(hi)
+	es, err := p.loadEntity(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
