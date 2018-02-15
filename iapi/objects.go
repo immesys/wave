@@ -3,6 +3,7 @@ package iapi
 import (
 	"context"
 	"encoding/asn1"
+	"fmt"
 
 	"github.com/immesys/wave/serdes"
 )
@@ -77,6 +78,28 @@ func (e *EntitySecrets) PrimarySigningKey() EntitySecretKeySchemeInstance {
 	//spew.Dump(e.Keyring)
 	return e.Keyring[0]
 }
+func (e *EntitySecrets) WR1LabelKey(ctx context.Context, namespace []byte) (EntitySecretKeySchemeInstance, error) {
+	for _, kr := range e.Keyring {
+		master, ok := kr.(*EntitySecretKey_IBE_Master_BN256)
+		if ok {
+			return master.GenerateChildSecretKey(ctx, namespace)
+		}
+	}
+	return nil, fmt.Errorf("no WR1 label key found")
+}
+func (e *EntitySecrets) WR1BodyKey(ctx context.Context, slots [][]byte) (SlottedSecretKey, error) {
+	if len(slots) != 20 {
+		return nil, fmt.Errorf("WR1 uses 20 slots")
+	}
+	for _, kr := range e.Keyring {
+		master, ok := kr.(*EntitySecretKey_OAQUE_BN256_S20_Master)
+		if ok {
+			rv, e := master.GenerateChildSecretKey(ctx, slots)
+			return rv.(*EntitySecretKey_OAQUE_BN256_S20), e
+		}
+	}
+	return nil, fmt.Errorf("no WR1 body key found")
+}
 
 type Attestation struct {
 	//Before any decryption was applied
@@ -104,12 +127,28 @@ func (e *Attestation) Hash(ctx context.Context, scheme HashScheme) (HashSchemeIn
 	return rv, err
 }
 
-func (e *Attestation) Keccack256() []byte {
+func (e *Attestation) Keccak256() []byte {
 	hi, err := e.Hash(context.Background(), KECCAK256)
 	if err != nil {
 		panic(err)
 	}
 	rv := hi.Value()
+	return rv
+}
+func (e *Attestation) Subject() HashSchemeInstance {
+	rv := HashSchemeInstanceFor(&e.CanonicalForm.TBS.Subject)
+	return rv
+}
+func (e *Attestation) Keccak256HI() HashSchemeInstance {
+	hi, err := e.Hash(context.Background(), KECCAK256)
+	if err != nil {
+		panic(err)
+	}
+	return hi
+}
+func (e *Attestation) ArrayKeccak256() [32]byte {
+	rv := [32]byte{}
+	copy(rv[:], e.Keccak256())
 	return rv
 }
 

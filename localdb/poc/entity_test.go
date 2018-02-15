@@ -57,7 +57,7 @@ func TestStoreLoadEntity(t *testing.T) {
 	}
 }
 
-func TestEntityQueueIndex(t *testing.T) {
+func TestEntityQueueToken(t *testing.T) {
 	ctx := getPctx()
 	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
 	if err != nil {
@@ -69,22 +69,22 @@ func TestEntityQueueIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	okay, doti, err := db.GetEntityQueueIndexP(ctx, ent.Keccak256HI())
+	okay, doti, err := db.GetEntityQueueTokenP(ctx, ent.Keccak256HI())
 	require.NoError(t, err)
 	require.True(t, okay)
-	require.EqualValues(t, 0, doti)
-	err = db.SetEntityQueueIndexP(ctx, ent.Keccak256HI(), 5)
+	require.EqualValues(t, "", doti)
+	err = db.SetEntityQueueTokenP(ctx, ent.Keccak256HI(), "5")
 	if err != nil {
 		t.Fatal(err)
 	}
-	okay, doti, err = db.GetEntityQueueIndexP(ctx, ent.Keccak256HI())
+	okay, doti, err = db.GetEntityQueueTokenP(ctx, ent.Keccak256HI())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !okay {
 		t.Fatal(okay)
 	}
-	if doti != 5 {
+	if doti != "5" {
 		t.Fatal(doti)
 	}
 }
@@ -106,7 +106,7 @@ func TestNonExistingEntityDotIndex(t *testing.T) {
 	ctx := getPctx()
 	hash := make([]byte, 32)
 	rand.Read(hash)
-	okay, _, err := db.GetEntityQueueIndexP(ctx, &iapi.HashSchemeInstance_Keccak_256{hash})
+	okay, _, err := db.GetEntityQueueTokenP(ctx, &iapi.HashSchemeInstance_Keccak_256{hash})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,35 +148,83 @@ func TestInterestingEntity(t *testing.T) {
 	}
 }
 
+func TestInterestingEntityRevoked(t *testing.T) {
+	ctx := getPctx()
+	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	require.NoError(t, err)
+	ent := rne.EntitySecrets.Entity
+	err = db.MoveEntityInterestingP(ctx, ent)
+	require.NoError(t, err)
+	intr, err := db.IsEntityInterestingP(ctx, ent.Keccak256HI())
+	require.NoError(t, err)
+	require.True(t, intr)
+	err = db.MoveEntityRevokedG(ctx, ent)
+	intr, err = db.IsEntityInterestingP(ctx, ent.Keccak256HI())
+	require.NoError(t, err)
+	require.False(t, intr)
+}
+
+func TestInterestingEntityExpired(t *testing.T) {
+	ctx := getPctx()
+	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	require.NoError(t, err)
+	ent := rne.EntitySecrets.Entity
+	err = db.MoveEntityInterestingP(ctx, ent)
+	require.NoError(t, err)
+	intr, err := db.IsEntityInterestingP(ctx, ent.Keccak256HI())
+	require.NoError(t, err)
+	require.True(t, intr)
+	err = db.MoveEntityExpiredG(ctx, ent)
+	intr, err = db.IsEntityInterestingP(ctx, ent.Keccak256HI())
+	require.NoError(t, err)
+	require.False(t, intr)
+}
+
 func TestInterestingEntitySequence(t *testing.T) {
 	ctx := getPctx()
 	dataset := make(map[[32]byte]*iapi.Entity)
 	for i := 0; i < 100; i++ {
 		rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-		if err != nil {
-			panic(err)
-		}
+		require.NoError(t, err)
 		ent := rne.EntitySecrets.Entity
 		dataset[ent.ArrayKeccak256()] = ent
 		err = db.MoveEntityInterestingP(ctx, ent)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	rvc := db.GetInterestingEntitiesP(ctx)
 	for v := range rvc {
-		if v.Err != nil {
-			t.Fatal(v.Err)
-		}
-		_, ok := dataset[iapi.ToArr32(v.HashSchemeInstance.Value())]
-		if !ok {
-			t.Fatalf("bad hash")
-		}
-		delete(dataset, iapi.ToArr32(v.HashSchemeInstance.Value()))
+		require.NoError(t, v.Err)
+		_, ok := dataset[v.Entity.ArrayKeccak256()]
+		require.True(t, ok)
+		delete(dataset, v.Entity.ArrayKeccak256())
 	}
 	if len(dataset) != 0 {
 		t.Fatalf("we did not get back all entities, there are %d left", len(dataset))
 	}
+}
+
+func TestInterestingEntitySequenceRevokedExpired(t *testing.T) {
+	ctx := getPctx()
+	entz := make([]*iapi.Entity, 0)
+	for i := 0; i < 100; i++ {
+		rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+		require.NoError(t, err)
+		ent := rne.EntitySecrets.Entity
+		err = db.MoveEntityInterestingP(ctx, ent)
+		require.NoError(t, err)
+		entz = append(entz, ent)
+	}
+	err := db.MoveEntityExpiredG(ctx, entz[0])
+	require.NoError(t, err)
+	err = db.MoveEntityRevokedG(ctx, entz[1])
+	require.NoError(t, err)
+	count := 0
+	rvc := db.GetInterestingEntitiesP(ctx)
+	for v := range rvc {
+		require.NoError(t, v.Err)
+		count++
+	}
+	require.EqualValues(t, 98, count)
 }
 
 //

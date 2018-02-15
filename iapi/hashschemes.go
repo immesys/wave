@@ -9,13 +9,35 @@ import (
 )
 
 func HashSchemeFor(h asn1.External) HashScheme {
-	panic("ni")
+	switch {
+	case h.OID.Equal(serdes.Keccak_256OID):
+		return KECCAK256
+	case h.OID.Equal(serdes.Sha3_256OID):
+		return SHA3
+	default:
+		return &UnsupportedHashScheme{}
+	}
 }
 func NewHashScheme(oid asn1.ObjectIdentifier) HashScheme {
 	panic("ni")
 }
-func HashSchemeInstanceFor(h *asn1.External) (HashSchemeInstance, error) {
-	panic("ni")
+func HashSchemeInstanceFor(h *asn1.External) HashSchemeInstance {
+	switch {
+	case h.OID.Equal(serdes.Keccak_256OID):
+		ba, ok := h.Content.(serdes.Keccak_256)
+		if !ok || len(ba) != 32 {
+			return &UnsupportedHashSchemeInstance{}
+		}
+		return &HashSchemeInstance_Keccak_256{Val: ba}
+	case h.OID.Equal(serdes.Sha3_256OID):
+		ba, ok := h.Content.(serdes.Sha3_256)
+		if !ok || len(ba) != 32 {
+			return &UnsupportedHashSchemeInstance{}
+		}
+		return &HashSchemeInstance_Sha3_256{Val: ba}
+	default:
+		return &UnsupportedHashSchemeInstance{}
+	}
 }
 
 var _ HashScheme = &UnsupportedHashScheme{}
@@ -56,7 +78,19 @@ func (hs *HashScheme_Keccak_256) Instance(input []byte) (HashSchemeInstance, err
 	eng := sha3.NewKeccak256()
 	eng.Write(input)
 	hash := eng.Sum(nil)
-	return &HashSchemeInstance_Sha3_256{Val: hash[:]}, nil
+	return &HashSchemeInstance_Keccak_256{Val: hash[:]}, nil
+}
+
+type UnsupportedHashSchemeInstance struct{}
+
+func (hs *UnsupportedHashSchemeInstance) Supported() bool {
+	return false
+}
+func (hs *UnsupportedHashSchemeInstance) Value() []byte {
+	panic("Value() on unsupported hash scheme instance")
+}
+func (hs *UnsupportedHashSchemeInstance) CanonicalForm() (*asn1.External, error) {
+	return nil, fmt.Errorf("unsupported hash scheme instance")
 }
 
 var _ HashSchemeInstance = &HashSchemeInstance_Sha3_256{}

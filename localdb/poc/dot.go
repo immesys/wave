@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/iapi"
 )
@@ -22,9 +23,11 @@ func keccakFromAtt(att *iapi.Attestation) []byte {
 	return val
 }
 func keccakFromExt(e *asn1.External) []byte {
-	hi, err := iapi.HashSchemeInstanceFor(e)
-	if err != nil {
-		panic(err)
+	hi := iapi.HashSchemeInstanceFor(e)
+	_, ok := hi.(*iapi.HashSchemeInstance_Keccak_256)
+	if !ok {
+		spew.Dump(hi)
+		panic("external is not keccak")
 	}
 	val := hi.Value()
 	return val
@@ -212,6 +215,9 @@ func (p *poc) GetPendingAttestationsP(pctx context.Context, dsthi iapi.HashSchem
 			if err != nil {
 				panic(err)
 			}
+			if ds.State != StatePending {
+				continue
+			}
 			dst := keccakFromExt(&ds.Attestation.CanonicalForm.TBS.Subject)
 			if !bytes.Equal(dst, dsthash) {
 				continue
@@ -263,7 +269,7 @@ func (p *poc) MoveAttestationLabelledP(ctx context.Context, att *iapi.Attestatio
 func (p *poc) insertActiveAttestationForwardLink(ctx context.Context, att *iapi.Attestation) error {
 	//dsthash := keccakFromExt(&att.CanonicalForm.TBS.Subject)
 	srchash := keccakFromExt(&att.DecryptedBody.VerifierBody.Attester)
-	k := p.PKey(ctx, "fdot", ToB64(srchash), ToB64(att.Keccack256()))
+	k := p.PKey(ctx, "fdot", ToB64(srchash), ToB64(att.Keccak256()))
 	//We don't really need a value
 	return p.u.Store(ctx, k, []byte{1})
 }

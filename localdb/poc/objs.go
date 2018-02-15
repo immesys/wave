@@ -15,17 +15,15 @@ const (
 )
 
 type EntityState struct {
-	Entity *iapi.Entity
-	//EntityDER        []byte
+	Entity           *iapi.Entity
 	Hash             []byte
 	State            int
-	QueueIndex       int
+	QueueToken       string
 	MaxLabelKeyIndex int
 }
 
 type AttestationState struct {
 	Hash []byte
-	//AttestationDER []byte
 
 	Attestation   *iapi.Attestation
 	State         int
@@ -38,16 +36,14 @@ type AttestationState struct {
 // }
 
 type PLKState struct {
-	Slots [][]byte
-	Key   iapi.EntitySecretKeySchemeInstance
-	//KeyDER    []byte
+	Slots     [][]byte
+	Key       iapi.EntitySecretKeySchemeInstance
 	Namespace []byte
 }
 
 type ContentKeyState struct {
 	Slots [][]byte
-	//KeyDER []byte
-	Key iapi.SlottedSecretKey
+	Key   iapi.SlottedSecretKey
 }
 type PendingLabels struct {
 	Slots [][]byte

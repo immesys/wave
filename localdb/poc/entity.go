@@ -79,18 +79,21 @@ func (p *poc) GetInterestingEntitiesP(pctx context.Context) chan iapi.Interestin
 	rv := make(chan iapi.InterestingEntityResult, 10)
 	ctx, cancel := context.WithCancel(pctx)
 	k := p.PKey(ctx, "entity")
-	vch, ech := p.u.LoadPrefixKeys(ctx, k)
+	vch, ech := p.u.LoadPrefix(ctx, k)
 	go func() {
 		defer cancel()
 		for v := range vch {
-			parts := split(v.Key)
-			hash := FromB64(parts[len(parts)-1])
-			if len(hash) != 32 {
-				panic(hash)
+			es := &EntityState{}
+			err := unmarshalGob(v.Value, es)
+			if err != nil {
+				panic(err)
+			}
+			if es.State != StateInteresting {
+				continue
 			}
 			select {
 			case rv <- iapi.InterestingEntityResult{
-				HashSchemeInstance: &iapi.HashSchemeInstance_Keccak_256{hash},
+				Entity: es.Entity,
 			}:
 			case <-ctx.Done():
 				rv <- iapi.InterestingEntityResult{
@@ -136,19 +139,19 @@ func (p *poc) IsEntityInterestingP(ctx context.Context, hi iapi.HashSchemeInstan
 	}
 	return es.State == StateInteresting, nil
 }
-func (p *poc) GetEntityQueueIndexP(ctx context.Context, hi iapi.HashSchemeInstance) (okay bool, dotIndex int, err error) {
+func (p *poc) GetEntityQueueTokenP(ctx context.Context, hi iapi.HashSchemeInstance) (okay bool, token string, err error) {
 	hsh := keccakFromHI(hi)
 
 	es, err := p.loadEntity(ctx, hsh)
 	if err != nil {
-		return false, 0, err
+		return false, "", err
 	}
 	if es == nil {
-		return false, 0, nil
+		return false, "", nil
 	}
-	return true, es.QueueIndex, nil
+	return true, es.QueueToken, nil
 }
-func (p *poc) SetEntityQueueIndexP(ctx context.Context, hi iapi.HashSchemeInstance, queueIndex int) error {
+func (p *poc) SetEntityQueueTokenP(ctx context.Context, hi iapi.HashSchemeInstance, token string) error {
 	hsh := keccakFromHI(hi)
 	es, err := p.loadEntity(ctx, hsh)
 	if err != nil {
@@ -157,7 +160,7 @@ func (p *poc) SetEntityQueueIndexP(ctx context.Context, hi iapi.HashSchemeInstan
 	if es == nil {
 		return fmt.Errorf("we don't know this entity")
 	}
-	es.QueueIndex = queueIndex
+	es.QueueToken = token
 	return p.saveEntityState(ctx, es)
 }
 func (p *poc) MoveEntityRevokedG(ctx context.Context, ent *iapi.Entity) error {

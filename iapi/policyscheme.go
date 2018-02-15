@@ -11,7 +11,7 @@ import (
 func PolicySchemeInstanceFor(e *asn1.External) (PolicySchemeInstance, error) {
 	switch {
 	case e.OID.Equal(serdes.TrustLevelPolicyOID):
-		return &TrustLevelPolicy{canonicalForm: *e, Trust: e.Content.(serdes.TrustLevel).Trust}, nil
+		return &TrustLevelPolicy{SerdesForm: *e, Trust: e.Content.(serdes.TrustLevel).Trust}, nil
 	}
 	return &UnsupportedPolicySchemeInstance{*e}, nil
 }
@@ -19,14 +19,14 @@ func PolicySchemeInstanceFor(e *asn1.External) (PolicySchemeInstance, error) {
 var _ PolicySchemeInstance = &UnsupportedPolicySchemeInstance{}
 
 type UnsupportedPolicySchemeInstance struct {
-	canonicalForm asn1.External
+	SerdesForm asn1.External
 }
 
 func (ps *UnsupportedPolicySchemeInstance) Supported() bool {
 	return false
 }
 func (ps *UnsupportedPolicySchemeInstance) CanonicalForm(ctx context.Context) (*asn1.External, error) {
-	return &ps.canonicalForm, nil
+	return &ps.SerdesForm, nil
 }
 func (ps *UnsupportedPolicySchemeInstance) WR1DomainEntity(ctx context.Context) (HashScheme, error) {
 	return nil, fmt.Errorf("this policy scheme is not supported")
@@ -42,19 +42,19 @@ func NewTrustLevelPolicy(trust int) (*TrustLevelPolicy, error) {
 		return nil, fmt.Errorf("trust must be between 0 and 4 inclusive")
 	}
 	cf := serdes.TrustLevel{Trust: trust}
-	return &TrustLevelPolicy{canonicalForm: asn1.NewExternal(cf), Trust: trust}, nil
+	return &TrustLevelPolicy{SerdesForm: asn1.NewExternal(cf), Trust: trust}, nil
 }
 
 type TrustLevelPolicy struct {
-	canonicalForm asn1.External
-	Trust         int
+	SerdesForm asn1.External
+	Trust      int
 }
 
 func (ps *TrustLevelPolicy) Supported() bool {
 	return true
 }
 func (ps *TrustLevelPolicy) CanonicalForm(ctx context.Context) (*asn1.External, error) {
-	return &ps.canonicalForm, nil
+	return &ps.SerdesForm, nil
 }
 
 func (ps *TrustLevelPolicy) WR1DomainEntity(ctx context.Context) (HashScheme, error) {

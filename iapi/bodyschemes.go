@@ -25,6 +25,8 @@ type PlaintextBodyScheme struct {
 	//CanonicalForm *asn1.External
 }
 
+var PLAINTEXTBODYSCHEME = &PlaintextBodyScheme{}
+
 func NewPlaintextBodyScheme() *PlaintextBodyScheme {
 	return &PlaintextBodyScheme{}
 }

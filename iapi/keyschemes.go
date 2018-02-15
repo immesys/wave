@@ -1603,6 +1603,9 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20) GobDecode(ba []byte) error {
 	ek.PrivateKey.Unmarshal(marshaldpriv)
 	return nil
 }
+func (ek *EntitySecretKey_OAQUE_BN256_S20) Slots() [][]byte {
+	return ek.AttributeSet
+}
 
 var _ EntitySecretKeySchemeInstance = &EntitySecretKey_OAQUE_BN256_S20_Master{}
 

@@ -28,8 +28,8 @@ type PendingAttestation struct {
 }
 
 type InterestingEntityResult struct {
-	HashSchemeInstance HashSchemeInstance
-	Err                error
+	Entity *Entity
+	Err    error
 }
 
 // type ReverseLookupResult struct {
@@ -79,6 +79,7 @@ type WaveState interface {
 	GetPartitionLabelKeyP(ctx context.Context, subject HashSchemeInstance, index int) (EntitySecretKeySchemeInstance, error)
 	InsertPartitionLabelKeyP(ctx context.Context, attester HashSchemeInstance, key EntitySecretKeySchemeInstance) (new bool, err error)
 
+	//Return true from callback to continue iterating
 	WR1KeysForP(ctx context.Context, subject HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
 	//TODO this must be idempotenty, like don't add in a secret if we have a more
 	//powerful one already
@@ -98,8 +99,8 @@ type WaveState interface {
 	GetEntityPartitionLabelKeyIndexP(ctx context.Context, entHashSchemeInstance HashSchemeInstance) (bool, int, error)
 	GetAttestationP(ctx context.Context, HashSchemeInstance HashSchemeInstance) (at *Attestation, err error)
 	GetActiveAttestationsFromP(ctx context.Context, attester HashSchemeInstance, filter *LookupFromFilter) chan LookupFromResult
-	GetEntityQueueIndexP(ctx context.Context, hsh HashSchemeInstance) (okay bool, dotIndex int, err error)
-	SetEntityQueueIndexP(ctx context.Context, hsh HashSchemeInstance, dotIndex int) error
+	GetEntityQueueTokenP(ctx context.Context, hsh HashSchemeInstance) (okay bool, token string, err error)
+	SetEntityQueueTokenP(ctx context.Context, hsh HashSchemeInstance, token string) error
 
 	//Global (non perspective) functions
 	MoveEntityRevokedG(ctx context.Context, ent *Entity) error
