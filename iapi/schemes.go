@@ -65,6 +65,7 @@ type OuterSignatureBindingScheme interface {
 
 type LocationSchemeInstance interface {
 	Scheme
+	Equal(l LocationSchemeInstance) bool
 }
 
 type EntityKeyringSchemeInstance interface {

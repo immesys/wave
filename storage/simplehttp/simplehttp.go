@@ -1,42 +1,123 @@
 package simplehttp
 
-import "github.com/immesys/wave/iapi"
+import (
+	"bytes"
+	"context"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/immesys/wave/iapi"
+)
 
 var _ iapi.StorageDriverInterface = &SimpleHTTPStorage{}
 
-type SimpleHTTPStorage struct {
-  url string
+type QueueResponse struct {
+	NextToken string
+	Content   []byte
 }
 
-func (s *SimpleHTTPStorage) Location(context.Context) LocationSchemeInstance
+type SimpleHTTPStorage struct {
+	url string
+}
 
-	//This will be called on a specific instantiation of the driver to
-	//work out which storage requests to route its way
-	Location(context.Context) LocationSchemeInstance
+func (s *SimpleHTTPStorage) Location(context.Context) iapi.LocationSchemeInstance {
+	return iapi.NewLocationSchemeInstanceURL(s.url, 1)
+}
 
-	//Given a set of key/value options from the user's configuration file,
-	//create an instance of this storage driver. Initialize will be called
-	//on an empty struct instance (e.g (&MyStorage{}).Initialize(cfg))
-	Initialize(ctx context.Context, config map[string]string) error
+func (s *SimpleHTTPStorage) Initialize(ctx context.Context, config map[string]string) error {
+	url, ok := config["url"]
+	if !ok {
+		return fmt.Errorf("the 'url' config option is mandatory")
+	}
+	s.url = url
+	return nil
+}
 
-	//Retrieve the status of this storage driver (ready for use etc)
-	//You should only return an error on context timeout, any other
-	//error is probably indicative of an non-operational status and should be
-	//returned as such
-	Status(ctx context.Context) (operational bool, info map[string]string, err error)
+func (s *SimpleHTTPStorage) Status(ctx context.Context) (operational bool, info map[string]string, err error) {
+	panic("ni")
+}
 
-	//Put the given object into storage. This does not queue any notifications
-	//It should return the Hash of the object using the providers preferred
-	//hash scheme. It should only return when the object
-	Put(ctx context.Context, content []byte) (HashSchemeInstance, error)
+func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashSchemeInstance, error) {
+	buf := bytes.NewBuffer(content)
+	resp, err := http.Post(fmt.Sprintf("%s/obj", s.url), "application/octet-stream", buf)
+	if err != nil {
+		return nil, err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Remote error: %d (%s)\n", resp.StatusCode, body)
+	}
+	hashbin := make([]byte, 32)
+	ln, err := hex.Decode(hashbin, body)
+	if ln != 32 || err != nil {
+		return nil, fmt.Errorf("remote gave a bad hash")
+	}
+	//Simple HTTP uses keccak256 as the hash
+	hi := &iapi.HashSchemeInstance_Keccak_256{Val: hashbin}
+	return hi, nil
+}
 
-	//Get the given object from storage. A nonexistant object should return
-	//ErrObjectNotFound.
-	Get(ctx context.Context, hash HashSchemeInstance) (content []byte, err error)
+func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstance) (content []byte, err error) {
+	resp, err := http.Get(fmt.Sprintf("%s/obj/%064x", s.url, hash.Value()))
+	if err != nil {
+		return nil, err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Remote error: %d (%s)\n", resp.StatusCode, body)
+	}
+	return body, nil
+}
 
-	//Place the given object into the given queue.
-	Enqueue(ctx context.Context, queueId HashSchemeInstance, object HashSchemeInstance) error
+func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashSchemeInstance, object iapi.HashSchemeInstance) error {
+	buf := bytes.NewBuffer(object.Value())
+	resp, err := http.Post(fmt.Sprintf("%s/queue/%064x", s.url, queueId.Value()), "application/octet-stream", buf)
+	if err != nil {
+		return err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Remote error: %d (%s)\n", resp.StatusCode, body)
+	}
+	return nil
+}
 
-	//Iterate over the given queue. Returns nil, "", ErrNoMore if there are no more
-	//entries. Must accept "" as iteratorToken to mean the first entry
-	IterateQueue(ctx context.Context, queueId HashSchemeInstance, iteratorToken string) (object HashSchemeInstance, nextToken string, err error)
+func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashSchemeInstance, iteratorToken string) (object iapi.HashSchemeInstance, nextToken string, err error) {
+	resp, err := http.Get(fmt.Sprintf("%s/queue/%064x/%s", s.url, queueId.Value(), iteratorToken))
+	if err != nil {
+		return nil, "", err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", err
+	}
+	resp.Body.Close()
+	if resp.StatusCode == 404 {
+		return nil, "", iapi.ErrNoMore
+	}
+	if resp.StatusCode != 200 {
+		return nil, "", fmt.Errorf("Remote error: %d (%s)\n", resp.StatusCode, body)
+	}
+	iterR := &QueueResponse{}
+	err = json.Unmarshal(body, iterR)
+	if err != nil {
+		return nil, "", fmt.Errorf("Remote sent invalid response")
+	}
+	hi := &iapi.HashSchemeInstance_Keccak_256{Val: iterR.Content}
+	return hi, iterR.NextToken, nil
+}

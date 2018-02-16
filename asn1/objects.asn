@@ -252,7 +252,8 @@ BEGIN
   -- this object will be DER encoded and present in the location.value scheme
   -- when the scheme is location-scheme-url
   LocationURL ::= SEQUENCE {
-    value UTF8String
+    value UTF8String,
+    apiVersion INTEGER
   }
 
   -- this object will be DER encoded and present in the location.value scheme

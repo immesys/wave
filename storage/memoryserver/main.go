@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/gorilla/pat"
 	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/storage/simplehttp"
 )
 
 var globalmu sync.RWMutex
@@ -18,7 +21,7 @@ var db map[string][]byte
 
 type queue struct {
 	mu       sync.Mutex
-	contents []string
+	contents [][]byte
 	change   chan struct{}
 }
 
@@ -65,11 +68,17 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("bad hash"))
 		return
 	}
-	index, err := strconv.ParseInt(token, 10, 64)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("bad token"))
-		return
+	var index int64
+	var err error
+	if token == "" {
+		index = 0
+	} else {
+		index, err = strconv.ParseInt(token, 10, 64)
+		if err != nil {
+			w.WriteHeader(400)
+			w.Write([]byte("bad token"))
+			return
+		}
 	}
 	globalmu.Lock()
 	q, ok := queues[id]
@@ -78,12 +87,21 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		queues[id] = q
 	}
 	q.mu.Lock()
+	globalmu.Unlock()
 	ch := q.change
 	//There is something there
 	if len(q.contents) > int(index) {
 		rv := q.contents[int(index)]
 		q.mu.Unlock()
-		w.Write([]byte(rv))
+		resp := simplehttp.QueueResponse{
+			NextToken: fmt.Sprintf("%d", index+1),
+			Content:   rv,
+		}
+		js, err := json.Marshal(resp)
+		if err != nil {
+			panic(err)
+		}
+		w.Write(js)
 		return
 	}
 	q.mu.Unlock()
@@ -102,7 +120,15 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 	if len(q.contents) > int(index) {
 		rv := q.contents[int(index)]
 		q.mu.Unlock()
-		w.Write([]byte(rv))
+		resp := simplehttp.QueueResponse{
+			NextToken: fmt.Sprintf("%d", index+1),
+			Content:   rv,
+		}
+		js, err := json.Marshal(resp)
+		if err != nil {
+			panic(err)
+		}
+		w.Write(js)
 		return
 	} else {
 		q.mu.Unlock()
@@ -119,8 +145,7 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	hash := strings.TrimSpace(string(hashbin))
-	if len(hash) != 64 || len(id) != 64 {
+	if len(hashbin) != 32 || len(id) != 64 {
 		w.WriteHeader(400)
 		w.Write([]byte("bad hash"))
 		return
@@ -135,18 +160,21 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 	globalmu.Unlock()
 	ch := q.change
 	q.change = make(chan struct{})
-	q.contents = append(q.contents, hash)
+	q.contents = append(q.contents, hashbin)
 	close(ch)
 	q.mu.Unlock()
 	w.WriteHeader(200)
 }
 func main() {
 	db = make(map[string][]byte)
+	queues = make(map[string]*queue)
 	r := pat.New()
-	r.Get("/obj/:hash", GetHandler)
-	r.Post("/obj/:hash", PutHandler)
-	r.Get("/queue/:id/:token", IterateHandler)
-	r.Post("/queue/:id", EnqueueHandler)
+	r.Post("/obj", PutHandler)
+	r.Get("/obj/{hash}", GetHandler)
+	r.Get("/queue/{id}/{token}", IterateHandler)
+	r.Get("/queue/{id}/", IterateHandler)
+
+	r.Post("/queue/{id}", EnqueueHandler)
 	http.Handle("/", r)
 	err := http.ListenAndServe(":8080", nil)
 	panic(err)

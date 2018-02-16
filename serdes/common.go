@@ -144,7 +144,8 @@ type CommitmentRevocation struct {
 }
 
 type LocationURL struct {
-	Value string `asn1:"utf8"`
+	Value   string `asn1:"utf8"`
+	Version int
 }
 type LocationEthereum struct {
 	ChainID         int
