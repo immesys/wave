@@ -48,12 +48,14 @@ type HashScheme interface {
 	Scheme
 	//Digest(ctx context.Context, input []byte) ([]byte, error)
 	Instance(input []byte) (HashSchemeInstance, error)
+	OID() asn1.ObjectIdentifier
 }
 type HashSchemeInstance interface {
 	Scheme
 	//For curried hash scheme instances
 	Value() []byte
 	CanonicalForm() (*asn1.External, error)
+	OID() asn1.ObjectIdentifier
 }
 
 //PolicyScheme gets its own file

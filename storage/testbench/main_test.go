@@ -18,7 +18,7 @@ func getInstance(t *testing.T) iapi.StorageDriverInterface {
 func getSimpleHTTPStorageInstance(t *testing.T) iapi.StorageDriverInterface {
 	sh := &simplehttp.SimpleHTTPStorage{}
 	cfg := make(map[string]string)
-	cfg["url"] = "http://localhost:8080"
+	cfg["url"] = "http://localhost:8080/v1"
 	require.NoError(t, sh.Initialize(context.Background(), cfg))
 	return sh
 }
@@ -28,7 +28,7 @@ func TestPutGet(t *testing.T) {
 	//This has no perspective entity, probably not a problem for now
 	ctx := context.Background()
 	//About the size of an attestation
-	content := make([]byte, 256*1024)
+	content := make([]byte, 80)
 	rand.Read(content)
 
 	hi, err := in.Put(ctx, content)
@@ -44,17 +44,17 @@ func TestEnqueDequeue(t *testing.T) {
 	//This has no perspective entity, probably not a problem for now
 	ctx := context.Background()
 	//About the size of an attestation
-	content := make([]byte, 256*1024)
+	content := make([]byte, 80)
 	rand.Read(content)
 	hi, err := in.Put(ctx, content)
 	require.NoError(t, err)
 
 	//Put another one in case the provider only allows queues for extant objects
-	content2 := make([]byte, 256*1024)
+	content2 := make([]byte, 80)
 	rand.Read(content2)
 	hi2, err := in.Put(ctx, content2)
 	require.NoError(t, err)
-	content3 := make([]byte, 256*1024)
+	content3 := make([]byte, 80)
 	rand.Read(content3)
 	hi3, err := in.Put(ctx, content3)
 	require.NoError(t, err)

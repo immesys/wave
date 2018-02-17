@@ -24,7 +24,7 @@ paths:
         schema:
           $ref: "#/definitions/PutObjectRequest"
       responses:
-        200:
+        201:
           description: "Valid input"
           schema:
             $ref: "#/definitions/PutObjectResponse"
@@ -55,13 +55,13 @@ paths:
           description: "No such object exists"
           schema:
             $ref: "#/definitions/NoSuchObjectResponse"
-        200:
+        201:
           description: "Object found"
           schema:
             $ref: "#/definitions/ObjectResponse"
         500:
           description: "Server error"
-  /queue:
+  /queue/{id}:
     post:
       summary: "Enqueue an object notification"
       description: "Places the given hash in the given queue"
@@ -74,6 +74,12 @@ paths:
         in: "body"
         schema:
           $ref: "#/definitions/EnqueueRequest"
+      - name: "id"
+        in: "path"
+        description: "Base64 encoding of a queue id"
+        required: true
+        type: "string"
+        format: "byte"
       responses:
         200:
           description: "Queue entry accepted"
@@ -81,7 +87,6 @@ paths:
             $ref: "#/definitions/EnqueueResponse"
         500:
           description: "Server error"
-  /queue/{id}:
     get:
       summary: "Retrieve a queue entry"
       description: "Retrieve a queue entry identified by the queue id and the token"
@@ -165,10 +170,6 @@ definitions:
       idHashScheme:
         description: "a string OID identifying the hash scheme used by idHash"
         type: string
-      idHash:
-        description: "base64 encoded queue identifier"
-        type: string
-        format: binary
       entryHashScheme:
         description: "a string OID identifying the hash scheme used by the entry"
         type: string

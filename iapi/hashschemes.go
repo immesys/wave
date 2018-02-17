@@ -50,6 +50,9 @@ func (hs *UnsupportedHashScheme) Supported() bool {
 func (hs *UnsupportedHashScheme) Instance(input []byte) (HashSchemeInstance, error) {
 	return nil, fmt.Errorf("unsupported hash scheme")
 }
+func (hs *UnsupportedHashScheme) OID() asn1.ObjectIdentifier {
+	return nil
+}
 
 var _ HashScheme = &HashScheme_Sha3_256{}
 
@@ -63,6 +66,9 @@ func (hs *HashScheme_Sha3_256) Supported() bool {
 func (hs *HashScheme_Sha3_256) Instance(input []byte) (HashSchemeInstance, error) {
 	hash := sha3.Sum256(input)
 	return &HashSchemeInstance_Sha3_256{Val: hash[:]}, nil
+}
+func (hs *HashScheme_Sha3_256) OID() asn1.ObjectIdentifier {
+	return serdes.Sha3_256OID
 }
 
 var _ HashScheme = &HashScheme_Keccak_256{}
@@ -80,6 +86,9 @@ func (hs *HashScheme_Keccak_256) Instance(input []byte) (HashSchemeInstance, err
 	hash := eng.Sum(nil)
 	return &HashSchemeInstance_Keccak_256{Val: hash[:]}, nil
 }
+func (hs *HashScheme_Keccak_256) OID() asn1.ObjectIdentifier {
+	return serdes.Keccak_256OID
+}
 
 type UnsupportedHashSchemeInstance struct{}
 
@@ -91,6 +100,9 @@ func (hs *UnsupportedHashSchemeInstance) Value() []byte {
 }
 func (hs *UnsupportedHashSchemeInstance) CanonicalForm() (*asn1.External, error) {
 	return nil, fmt.Errorf("unsupported hash scheme instance")
+}
+func (hs *UnsupportedHashSchemeInstance) OID() asn1.ObjectIdentifier {
+	return nil
 }
 
 var _ HashSchemeInstance = &HashSchemeInstance_Sha3_256{}
@@ -109,6 +121,9 @@ func (hs *HashSchemeInstance_Sha3_256) CanonicalForm() (*asn1.External, error) {
 	ex := asn1.NewExternal(serdes.Sha3_256(hs.Val))
 	return &ex, nil
 }
+func (hs *HashSchemeInstance_Sha3_256) OID() asn1.ObjectIdentifier {
+	return serdes.Sha3_256OID
+}
 
 var _ HashSchemeInstance = &HashSchemeInstance_Keccak_256{}
 
@@ -125,4 +140,7 @@ func (hs *HashSchemeInstance_Keccak_256) Value() []byte {
 func (hs *HashSchemeInstance_Keccak_256) CanonicalForm() (*asn1.External, error) {
 	ex := asn1.NewExternal(serdes.Keccak_256(hs.Val))
 	return &ex, nil
+}
+func (hs *HashSchemeInstance_Keccak_256) OID() asn1.ObjectIdentifier {
+	return serdes.Keccak_256OID
 }

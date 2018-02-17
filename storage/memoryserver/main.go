@@ -1,178 +1,155 @@
 package main
 
 import (
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/gorilla/pat"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/storage/simplehttp"
 )
 
-var globalmu sync.RWMutex
+var globalmu sync.Mutex
 var db map[string][]byte
 
-type queue struct {
-	mu       sync.Mutex
-	contents [][]byte
-	change   chan struct{}
-}
-
-var queues map[string]*queue
+var queues map[string][][]byte
 
 func GetHandler(w http.ResponseWriter, r *http.Request) {
-	globalmu.RLock()
-	defer globalmu.RUnlock()
+	globalmu.Lock()
+	defer globalmu.Unlock()
 
 	hash := r.URL.Query().Get(":hash")
-	hash = strings.ToLower(hash)
 	r.Body.Close()
+	if r.URL.Query().Get("scheme") != iapi.KECCAK256.OID().String() {
+		fmt.Printf("GET with wrong scheme\n")
+		w.WriteHeader(404)
+		w.Write([]byte("{}"))
+		return
+	}
 	content, ok := db[hash]
 	if !ok {
+		fmt.Printf("GET missing object\n")
 		w.WriteHeader(404)
-		w.Write([]byte("not found"))
-	} else {
-		w.Write(content)
+		w.Write([]byte("{}"))
+		return
 	}
+	rv := simplehttp.ObjectResponse{
+		DER: content,
+	}
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(&rv)
 }
 func PutHandler(w http.ResponseWriter, r *http.Request) {
 	globalmu.Lock()
 	defer globalmu.Unlock()
 
-	content, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
+	params := simplehttp.PutObjectRequest{}
+	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	hash, _ := iapi.KECCAK256.Instance(content)
-	hashstring := hex.EncodeToString(hash.Value())
-	db[hashstring] = content
-	w.Write([]byte(hashstring))
-	return
+	r.Body.Close()
+	hash, _ := iapi.KECCAK256.Instance(params.DER)
+	hashstring := base64.URLEncoding.EncodeToString(hash.Value())
+	db[hashstring] = params.DER
+	resp := simplehttp.PutObjectResponse{
+		HashScheme: hash.OID().String(),
+		Hash:       hash.Value(),
+	}
+	w.WriteHeader(201)
+	json.NewEncoder(w).Encode(&resp)
 }
 func IterateHandler(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get(":token")
+	token := r.URL.Query().Get("token")
 	id := r.URL.Query().Get(":id")
-	id = strings.ToLower(id)
-	if len(id) != 64 {
-		w.WriteHeader(400)
-		w.Write([]byte("bad hash"))
+	scheme := r.URL.Query().Get("scheme")
+	if scheme != iapi.KECCAK256.OID().String() {
+		fmt.Printf("ITER with wrong scheme\n")
+		w.WriteHeader(404)
+		w.Write([]byte("{}"))
 		return
 	}
-	var index int64
+	var index64 int64
 	var err error
 	if token == "" {
-		index = 0
+		index64 = 0
 	} else {
-		index, err = strconv.ParseInt(token, 10, 64)
+		index64, err = strconv.ParseInt(token, 10, 64)
 		if err != nil {
-			w.WriteHeader(400)
-			w.Write([]byte("bad token"))
+			fmt.Printf("ITER with unparseable token\n")
+			w.WriteHeader(404)
+			w.Write([]byte("{}"))
 			return
 		}
 	}
+	index := int(index64)
 	globalmu.Lock()
+	defer globalmu.Unlock()
 	q, ok := queues[id]
 	if !ok {
-		q = &queue{change: make(chan struct{})}
-		queues[id] = q
-	}
-	q.mu.Lock()
-	globalmu.Unlock()
-	ch := q.change
-	//There is something there
-	if len(q.contents) > int(index) {
-		rv := q.contents[int(index)]
-		q.mu.Unlock()
-		resp := simplehttp.QueueResponse{
-			NextToken: fmt.Sprintf("%d", index+1),
-			Content:   rv,
-		}
-		js, err := json.Marshal(resp)
-		if err != nil {
-			panic(err)
-		}
-		w.Write(js)
-		return
-	}
-	q.mu.Unlock()
-	shouldWait := r.URL.Query().Get("wait")
-	if shouldWait != "1" {
+		fmt.Printf("ITER with nonexistant queue\n")
 		w.WriteHeader(404)
+		w.Write([]byte("{}"))
 		return
 	}
 
-	//The user asked us to wait (long poll)
-	select {
-	case <-time.After(30 * time.Second):
-	case <-ch:
-	}
-	q.mu.Lock()
-	if len(q.contents) > int(index) {
-		rv := q.contents[int(index)]
-		q.mu.Unlock()
-		resp := simplehttp.QueueResponse{
-			NextToken: fmt.Sprintf("%d", index+1),
-			Content:   rv,
+	//There is something there
+	if len(q) > index {
+		rv := q[index]
+		resp := simplehttp.IterateQueueResponse{
+			NextToken:  fmt.Sprintf("%d", index+1),
+			Hash:       rv,
+			HashScheme: iapi.KECCAK256.OID().String(),
 		}
-		js, err := json.Marshal(resp)
-		if err != nil {
-			panic(err)
-		}
-		w.Write(js)
-		return
-	} else {
-		q.mu.Unlock()
-		w.WriteHeader(404)
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(&resp)
 		return
 	}
+	fmt.Printf("ITER with out of bounds in queue\n")
+	w.WriteHeader(404)
+	w.Write([]byte("{}"))
+	return
 }
 func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":id")
-	id = strings.ToLower(id)
-	hashbin, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
+	req := simplehttp.EnqueueRequest{}
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
 		return
 	}
-	if len(hashbin) != 32 || len(id) != 64 {
+	r.Body.Close()
+	if len(req.EntryHash) != 32 {
 		w.WriteHeader(400)
 		w.Write([]byte("bad hash"))
 		return
 	}
-	globalmu.Lock()
-	q, ok := queues[id]
-	if !ok {
-		q = &queue{change: make(chan struct{})}
-		queues[id] = q
+	if req.EntryHashScheme != iapi.KECCAK256.OID().String() ||
+		req.IdHashScheme != iapi.KECCAK256.OID().String() {
+		w.WriteHeader(400)
+		w.Write([]byte("bad hash scheme"))
+		return
 	}
-	q.mu.Lock()
+	globalmu.Lock()
+	queues[id] = append(queues[id], req.EntryHash)
 	globalmu.Unlock()
-	ch := q.change
-	q.change = make(chan struct{})
-	q.contents = append(q.contents, hashbin)
-	close(ch)
-	q.mu.Unlock()
-	w.WriteHeader(200)
+	w.WriteHeader(201)
+	w.Write([]byte("{}"))
 }
 func main() {
 	db = make(map[string][]byte)
-	queues = make(map[string]*queue)
+	queues = make(map[string][][]byte)
 	r := pat.New()
 	r.Post("/v1/obj", PutHandler)
 	r.Get("/v1/obj/{hash}", GetHandler)
-	r.Get("/v1/queue/{id}/{token}", IterateHandler)
-	r.Get("/v1/queue/{id}/", IterateHandler)
+	r.Get("/v1/queue/{id}", IterateHandler)
 	r.Post("/v1/queue/{id}", EnqueueHandler)
 	http.Handle("/", r)
 	err := http.ListenAndServe(":8080", nil)
