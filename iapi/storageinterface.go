@@ -26,6 +26,13 @@ type StorageDriverCharacteristics struct {
 //Should be returned by Get if the object is not found
 var ErrObjectNotFound = errors.New("object not found")
 
+//Should be returned by Put if if fails to store the object
+var ErrObjectNotPut = errors.New("failed to put object")
+
+//Should be returned byy any of the four main functions if it receives an invalid request
+// e.g., empty object passed to a PUT function
+var ErrInvalidRequest = errors.New("invalid request")
+
 //Should be returned by any of the four main functions if not implemented
 var ErrNotImplemented = errors.New("not implemented")
 
