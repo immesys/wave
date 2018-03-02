@@ -7,9 +7,9 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/localdb/lls"
-	"github.com/immesys/wave/params"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +30,7 @@ func getPctx() context.Context {
 		panic(err)
 	}
 	perspective := rne.EntitySecrets
-	ctx := context.WithValue(context.Background(), params.PerspectiveKey, perspective)
+	ctx := context.WithValue(context.Background(), consts.PerspectiveKey, perspective)
 	return ctx
 }
 func TestStoreLoadEntity(t *testing.T) {
