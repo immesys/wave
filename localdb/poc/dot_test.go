@@ -21,11 +21,13 @@ func mkAtt(t *testing.T, src *iapi.EntitySecrets, dst *iapi.EntitySecrets) (*iap
 	}
 	policy, _ := iapi.NewTrustLevelPolicy(3)
 	rv, err := iapi.NewParsedAttestation(context.Background(), &iapi.PCreateAttestation{
-		Policy:     policy,
-		HashScheme: iapi.KECCAK256,
-		BodyScheme: iapi.PLAINTEXTBODYSCHEME,
-		Attester:   src,
-		Subject:    dst.Entity,
+		Policy:           policy,
+		HashScheme:       iapi.KECCAK256,
+		BodyScheme:       iapi.PLAINTEXTBODYSCHEME,
+		Attester:         src,
+		AttesterLocation: iapi.NewLocationSchemeInstanceURL("test", 1),
+		Subject:          dst.Entity,
+		SubjectLocation:  iapi.NewLocationSchemeInstanceURL("test", 1),
 	})
 	require.NoError(t, err)
 	return src, dst, rv.Attestation
@@ -48,7 +50,8 @@ func TestAttPending(t *testing.T) {
 	require.EqualValues(t, cereal, rcereal)
 	//See if it shows up in pending atts
 	count := 0
-	for pe := range db.GetPendingAttestationsP(ctx, att.Subject(), 3) {
+	subj, _ := att.Subject()
+	for pe := range db.GetPendingAttestationsP(ctx, subj, 3) {
 		require.NoError(t, pe.Err)
 		readback := pe.Attestation
 		require.EqualValues(t, pe.Keccak256, readback.Keccak256())
@@ -62,7 +65,7 @@ func TestAttPending(t *testing.T) {
 	require.NoError(t, err)
 	count = 0
 	//Check the pending atts really only returns LT on the secret index
-	for pe := range db.GetPendingAttestationsP(ctx, att.Subject(), 3) {
+	for pe := range db.GetPendingAttestationsP(ctx, subj, 3) {
 		require.NoError(t, pe.Err)
 		count++
 	}
@@ -70,7 +73,7 @@ func TestAttPending(t *testing.T) {
 
 	count = 0
 	//Check it shows up with the right secret index
-	for pe := range db.GetPendingAttestationsP(ctx, att.Subject(), 4) {
+	for pe := range db.GetPendingAttestationsP(ctx, subj, 4) {
 		require.NoError(t, pe.Err)
 		readback := pe.Attestation
 		require.EqualValues(t, pe.Keccak256, readback.Keccak256())
@@ -85,7 +88,7 @@ func TestAttPending(t *testing.T) {
 	require.NoError(t, err)
 	count = 0
 	//Check it shows up with the right secret index
-	for pe := range db.GetPendingAttestationsP(ctx, att.Subject(), 4) {
+	for pe := range db.GetPendingAttestationsP(ctx, subj, 4) {
 		require.NoError(t, pe.Err)
 		count++
 	}
@@ -117,7 +120,8 @@ func TestAttLabelled(t *testing.T) {
 	tooNarrow[1] = []byte("bar")
 	tooNarrow[2] = []byte("thenarrowone")
 	count := 0
-	for rez := range db.GetLabelledAttestationsP(ctx, att.Subject(), tooNarrow) {
+	subj, _ := att.Subject()
+	for rez := range db.GetLabelledAttestationsP(ctx, subj, tooNarrow) {
 		require.NoError(t, rez.Err)
 		count++
 	}
@@ -125,7 +129,7 @@ func TestAttLabelled(t *testing.T) {
 
 	//Here because its equal
 	count = 0
-	for rez := range db.GetLabelledAttestationsP(ctx, att.Subject(), att.WR1Partition) {
+	for rez := range db.GetLabelledAttestationsP(ctx, subj, att.WR1Partition) {
 		require.NoError(t, rez.Err)
 		require.EqualValues(t, rez.Keccak256, att.Keccak256())
 		require.EqualValues(t, rez.Attestation.Keccak256(), att.Keccak256())
@@ -137,7 +141,7 @@ func TestAttLabelled(t *testing.T) {
 	broader := make([][]byte, 20)
 	broader[0] = []byte("foo")
 	count = 0
-	for rez := range db.GetLabelledAttestationsP(ctx, att.Subject(), broader) {
+	for rez := range db.GetLabelledAttestationsP(ctx, subj, broader) {
 		require.NoError(t, rez.Err)
 		require.EqualValues(t, rez.Keccak256, att.Keccak256())
 		require.EqualValues(t, rez.Attestation.Keccak256(), att.Keccak256())

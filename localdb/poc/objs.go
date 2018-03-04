@@ -18,7 +18,8 @@ type EntityState struct {
 	Entity           *iapi.Entity
 	Hash             []byte
 	State            int
-	QueueToken       string
+	QueueToken       map[[32]byte]string
+	KnownLocations   []iapi.LocationSchemeInstance
 	MaxLabelKeyIndex int
 }
 

@@ -49,6 +49,8 @@ func (p *poc) loadEntity(ctx context.Context, hash []byte) (*EntityState, error)
 	}
 	return es, nil
 }
+
+/*
 func (p *poc) moveEntity(ctx context.Context, ent *iapi.Entity, state int) error {
 	es := &EntityState{
 		Entity: ent,
@@ -61,19 +63,38 @@ func (p *poc) moveEntity(ctx context.Context, ent *iapi.Entity, state int) error
 	// }
 	return p.saveEntityState(ctx, es)
 }
+*/
 
 //Perspective functions
-func (p *poc) MoveEntityInterestingP(ctx context.Context, ent *iapi.Entity) error {
+func (p *poc) MoveEntityInterestingP(ctx context.Context, ent *iapi.Entity, loc iapi.LocationSchemeInstance) error {
 	//Ensure we are idempotent, don't want to clobber other state
 	es, err := p.loadEntity(ctx, ent.Keccak256())
 	if err != nil {
 		return err
 	}
+
 	//We know about it, probably revoked / expired or already intersting
 	if es != nil {
+		//Check if this location is known
+		found := false
+		for _, eloc := range es.KnownLocations {
+			if eloc.Equal(loc) {
+				found = true
+			}
+		}
+		if !found {
+			es.KnownLocations = append(es.KnownLocations, loc)
+			p.saveEntityState(ctx, es)
+		}
 		return nil
 	}
-	return p.moveEntity(ctx, ent, StateInteresting)
+	es = &EntityState{
+		Entity:         ent,
+		Hash:           ent.Keccak256(),
+		KnownLocations: []iapi.LocationSchemeInstance{loc},
+		State:          StateInteresting,
+	}
+	return p.saveEntityState(ctx, es)
 }
 func (p *poc) GetInterestingEntitiesP(pctx context.Context) chan iapi.InterestingEntityResult {
 	rv := make(chan iapi.InterestingEntityResult, 10)
@@ -139,7 +160,7 @@ func (p *poc) IsEntityInterestingP(ctx context.Context, hi iapi.HashSchemeInstan
 	}
 	return es.State == StateInteresting, nil
 }
-func (p *poc) GetEntityQueueTokenP(ctx context.Context, hi iapi.HashSchemeInstance) (okay bool, token string, err error) {
+func (p *poc) GetEntityQueueTokenP(ctx context.Context, loc iapi.LocationSchemeInstance, hi iapi.HashSchemeInstance) (okay bool, token string, err error) {
 	hsh := keccakFromHI(hi)
 
 	es, err := p.loadEntity(ctx, hsh)
@@ -149,9 +170,9 @@ func (p *poc) GetEntityQueueTokenP(ctx context.Context, hi iapi.HashSchemeInstan
 	if es == nil {
 		return false, "", nil
 	}
-	return true, es.QueueToken, nil
+	return true, es.QueueToken[loc.IdHash()], nil
 }
-func (p *poc) SetEntityQueueTokenP(ctx context.Context, hi iapi.HashSchemeInstance, token string) error {
+func (p *poc) SetEntityQueueTokenP(ctx context.Context, loc iapi.LocationSchemeInstance, hi iapi.HashSchemeInstance, token string) error {
 	hsh := keccakFromHI(hi)
 	es, err := p.loadEntity(ctx, hsh)
 	if err != nil {
@@ -160,8 +181,19 @@ func (p *poc) SetEntityQueueTokenP(ctx context.Context, hi iapi.HashSchemeInstan
 	if es == nil {
 		return fmt.Errorf("we don't know this entity")
 	}
-	es.QueueToken = token
+	if es.QueueToken == nil {
+		es.QueueToken = make(map[[32]byte]string)
+	}
+	es.QueueToken[loc.IdHash()] = token
 	return p.saveEntityState(ctx, es)
+}
+func (p *poc) LocationsForEntity(ctx context.Context, ent *iapi.Entity) ([]iapi.LocationSchemeInstance, error) {
+	hsh := ent.Keccak256()
+	es, err := p.loadEntity(ctx, hsh)
+	if err != nil {
+		return nil, err
+	}
+	return es.KnownLocations, nil
 }
 func (p *poc) MoveEntityRevokedG(ctx context.Context, ent *iapi.Entity) error {
 	es, err := p.loadEntity(ctx, ent.Keccak256())

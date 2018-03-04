@@ -24,20 +24,6 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-func init() {
-	gob.Register(&EntityKey_Ed25519{})
-	gob.Register(&EntitySecretKey_Ed25519{})
-	gob.Register(&EntityKey_Curve25519{})
-	gob.Register(&EntitySecretKey_Ed25519{})
-	gob.Register(&EntityKey_IBE_Params_BN256{})
-	gob.Register(&EntitySecretKey_IBE_Master_BN256{})
-	gob.Register(&EntityKey_IBE_BN256{})
-	gob.Register(&EntitySecretKey_IBE_BN256{})
-	gob.Register(&EntityKey_OAQUE_BN256_S20_Params{})
-	gob.Register(&EntitySecretKey_OAQUE_BN256_S20_Master{})
-	gob.Register(&EntityKey_OAQUE_BN256_S20{})
-	gob.Register(&EntitySecretKey_OAQUE_BN256_S20{})
-}
 func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInstance, error) {
 	switch {
 	case e.Key.OID.Equal(serdes.EntityEd25519OID):

@@ -15,8 +15,8 @@ func TestKeyPartitionLabel(t *testing.T) {
 		panic(err)
 	}
 	es := rne.EntitySecrets
-
-	err = db.MoveEntityInterestingP(ctx, es.Entity)
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
+	err = db.MoveEntityInterestingP(ctx, es.Entity, tloc)
 	require.NoError(t, err)
 
 	ok, index, err := db.GetEntityPartitionLabelKeyIndexP(ctx, es.Entity.Keccak256HI())
@@ -58,7 +58,8 @@ func TestWR1Keys(t *testing.T) {
 		panic(err)
 	}
 	es := rne.EntitySecrets
-	err = db.MoveEntityInterestingP(ctx, es.Entity)
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
+	err = db.MoveEntityInterestingP(ctx, es.Entity, tloc)
 	require.NoError(t, err)
 	slots := make([][]byte, 20)
 	slots[0] = []byte("foo")

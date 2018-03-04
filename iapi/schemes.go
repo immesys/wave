@@ -68,6 +68,7 @@ type OuterSignatureBindingScheme interface {
 type LocationSchemeInstance interface {
 	Scheme
 	CanonicalForm() (*asn1.External, error)
+	IdHash() [32]byte
 	Equal(l LocationSchemeInstance) bool
 }
 

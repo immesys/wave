@@ -69,14 +69,14 @@ type WaveState interface {
 
 	//This is idempotent, an entity in any state other than unknown will
 	//be ignored by this function
-	MoveEntityInterestingP(ctx context.Context, ent *Entity, loc *LocationSchemeInstance) error
+	MoveEntityInterestingP(ctx context.Context, ent *Entity, loc LocationSchemeInstance) error
 	//This does not return revoked or expired entities, even though the
 	//function above considers them "interesting"
 	GetInterestingEntitiesP(ctx context.Context) chan InterestingEntityResult
 	IsEntityInterestingP(ctx context.Context, hash HashSchemeInstance) (bool, error)
 
 	//TODO ensure channel stops if context is cancelled
-	LocationsForEntity(ctx context.Context, ent *Entity) chan LocationResult
+	LocationsForEntity(ctx context.Context, ent *Entity) ([]LocationSchemeInstance, error)
 	//The backing data gets populated by the MoveX objects, so this is
 	//can give false negatives. The channel must be consumed completely
 	//or the context cancelled

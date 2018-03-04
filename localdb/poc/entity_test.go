@@ -43,7 +43,8 @@ func TestStoreLoadEntity(t *testing.T) {
 	ent := perspective.Entity
 	firstSer, err := ent.DER()
 	require.NoError(t, err)
-	err = db.MoveEntityInterestingP(ctx, ent)
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
+	err = db.MoveEntityInterestingP(ctx, ent, tloc)
 	require.NoError(t, err)
 	hi, err := ent.Hash(context.Background(), iapi.KECCAK256)
 	require.NoError(t, err)
@@ -65,19 +66,20 @@ func TestEntityQueueToken(t *testing.T) {
 	}
 	perspective := rne.EntitySecrets
 	ent := perspective.Entity
-	err = db.MoveEntityInterestingP(ctx, ent)
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
+	err = db.MoveEntityInterestingP(ctx, ent, tloc)
 	if err != nil {
 		t.Fatal(err)
 	}
-	okay, doti, err := db.GetEntityQueueTokenP(ctx, ent.Keccak256HI())
+	okay, doti, err := db.GetEntityQueueTokenP(ctx, tloc, ent.Keccak256HI())
 	require.NoError(t, err)
 	require.True(t, okay)
 	require.EqualValues(t, "", doti)
-	err = db.SetEntityQueueTokenP(ctx, ent.Keccak256HI(), "5")
+	err = db.SetEntityQueueTokenP(ctx, tloc, ent.Keccak256HI(), "5")
 	if err != nil {
 		t.Fatal(err)
 	}
-	okay, doti, err = db.GetEntityQueueTokenP(ctx, ent.Keccak256HI())
+	okay, doti, err = db.GetEntityQueueTokenP(ctx, tloc, ent.Keccak256HI())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +108,8 @@ func TestNonExistingEntityDotIndex(t *testing.T) {
 	ctx := getPctx()
 	hash := make([]byte, 32)
 	rand.Read(hash)
-	okay, _, err := db.GetEntityQueueTokenP(ctx, &iapi.HashSchemeInstance_Keccak_256{hash})
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
+	okay, _, err := db.GetEntityQueueTokenP(ctx, tloc, &iapi.HashSchemeInstance_Keccak_256{hash})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +138,8 @@ func TestInterestingEntity(t *testing.T) {
 		panic(err)
 	}
 	ent := rne.EntitySecrets.Entity
-	err = db.MoveEntityInterestingP(ctx, ent)
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
+	err = db.MoveEntityInterestingP(ctx, ent, tloc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +157,8 @@ func TestInterestingEntityRevoked(t *testing.T) {
 	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
 	require.NoError(t, err)
 	ent := rne.EntitySecrets.Entity
-	err = db.MoveEntityInterestingP(ctx, ent)
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
+	err = db.MoveEntityInterestingP(ctx, ent, tloc)
 	require.NoError(t, err)
 	intr, err := db.IsEntityInterestingP(ctx, ent.Keccak256HI())
 	require.NoError(t, err)
@@ -169,7 +174,8 @@ func TestInterestingEntityExpired(t *testing.T) {
 	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
 	require.NoError(t, err)
 	ent := rne.EntitySecrets.Entity
-	err = db.MoveEntityInterestingP(ctx, ent)
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
+	err = db.MoveEntityInterestingP(ctx, ent, tloc)
 	require.NoError(t, err)
 	intr, err := db.IsEntityInterestingP(ctx, ent.Keccak256HI())
 	require.NoError(t, err)
@@ -182,13 +188,14 @@ func TestInterestingEntityExpired(t *testing.T) {
 
 func TestInterestingEntitySequence(t *testing.T) {
 	ctx := getPctx()
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
 	dataset := make(map[[32]byte]*iapi.Entity)
 	for i := 0; i < 100; i++ {
 		rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
 		require.NoError(t, err)
 		ent := rne.EntitySecrets.Entity
 		dataset[ent.ArrayKeccak256()] = ent
-		err = db.MoveEntityInterestingP(ctx, ent)
+		err = db.MoveEntityInterestingP(ctx, ent, tloc)
 		require.NoError(t, err)
 	}
 	rvc := db.GetInterestingEntitiesP(ctx)
@@ -206,11 +213,12 @@ func TestInterestingEntitySequence(t *testing.T) {
 func TestInterestingEntitySequenceRevokedExpired(t *testing.T) {
 	ctx := getPctx()
 	entz := make([]*iapi.Entity, 0)
+	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
 	for i := 0; i < 100; i++ {
 		rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
 		require.NoError(t, err)
 		ent := rne.EntitySecrets.Entity
-		err = db.MoveEntityInterestingP(ctx, ent)
+		err = db.MoveEntityInterestingP(ctx, ent, tloc)
 		require.NoError(t, err)
 		entz = append(entz, ent)
 	}
