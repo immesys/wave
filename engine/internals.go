@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	"github.com/immesys/wave/iapi"
-	localdb "github.com/immesys/wave/localdb/types"
-	"github.com/immesys/wave/storage"
 )
 
 //how to develop this?
@@ -27,8 +25,8 @@ type Engine struct {
 	ctx       context.Context
 	ctxcancel context.CancelFunc
 
-	ws          localdb.WaveState
-	st          storage.Storage
+	ws          iapi.WaveState
+	st          iapi.StorageInterface
 	perspective *iapi.Entity
 
 	//If a dot enters labelled, it must be tested against all keys
@@ -57,14 +55,14 @@ type Engine struct {
 	totalCompletedSyncs int64
 }
 
-func NewEngine(ctx context.Context, state localdb.WaveState, bchain storage.Storage, perspective *iapi.Entity) (*Engine, error) {
+func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface, perspective *iapi.Entity) (*Engine, error) {
 	subctx, cancel := context.WithCancel(ctx)
 	var err error
 	rv := Engine{
 		ctx:         subctx,
 		ctxcancel:   cancel,
 		ws:          state,
-		st:          bchain,
+		st:          st,
 		perspective: perspective,
 		totalEqual:  make(chan struct{}),
 		//TODO make buffered. Unbuffered for now to find deadlocks
@@ -88,21 +86,22 @@ func NewEngine(ctx context.Context, state localdb.WaveState, bchain storage.Stor
 	return &rv, nil
 }
 
-// For as long as the engine's context is active, watch and process new
-// events on the chain
-func (e *Engine) watchHeaders() error {
-	//This channel should be sized to buffer the number of logs that can reasonably
-	//appear in a single block, but nothing bad happens if wrong
-	rch := make(chan *storage.ChangeEvent, 1000)
-	//If the engine context is cancelled, we want to cancel our subscription too
-	err := e.st.SubscribeStorageChange(e.ctx, rch)
-	if err != nil {
-		return err
-	}
-	go func() {
-		for change := range rch {
-			e.handleStorageEvent(change)
-		}
-	}()
-	return nil
-}
+//
+// // For as long as the engine's context is active, watch and process new
+// // events on the chain
+// func (e *Engine) watchHeaders() error {
+// 	//This channel should be sized to buffer the number of logs that can reasonably
+// 	//appear in a single block, but nothing bad happens if wrong
+// 	rch := make(chan *storage.ChangeEvent, 1000)
+// 	//If the engine context is cancelled, we want to cancel our subscription too
+// 	err := e.st.SubscribeStorageChange(e.ctx, rch)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	go func() {
+// 		for change := range rch {
+// 			e.handleStorageEvent(change)
+// 		}
+// 	}()
+// 	return nil
+// }

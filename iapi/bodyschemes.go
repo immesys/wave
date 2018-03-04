@@ -67,6 +67,8 @@ type WR1DecryptionContext interface {
 type WR1BodyScheme struct {
 }
 
+type WR1PartitionExtra [][]byte
+
 func (w *WR1BodyScheme) Supported() bool {
 	return true
 }

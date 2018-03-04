@@ -4,13 +4,17 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/immesys/wave/entity"
+	"github.com/immesys/wave/iapi"
 )
+
+func sliceToArray(b []byte) (rv [32]byte) {
+	copy(rv[:], b[:])
+}
 
 //The caller (who is time sensitive) would like to call
 //RecursiveSynchronizeEntity on this entity if we are
 //interested in it
-func (e *Engine) enqueueEntityResyncIfInteresting(ctx context.Context, enthash []byte) error {
+func (e *Engine) enqueueEntityResyncIfInteresting(ctx context.Context, enthash iapi.HashSchemeInstance) error {
 	interesting, err := e.ws.IsEntityInterestingP(ctx, enthash)
 	if err != nil {
 		return err
@@ -22,12 +26,12 @@ func (e *Engine) enqueueEntityResyncIfInteresting(ctx context.Context, enthash [
 }
 
 //This function should be quick. Processing should happen elsewhere
-func (e *Engine) markEntityInterestingAndQueueForSync(dest *entity.Entity) error {
+func (e *Engine) markEntityInterestingAndQueueForSync(dest *iapi.Entity) error {
 	err := e.ws.MoveEntityInterestingP(e.ctx, dest)
 	if err != nil {
 		return err
 	}
-	return e.queueEntityForSync(dest.Hash)
+	return e.queueEntityForSync(dest.Keccak256())
 }
 
 //This function should be quick. Processing should happen elsewhere
@@ -41,7 +45,7 @@ func (e *Engine) queueEntityForSync(dest []byte) error {
 	}
 	e.totalSyncRequests++
 	e.totalMutex.Unlock()
-	e.resyncQueue <- entity.ArrayHash(dest)
+	e.resyncQueue <- sliceToArray(dest)
 	return nil
 }
 
@@ -147,7 +151,7 @@ func (e *Engine) syncLoop() {
 }
 
 // These functions do subsequent state changes
-func (e *Engine) synchronizeEntity(ctx context.Context, dest *entity.Entity) (err error) {
+func (e *Engine) synchronizeEntity(ctx context.Context, dest *iapi.Entity) (err error) {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -176,11 +180,11 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 		if res.Err != nil {
 			return res.Err
 		}
-		ent, err := e.ws.GetEntityByHashG(subctx, res.Hash)
-		if err != nil {
-			return err
-		}
-		err = e.queueEntityForSync(ent.Hash)
+		// ent, err := e.ws.GetEntityByHashG(subctx, res.Hash)
+		// if err != nil {
+		// 	return err
+		// }
+		err = e.queueEntityForSync(res.Entity.Keccak256())
 		if err != nil {
 			return err
 		}

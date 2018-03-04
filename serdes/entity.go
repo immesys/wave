@@ -16,8 +16,6 @@ type WaveEntity struct {
 			NotAfter  time.Time `asn1:"utc"`
 		}
 		Revocations []RevocationOption
-		Contact     string `asn1:"utf8,tag:0,optional,implicit"`
-		Comment     string `asn1:"utf8,tag:1,optional,implicit"`
 		Extensions  []Extension
 	}
 	Signature []byte

@@ -1606,6 +1606,9 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20) GobDecode(ba []byte) error {
 func (ek *EntitySecretKey_OAQUE_BN256_S20) Slots() [][]byte {
 	return ek.AttributeSet
 }
+func (ek *EntitySecretKey_OAQUE_BN256_S20) IdHash() [32]byte {
+	panic("ni")
+}
 
 var _ EntitySecretKeySchemeInstance = &EntitySecretKey_OAQUE_BN256_S20_Master{}
 

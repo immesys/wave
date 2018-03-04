@@ -10,8 +10,6 @@ import (
 )
 
 type PNewEntity struct {
-	Contact *string
-	Comment *string
 	//If not specified, defaults to Now
 	ValidFrom *time.Time
 	//If not specified defaults to Now+30 days
@@ -28,12 +26,6 @@ type RNewEntity struct {
 func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, error) {
 	en := serdes.WaveEntitySecret{}
 
-	if p.Comment != nil {
-		en.Entity.TBS.Comment = *p.Comment
-	}
-	if p.Contact != nil {
-		en.Entity.TBS.Contact = *p.Contact
-	}
 	if p.ValidFrom != nil {
 		en.Entity.TBS.Validity.NotBefore = *p.ValidFrom
 	} else {

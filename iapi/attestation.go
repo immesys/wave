@@ -16,8 +16,12 @@ type PCreateAttestation struct {
 	BodyScheme        AttestationBodyScheme
 	EncryptionContext BodyEncryptionContext
 
-	Attester *EntitySecrets
-	Subject  *Entity
+	Attester         *EntitySecrets
+	AttesterLocation LocationSchemeInstance
+
+	Subject         *Entity
+	SubjectLocation LocationSchemeInstance
+
 	//If not specified, defaults to Now
 	ValidFrom *time.Time
 	//If not specified defaults to Now+30 days
@@ -28,7 +32,7 @@ type RCreateAttestation struct {
 }
 
 func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAttestation, error) {
-	if p.Policy == nil || p.Attester == nil || p.Subject == nil || p.BodyScheme == nil {
+	if p.Policy == nil || p.Attester == nil || p.Subject == nil || p.BodyScheme == nil || p.SubjectLocation == nil || p.AttesterLocation == nil {
 		return nil, fmt.Errorf("missing required parameters")
 	}
 	subjectHash, err := p.Subject.Hash(ctx, p.HashScheme)
@@ -55,6 +59,12 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 		return nil, err
 	}
 	att.TBS.Subject = *externalSubjectHash
+	subjloc, err := p.SubjectLocation.CanonicalForm()
+	if err != nil {
+		return nil, err
+	}
+	att.TBS.SubjectLocation = *subjloc
+
 	//TODO
 	//att.TBS.Revocations
 	//TODO
@@ -63,6 +73,12 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	//Build up the body
 	body := serdes.AttestationBody{}
 	body.VerifierBody.Attester = *externalAttesterHash
+	attloc, err := p.AttesterLocation.CanonicalForm()
+	if err != nil {
+		return nil, err
+	}
+	body.VerifierBody.AttesterLocation = *attloc
+
 	if p.ValidFrom != nil {
 		body.VerifierBody.Validity.NotBefore = *p.ValidFrom
 	} else {
@@ -136,11 +152,15 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 }
 
 type PParseAttestation struct {
+	//Either specify DER or specify Attestation (to further decrypt a partially
+	//decrypted DOT)
 	DER               []byte
+	Attestation       *Attestation
 	DecryptionContext BodyDecryptionContext
 }
 type RParseAttestation struct {
 	Attestation *Attestation
+	IsMalformed bool
 	ExtraInfo   interface{}
 }
 
@@ -148,27 +168,42 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 	wo := serdes.WaveWireObject{}
 	trailing, err := asn1.Unmarshal(p.DER, &wo.Content)
 	if err != nil {
-		return nil, fmt.Errorf("could not decode: %v", err)
+		return &RParseAttestation{
+			IsMalformed: true,
+		}, nil
 	}
 	if len(trailing) != 0 {
-		return nil, fmt.Errorf("could not decode: trailing content")
+		return &RParseAttestation{
+			IsMalformed: true,
+		}, nil
 	}
 	att, ok := wo.Content.Content.(serdes.WaveAttestation)
 	if !ok {
-		return nil, fmt.Errorf("object not an attestation")
+		return &RParseAttestation{
+			IsMalformed: true,
+		}, nil
 	}
 
 	scheme := AttestationBodySchemeFor(&att.TBS.Body)
 	if err != nil {
-		return nil, err
+		return &RParseAttestation{
+			IsMalformed: true,
+		}, nil
 	}
 	decoded, extra, err := scheme.DecryptBody(ctx, p.DecryptionContext, &att)
 	if err != nil {
-		return nil, err
+		return &RParseAttestation{
+			IsMalformed: true,
+		}, nil
 	}
+	//TODO WR1 partition
 	rv := Attestation{
 		CanonicalForm: &att,
 		DecryptedBody: decoded,
+	}
+	wr1slots, ok := extra.(WR1PartitionExtra)
+	if ok {
+		rv.WR1Partition = wr1slots
 	}
 	return &RParseAttestation{
 		Attestation: &rv,

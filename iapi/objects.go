@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/asn1"
 	"fmt"
+	"time"
 
 	"github.com/immesys/wave/serdes"
 )
@@ -57,7 +58,9 @@ func (e *Entity) ArrayKeccak256() [32]byte {
 	copy(rv[:], e.Keccak256())
 	return rv
 }
-
+func (e *Entity) Expired() bool {
+	return time.Now().After(e.CanonicalForm.TBS.Validity.NotAfter)
+}
 func ToArr32(b []byte) [32]byte {
 	rv := [32]byte{}
 	copy(rv[:], b)
@@ -135,9 +138,25 @@ func (e *Attestation) Keccak256() []byte {
 	rv := hi.Value()
 	return rv
 }
-func (e *Attestation) Subject() HashSchemeInstance {
+func (e *Attestation) Subject() (HashSchemeInstance, LocationSchemeInstance) {
 	rv := HashSchemeInstanceFor(&e.CanonicalForm.TBS.Subject)
-	return rv
+	rvloc := LocationSchemeInstanceFor(&e.CanonicalForm.TBS.SubjectLocation)
+	return rv, rvloc
+}
+func (e *Attestation) Attester() (HashSchemeInstance, LocationSchemeInstance, error) {
+	if e.DecryptedBody == nil {
+		return nil, nil, fmt.Errorf("Attestation is not decrypted")
+	}
+	rv := HashSchemeInstanceFor(&e.DecryptedBody.VerifierBody.Attester)
+	rvloc := LocationSchemeInstanceFor(&e.DecryptedBody.VerifierBody.AttesterLocation)
+	return rv, rvloc, nil
+}
+func (e *Attestation) Expired() (bool, error) {
+	if e.DecryptedBody == nil {
+		return true, fmt.Errorf("Attestation is not decrypted")
+	}
+	v := e.DecryptedBody.VerifierBody.Validity
+	return time.Now().After(v.NotAfter), nil
 }
 func (e *Attestation) Keccak256HI() HashSchemeInstance {
 	hi, err := e.Hash(context.Background(), KECCAK256)
@@ -151,7 +170,12 @@ func (e *Attestation) ArrayKeccak256() [32]byte {
 	copy(rv[:], e.Keccak256())
 	return rv
 }
-
+func (e *Attestation) WR1SlottedKeys() ([]SlottedSecretKey, error) {
+	panic("ni")
+}
+func (e *Attestation) WR1DomainVisibilityKeys() ([]EntitySecretKeySchemeInstance, error) {
+	panic("ni")
+}
 func (e *Attestation) DER() ([]byte, error) {
 	tbhder, err := asn1.Marshal(*e.CanonicalForm)
 	return tbhder, err

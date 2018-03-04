@@ -51,6 +51,11 @@ type LookupFromFilter struct {
 	GlobalNS  *bool
 }
 
+type LocationResult struct {
+	Location LocationSchemeInstance
+	Err      error
+}
+
 type State struct {
 	ValidActive bool
 	Expired     bool
@@ -64,12 +69,14 @@ type WaveState interface {
 
 	//This is idempotent, an entity in any state other than unknown will
 	//be ignored by this function
-	MoveEntityInterestingP(ctx context.Context, ent *Entity) error
+	MoveEntityInterestingP(ctx context.Context, ent *Entity, loc *LocationSchemeInstance) error
 	//This does not return revoked or expired entities, even though the
 	//function above considers them "interesting"
 	GetInterestingEntitiesP(ctx context.Context) chan InterestingEntityResult
 	IsEntityInterestingP(ctx context.Context, hash HashSchemeInstance) (bool, error)
 
+	//TODO ensure channel stops if context is cancelled
+	LocationsForEntity(ctx context.Context, ent *Entity) chan LocationResult
 	//The backing data gets populated by the MoveX objects, so this is
 	//can give false negatives. The channel must be consumed completely
 	//or the context cancelled
@@ -99,8 +106,8 @@ type WaveState interface {
 	GetEntityPartitionLabelKeyIndexP(ctx context.Context, entHashSchemeInstance HashSchemeInstance) (bool, int, error)
 	GetAttestationP(ctx context.Context, HashSchemeInstance HashSchemeInstance) (at *Attestation, err error)
 	GetActiveAttestationsFromP(ctx context.Context, attester HashSchemeInstance, filter *LookupFromFilter) chan LookupFromResult
-	GetEntityQueueTokenP(ctx context.Context, hsh HashSchemeInstance) (okay bool, token string, err error)
-	SetEntityQueueTokenP(ctx context.Context, hsh HashSchemeInstance, token string) error
+	GetEntityQueueTokenP(ctx context.Context, loc LocationSchemeInstance, hsh HashSchemeInstance) (okay bool, token string, err error)
+	SetEntityQueueTokenP(ctx context.Context, loc LocationSchemeInstance, hsh HashSchemeInstance, token string) error
 
 	//Global (non perspective) functions
 	MoveEntityRevokedG(ctx context.Context, ent *Entity) error

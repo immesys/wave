@@ -6,7 +6,6 @@ import (
 
 	"github.com/immesys/wave/entity"
 	"github.com/immesys/wave/iapi"
-	localdb "github.com/immesys/wave/localdb/types"
 )
 
 //functions that the engine needs from above
@@ -49,9 +48,7 @@ type Filter struct {
 	//Like namespace and permissions and stuff
 	//backend might be able to index some of it
 	//also validity
-	Valid     *bool
-	Namespace []byte
-	GlobalNS  *bool
+	Valid *bool
 }
 
 type LookupResult struct {
@@ -75,11 +72,10 @@ func (e *Engine) InsertDOT(ctx context.Context, encodedDOT []byte) error {
 //External function: get dots granted from an entity on a namespace.
 //global grants will also be returned. The returned channel must be consumed
 //completely, or the context must be cancelled
-func (e *Engine) LookupDOTSFrom(ctx context.Context, entityHash []byte, filter *Filter) (chan *LookupResult, chan error) {
+func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.HashSchemeInstance, filter *iapi.LookupFromFilter) (chan *LookupResult, chan error) {
 	//The external context does not have our perspective, but we want it so the caller
 	//can cancel
 	subctx, cancel := context.WithCancel(context.WithValue(ctx, PerspectiveKey, e.perspective))
-	lff := localdb.LookupFromFilter(*filter)
 	rv := make(chan *LookupResult, 10)
 	rve := make(chan error, 1)
 	go func() error {
@@ -90,20 +86,20 @@ func (e *Engine) LookupDOTSFrom(ctx context.Context, entityHash []byte, filter *
 			close(rve)
 			return e
 		}
-		for res := range e.ws.GetActiveDotsFromP(subctx, entityHash, &lff) {
+		for res := range e.ws.GetActiveAttestationsFromP(subctx, entityHash, filter) {
 			if subctx.Err() != nil {
 				return fin(subctx.Err())
 			}
 			if res.Err != nil {
 				return fin(res.Err)
 			}
-			validity, err := e.CheckDot(subctx, res.Dot)
+			validity, err := e.CheckAttestation(subctx, res.Attestation)
 			if err != nil {
 				return fin(err)
 			}
 			select {
-			case rv <- &LookupResult{
-				DOT:      res.Dot,
+			case rv <- &iapi.LookupFromResult{
+				Attestation:
 				Validity: validity,
 			}:
 			case <-subctx.Done():

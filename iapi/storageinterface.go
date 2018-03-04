@@ -50,6 +50,8 @@ type StorageDriverInterface interface {
 	//work out which storage requests to route its way
 	Location(context.Context) LocationSchemeInstance
 
+	PreferredHashScheme() HashScheme
+
 	//Given a set of key/value options from the user's configuration file,
 	//create an instance of this storage driver. Initialize will be called
 	//on an empty struct instance (e.g (&MyStorage{}).Initialize(cfg))
@@ -76,4 +78,18 @@ type StorageDriverInterface interface {
 	//Iterate over the given queue. Returns nil, "", ErrNoMore if there are no more
 	//entries. Must accept "" as iteratorToken to mean the first entry
 	IterateQueue(ctx context.Context, queueId HashSchemeInstance, iteratorToken string) (object HashSchemeInstance, nextToken string, err error)
+}
+
+type StorageInterface interface {
+	GetEntity(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*Entity, error)
+	PutEntity(ctx context.Context, loc LocationSchemeInstance, ent *Entity) error
+	GetAttestation(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*Attestation, error)
+	PutAttestation(ctx context.Context, loc LocationSchemeInstance, att *Attestation) error
+	IterateQeueue(ctx context.Context, loc LocationSchemeInstance, queueId HashSchemeInstance, token string) (object HashSchemeInstance, nextToken string, err error)
+	Enqueue(ctx context.Context, loc LocationSchemeInstance, queueId HashSchemeInstance, object HashSchemeInstance) error
+	HashSchemeFor(loc LocationSchemeInstance) (HashScheme, error)
+}
+
+func SI() StorageInterface {
+	panic("ni")
 }

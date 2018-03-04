@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,5 +17,5 @@ func TestCreateEntity(t *testing.T) {
 	})
 	require.NoError(t, err)
 	_ = readback
-	spew.Dump(readback.Entity)
+	//spew.Dump(readback.Entity)
 }

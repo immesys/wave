@@ -9,6 +9,7 @@ import (
 type WaveAttestation struct {
 	TBS struct {
 		Subject          asn1.External //EntityHash
+		SubjectLocation  asn1.External //Location
 		Revocations      []RevocationOption
 		PublicExtensions []Extension
 		Body             asn1.External
@@ -23,7 +24,8 @@ type AttestationBody struct {
 }
 
 type AttestationVerifierBody struct {
-	Attester asn1.External //EntityHash
+	Attester         asn1.External //EntityHash
+	AttesterLocation asn1.External //Location
 	//Subject  asn1.External //EntityHash
 	Validity struct {
 		NotBefore time.Time `asn1:"utc"`

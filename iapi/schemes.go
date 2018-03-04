@@ -67,6 +67,7 @@ type OuterSignatureBindingScheme interface {
 
 type LocationSchemeInstance interface {
 	Scheme
+	CanonicalForm() (*asn1.External, error)
 	Equal(l LocationSchemeInstance) bool
 }
 
@@ -92,6 +93,7 @@ type EntitySecretKeySchemeInstance interface {
 type SlottedSecretKey interface {
 	EntitySecretKeySchemeInstance
 	Slots() [][]byte
+	IdHash() [32]byte
 }
 
 type Capability int

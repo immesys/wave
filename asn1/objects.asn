@@ -12,6 +12,8 @@ BEGIN
       -- the subject of the attestation, who is receiving permissions or
       -- having a property attested to
       subject EntityHash,
+      subjectLocation Location,
+
       -- how this attestation revoked
       revocations SEQUENCE OF RevocationOption,
       -- extensions that are visible without any decryption of the
@@ -59,6 +61,8 @@ BEGIN
   AttestationVerifierBody ::= SEQUENCE {
     -- the creator of the DOT
     attester EntityHash,
+    attesterLocation Location,
+    
     -- the subject of the attestation, in outside...
     -- subject EntityHash,
 
@@ -97,7 +101,7 @@ BEGIN
   Extension ::= SEQUENCE {
     extnID OBJECT IDENTIFIER,
     -- should parsing of the object fail if this extension is not understood
-    critical BOOLEAN DEFAULT FALSE,
+    critical BOOLEAN,
     -- DER encoding of ASN.1 value identified by extnID
     value OCTET STRING
   }

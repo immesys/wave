@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +21,9 @@ func TestBasicAttestation(t *testing.T) {
 		BodyScheme:        bodyscheme,
 		EncryptionContext: nil,
 		Attester:          source.EntitySecrets,
+		AttesterLocation:  NewLocationSchemeInstanceURL("test", 1),
 		Subject:           dst.EntitySecrets.Entity,
+		SubjectLocation:   NewLocationSchemeInstanceURL("test", 1),
 	})
 	require.NoError(t, err)
 
@@ -30,5 +31,6 @@ func TestBasicAttestation(t *testing.T) {
 		DER: rv.DER,
 	})
 	require.NoError(t, err)
-	spew.Dump(readback)
+	//spew.Dump(readback)
+	_ = readback
 }
