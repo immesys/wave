@@ -111,6 +111,7 @@ func init() {
 		{EntitySecretOID, WaveEntitySecret{}},
 		{KeyringAES128_GCM_PBKDF2OID, KeyringAESCiphertext{}},
 		{PSKBodySchemeOID, PSKBodyCiphertext{}},
+		{WR1BodyOID, WR1BodyCiphertext{}},
 	}
 	for _, t := range tpz {
 		asn1.RegisterExternalType(t.O, t.I)

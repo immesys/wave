@@ -62,7 +62,7 @@ BEGIN
     -- the creator of the DOT
     attester EntityHash,
     attesterLocation Location,
-    
+
     -- the subject of the attestation, in outside...
     -- subject EntityHash,
 
@@ -306,10 +306,10 @@ BEGIN
   }
 
   WR1Envelope ::= SEQUENCE {
-    -- content: verifierBodyKey
+    -- content: proverBodyKey || proverBodyNonce || verifierBodyKey || verifierBodyNonce
     -- encryption algorithm: oaque-bn256 in subject system
     -- encryption attribute set: Partition
-    verifierBodyKey-oaque OCTET STRING,
+    bodyKeys-oaque OCTET STRING,
 
     -- the attribute set for the verifierBodyKey-oaque ciphertext
     partition SEQUENCE OF OCTET STRING
@@ -319,7 +319,9 @@ BEGIN
     --which keys do we give other people
     --we have PartitionKeys that reveal the content
     --we have a Domain Key that reveals the partition attribute set
-    addendums SEQUENCE OF PolicyAddendum
+    addendums SEQUENCE OF PolicyAddendum,
+    
+    extensions SEQUENCE OF Extension
   }
 
   WR1VerifierBody ::= SEQUENCE {

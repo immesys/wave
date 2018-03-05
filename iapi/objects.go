@@ -38,6 +38,34 @@ func (e *Entity) DER() ([]byte, error) {
 	return tbhder, err
 }
 
+func (e *Entity) WR1_DomainVisiblityParams() (EntityKeySchemeInstance, error) {
+	for _, kr := range e.Keys {
+		params, ok := kr.(*EntityKey_IBE_Params_BN256)
+		if ok {
+			return params, nil
+		}
+	}
+	return nil, fmt.Errorf("no WR1 IBE params found")
+}
+func (e *Entity) WR1_BodyParams() (EntityKeySchemeInstance, error) {
+	for _, kr := range e.Keys {
+		params, ok := kr.(*EntityKey_OAQUE_BN256_S20_Params)
+		if ok {
+			return params, nil
+		}
+	}
+	return nil, fmt.Errorf("no WR1 OAQUE params found")
+}
+func (e *Entity) WR1_DirectEncryptionKey() (EntityKeySchemeInstance, error) {
+	//curve25519
+	for _, kr := range e.Keys {
+		pk, ok := kr.(*EntityKey_Curve25519)
+		if ok {
+			return pk, nil
+		}
+	}
+	return nil, fmt.Errorf("no WR1 Curve25519 key found")
+}
 func (e *Entity) Keccak256() []byte {
 	hi, err := e.Hash(context.Background(), KECCAK256)
 	if err != nil {
@@ -103,15 +131,25 @@ func (e *EntitySecrets) WR1BodyKey(ctx context.Context, slots [][]byte) (Slotted
 	}
 	return nil, fmt.Errorf("no WR1 body key found")
 }
+func (e *EntitySecrets) WR1DirectDecryptionKey(ctx context.Context) (EntitySecretKeySchemeInstance, error) {
+	for _, kr := range e.Keyring {
+		cv, ok := kr.(*EntitySecretKey_Curve25519)
+		if ok {
+			return cv, nil
+		}
+	}
+	return nil, fmt.Errorf("no WR1 direct encryption key found")
+}
 
 type Attestation struct {
 	//Before any decryption was applied
 	CanonicalForm *serdes.WaveAttestation
 	//After we decrypted
 	DecryptedBody *serdes.AttestationBody
-	//If the dot is labelled but not fully decrypted, this will be present
-	//but the decrypted body will be null
-	WR1Partition [][]byte
+	//Extra information obtained if this is a WR1 dot
+	WR1Extra *WR1Extra
+	//Extra information obtained if this is a PSK dot
+	PSKExtra *PSKExtra
 }
 
 func (e *Attestation) Hash(ctx context.Context, scheme HashScheme) (HashSchemeInstance, error) {

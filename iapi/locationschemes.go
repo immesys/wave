@@ -59,7 +59,7 @@ func (ls *LocationSchemeInstanceURL) IdHash() [32]byte {
 	if ls.idhash == nil {
 		h := sha3.New256()
 		h.Write([]byte("LocationSchemeInstanceURL"))
-		h.Write([]byte(fmt.Sprintf("%04d:%s", ls.SerdesForm.Version, ls.SerdesForm.Version)))
+		h.Write([]byte(fmt.Sprintf("%04d:%s", ls.SerdesForm.Version, ls.SerdesForm.Value)))
 		ls.idhash = h.Sum(nil)
 	}
 	rv := [32]byte{}

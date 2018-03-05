@@ -25,7 +25,7 @@ type BodyEncryptionContext interface {
 type AttestationBodyScheme interface {
 	Scheme
 	DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error)
-	EncryptBody(ctx context.Context, ec BodyEncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error)
+	EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error)
 }
 
 type OuterSignatureSchemeInstance interface {
@@ -37,7 +37,7 @@ type PolicySchemeInstance interface {
 	Scheme
 	CanonicalForm(ctx context.Context) (*asn1.External, error)
 	//These are required for WR1 support
-	WR1DomainEntity(ctx context.Context) (HashScheme, error)
+	WR1DomainEntity(ctx context.Context) (HashSchemeInstance, error)
 	WR1Partition(ctx context.Context) ([][]byte, error)
 }
 type PolicyAddendumSchemeInstance interface {

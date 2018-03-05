@@ -11,12 +11,13 @@ type WR1BodyCiphertext struct {
 }
 
 type WR1Envelope struct {
-	VerifierBodyKey_OAQUE []byte
-	Partition             [][]byte
+	BodyKeys_OAQUE []byte
+	Partition      [][]byte
 }
 
 type WR1ProverBody struct {
-	Addendums []asn1.External
+	Addendums  []asn1.External
+	Extensions []Extension
 }
 
 type WR1VerifierBody struct {

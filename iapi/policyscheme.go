@@ -28,7 +28,7 @@ func (ps *UnsupportedPolicySchemeInstance) Supported() bool {
 func (ps *UnsupportedPolicySchemeInstance) CanonicalForm(ctx context.Context) (*asn1.External, error) {
 	return &ps.SerdesForm, nil
 }
-func (ps *UnsupportedPolicySchemeInstance) WR1DomainEntity(ctx context.Context) (HashScheme, error) {
+func (ps *UnsupportedPolicySchemeInstance) WR1DomainEntity(ctx context.Context) (HashSchemeInstance, error) {
 	return nil, fmt.Errorf("this policy scheme is not supported")
 }
 func (ps *UnsupportedPolicySchemeInstance) WR1Partition(ctx context.Context) ([][]byte, error) {
@@ -57,7 +57,7 @@ func (ps *TrustLevelPolicy) CanonicalForm(ctx context.Context) (*asn1.External, 
 	return &ps.SerdesForm, nil
 }
 
-func (ps *TrustLevelPolicy) WR1DomainEntity(ctx context.Context) (HashScheme, error) {
+func (ps *TrustLevelPolicy) WR1DomainEntity(ctx context.Context) (HashSchemeInstance, error) {
 	return nil, nil
 }
 func (ps *TrustLevelPolicy) WR1Partition(ctx context.Context) ([][]byte, error) {

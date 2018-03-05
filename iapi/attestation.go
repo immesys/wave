@@ -124,7 +124,7 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	att.TBS.Body = asn1.NewExternal(body)
 
 	//Now encrypt the body
-	encryptedForm, err := p.BodyScheme.EncryptBody(ctx, p.EncryptionContext, &att)
+	encryptedForm, err := p.BodyScheme.EncryptBody(ctx, p.EncryptionContext, p.Attester, p.Subject, &att)
 	if err != nil {
 		return nil, err
 	}
@@ -168,17 +168,20 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 	wo := serdes.WaveWireObject{}
 	trailing, err := asn1.Unmarshal(p.DER, &wo.Content)
 	if err != nil {
+		fmt.Printf("failed initial parse: %v\n", err)
 		return &RParseAttestation{
 			IsMalformed: true,
 		}, nil
 	}
 	if len(trailing) != 0 {
+		fmt.Printf("failed parse2: %v\n", err)
 		return &RParseAttestation{
 			IsMalformed: true,
 		}, nil
 	}
 	att, ok := wo.Content.Content.(serdes.WaveAttestation)
 	if !ok {
+		fmt.Printf("failed parse3: %v\n", err)
 		return &RParseAttestation{
 			IsMalformed: true,
 		}, nil
@@ -186,24 +189,26 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 
 	scheme := AttestationBodySchemeFor(&att.TBS.Body)
 	if err != nil {
+		fmt.Printf("failed parse4: %v\n", err)
 		return &RParseAttestation{
 			IsMalformed: true,
 		}, nil
 	}
 	decoded, extra, err := scheme.DecryptBody(ctx, p.DecryptionContext, &att)
 	if err != nil {
+		fmt.Printf("failed parse5: %v\n", err)
 		return &RParseAttestation{
 			IsMalformed: true,
 		}, nil
 	}
-	//TODO WR1 partition
+	fmt.Printf("parse success\n")
 	rv := Attestation{
 		CanonicalForm: &att,
 		DecryptedBody: decoded,
 	}
-	wr1slots, ok := extra.(WR1PartitionExtra)
+	wr1extra, ok := extra.(*WR1Extra)
 	if ok {
-		rv.WR1Partition = wr1slots
+		rv.WR1Extra = wr1extra
 	}
 	return &RParseAttestation{
 		Attestation: &rv,
