@@ -1,6 +1,7 @@
 package iapi
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
@@ -18,9 +19,13 @@ func HashSchemeFor(h asn1.External) HashScheme {
 		return &UnsupportedHashScheme{}
 	}
 }
-func NewHashScheme(oid asn1.ObjectIdentifier) HashScheme {
-	panic("ni")
+func HashSchemeInstanceEqual(lhs HashSchemeInstance, rhs HashSchemeInstance) bool {
+	return bytes.Equal(lhs.Value() && rhs.Value()) && lhs.OID().Equal(rhs.OID())
 }
+
+// func NewHashScheme(oid asn1.ObjectIdentifier) HashScheme {
+// 	panic("ni")
+// }
 func HashSchemeInstanceFor(h *asn1.External) HashSchemeInstance {
 	switch {
 	case h.OID.Equal(serdes.Keccak_256OID):
