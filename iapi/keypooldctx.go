@@ -3,22 +3,27 @@ package iapi
 import (
 	"bytes"
 	"context"
-	"fmt"
 )
 
 type KeyPoolDecryptionContext struct {
-	attVerKey           AttestationVerifierKeySchemeInstance
-	entz                []*Entity
+	attVerKey AttestationVerifierKeySchemeInstance
+	entz      []*Entity
+	//These two go together
 	entsecrets          []*EntitySecrets
+	delegatedOnly       []bool
 	domainVisibilityIds [][]byte
 }
 
 func NewKeyPoolDecryptionContext() *KeyPoolDecryptionContext {
-	return &KeyPoolDecryptionContext{}
+	return &KeyPoolDecryptionContext{domainVisibilityIds: [][]byte{[]byte("$GLOBAL")}}
 }
 
-func (kpd *KeyPoolDecryptionContext) AddEntitySecret(es *EntitySecrets) {
+func (kpd *KeyPoolDecryptionContext) AddDomainVisibilityID(id []byte) {
+	kpd.domainVisibilityIds = append(kpd.domainVisibilityIds, id)
+}
+func (kpd *KeyPoolDecryptionContext) AddEntitySecret(es *EntitySecrets, delegatedOnly bool) {
 	kpd.entsecrets = append(kpd.entsecrets, es)
+	kpd.delegatedOnly = append(kpd.delegatedOnly, delegatedOnly)
 }
 func (kpd *KeyPoolDecryptionContext) SetWR1VerifierBodyKey(atv AttestationVerifierKeySchemeInstance) {
 	kpd.attVerKey = atv
@@ -78,11 +83,13 @@ func (kpd *KeyPoolDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Con
 	return nil
 }
 func (kpd *KeyPoolDecryptionContext) WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error {
-	for _, es := range kpd.entsecrets {
+	for idx, es := range kpd.entsecrets {
+		if kpd.delegatedOnly[idx] {
+			continue
+		}
 		hi := es.Entity.Keccak256HI()
-		fmt.Printf("comparison %s=%s %x=%x\n", dst.OID().String(), hi.OID().String(), dst.Value(), hi.Value())
+
 		if dst.OID().Equal(hi.OID()) && bytes.Equal(hi.Value(), dst.Value()) {
-			fmt.Printf("found entity\n")
 			dek, err := es.WR1DirectDecryptionKey(ctx)
 			if err != nil {
 				panic(err)
@@ -92,8 +99,6 @@ func (kpd *KeyPoolDecryptionContext) WR1DirectDecryptionKey(ctx context.Context,
 				return nil
 			}
 		}
-		fmt.Printf("entity hash did not match\n")
 	}
-	fmt.Printf("key pool: no direct keys\n")
 	return nil
 }

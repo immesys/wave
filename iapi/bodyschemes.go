@@ -150,6 +150,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		}
 	}
 	if envelopeKey == nil {
+		fmt.Printf("dc no label\n")
 		return nil, nil, nil
 	}
 	//The key is actually 16 bytes of AES key + 12 bytes of GCM nonce

@@ -36,7 +36,7 @@ func TestBasicAttestation(t *testing.T) {
 	_ = readback
 }
 
-func TestWR1DirectAttestation(t *testing.T) {
+func oneHopAttestation(t *testing.T, delegatedOnly bool) {
 	source, err := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
 	require.NoError(t, err)
 	dst, err := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
@@ -59,12 +59,18 @@ func TestWR1DirectAttestation(t *testing.T) {
 	require.NoError(t, err)
 
 	kpdc := NewKeyPoolDecryptionContext()
-	kpdc.AddEntitySecret(dst.EntitySecrets)
-
+	kpdc.AddEntitySecret(dst.EntitySecrets, delegatedOnly)
 	readback, err := ParseAttestation(context.Background(), &PParseAttestation{
 		DER:               rv.DER,
 		DecryptionContext: kpdc,
 	})
 	require.NoError(t, err)
 	spew.Dump(readback)
+}
+func TestWR1DirectAttestation(t *testing.T) {
+	oneHopAttestation(t, false)
+}
+
+func TestWR1IndirectAttestation(t *testing.T) {
+	oneHopAttestation(t, true)
 }
