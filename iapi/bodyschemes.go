@@ -64,7 +64,7 @@ func (u *UnsupportedBodyScheme) EncryptBody(ctx context.Context, ec BodyEncrypti
 // wr1
 type WR1DecryptionContext interface {
 	WR1VerifierBodyKey(ctx context.Context) AttestationVerifierKeySchemeInstance
-	WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error)
+	//WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error)
 	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k EntitySecretKeySchemeInstance) bool) error
 	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 	WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error

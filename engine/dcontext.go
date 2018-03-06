@@ -9,64 +9,65 @@ import (
 type EngineDecryptionContext struct {
 	e                *Engine
 	partitionSecrets []iapi.EntityKeySchemeInstance
+	verifierKey      iapi.AttestationVerifierKeySchemeInstance
 }
 
 //The map is just for IBE keys decrypting the partition. The OAQUE keys must come from E
-func NewEngineDecryptionContext(e *Engine, partitionSecrets map[int]iapi.EntitySecretKeySchemeInstance) *EngineDecryptionContext {
-	panic("ni")
-	/*
-		rv := &EngineDecryptionContext{e: e}
-		rv.partitionSecrets = make([]*localdb.Secret, len(partitionSecrets))
-		idx := 0
-		for _, v := range partitionSecrets {
-			rv.partitionSecrets[idx] = v
-			idx++
+func NewEngineDecryptionContext(e *Engine) *EngineDecryptionContext {
+	return &EngineDecryptionContext{e: e}
+}
+
+func (dctx *EngineDecryptionContext) SetPartitionSecrets(m map[int]iapi.EntitySecretKeySchemeInstance) {
+	dctx.partitionSecrets = make([]iapi.EntityKeySchemeInstance, 0, len(m))
+	for _, v := range m {
+		dctx.partitionSecrets = append(dctx.partitionSecrets, v)
+	}
+}
+func (dctx *EngineDecryptionContext) SetVerifierKey(k iapi.AttestationVerifierKeySchemeInstance) {
+	dctx.verifierKey = k
+}
+func (dctx *EngineDecryptionContext) WR1VerifierBodyKey(ctx context.Context) AttestationVerifierKeySchemeInstance {
+	return dctx.verifierKey
+}
+func (dctx *EngineDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k EntitySecretKeySchemeInstance) bool) error {
+	return dctx.e.ws.WR1KeysForP(ctx, dst, slots, func(k iapi.SlottedSecretKey) bool {
+		return onResult(k)
+	})
+}
+func (dctx *EngineDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error {
+	for _, k := range dctx.partitionSecrets {
+		more := onResult(k)
+		if !more {
+			return nil
 		}
-		return rv*/
-}
+	}
+	return nil
 
-func (dc *EngineDecryptionContext) WR1VerifierBodyKey(ctx context.Context) AttestationVerifierKeySchemeInstance {
-	panic("ni")
+	// numkeys, ok, err := dctx.e.ws.GetEntityPartitionLabelKeyIndexP(ctx, dst)
+	// if !ok || err != nil {
+	// 	panic(fmt.Sprintf("%v %v", ok, err))
+	// }
+	// for i := 0; i < numkeys; i++ {
+	// 	k, err := dctx.e.ws.GetPartitionLabelKeyP(ctx, dst, i)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	more := onResult(k)
+	// 	if !more {
+	// 		return nil
+	// 	}
+	// }
+	// return nil
 }
-func (dc *EngineDecryptionContext) WR1EntityFromHash(ctx context.Context, hash HashScheme) (Entity, error) {
-	panic("ni")
-}
-func (dc *EngineDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst HashScheme, slots [][]byte, onResult func(k EntitySecretKeySchemeInstance) bool) error {
+func (dctx *EngineDecryptionContext) WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error {
+	if iapi.HashSchemeInstanceEqual(dctx.e.perspective.Keccak256HI(), dst) {
+		dek, err := dctx.e.perspective.WR1_DirectEncryptionKey()
+		if err == nil {
+			panic(err)
+		}
+		if dek != nil {
+			onResult(dek)
+		}
+	}
 	return nil
 }
-func (dc *EngineDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashScheme, onResult func(k EntitySecretKeySchemeInstance) bool) error {
-	return nil
-}
-
-//
-// //These are only different when restricting the partition label keys
-// func (dc *EngineDecryptionContext) OAQUEKeysForContent(ctx context.Context, hash []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
-// 	return dc.OAQUEKeysFor(ctx, hash, slots, onResult)
-// }
-//
-// //We may want to restrict the keys that are available here, because the dot decoding will scan over them and try them all.
-// //If we have already tried some keys, we don't want to try them again
-// func (dc *EngineDecryptionContext) OAQUEKeysForPartitionLabel(ctx context.Context, hash []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
-// 	//TODO use secret cache
-// 	//If secret cache is nil, don't use it
-// 	return dc.OAQUEKeysFor(ctx, hash, slots, onResult)
-// }
-//
-// func (dc *EngineDecryptionContext) EntityFromHash(ctx context.Context, hash []byte) (*entity.Entity, error) {
-// 	return dc.e.ws.GetEntityByHashG(ctx, hash)
-// }
-// func (dc *EngineDecryptionContext) OAQUEKeysFor(ctx context.Context, hash []byte, slots [][]byte, onResult func(k *oaque.PrivateKey) bool) error {
-// 	if ctx.Err() != nil {
-// 		return ctx.Err()
-// 	}
-// 	//The given context is not the engine context, so we need to add the perspective to it
-// 	subctx := context.WithValue(ctx, PerspectiveKey, dc.e.perspective)
-// 	var err error
-// 	oerr := dc.e.ws.OAQUEKeysForP(subctx, hash, slots, func(k *oaque.PrivateKey) bool {
-// 		return onResult(k)
-// 	})
-// 	if oerr != nil {
-// 		return oerr
-// 	}
-// 	return err
-// }
