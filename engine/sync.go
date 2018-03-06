@@ -9,6 +9,7 @@ import (
 
 func sliceToArray(b []byte) (rv [32]byte) {
 	copy(rv[:], b[:])
+	return
 }
 
 //The caller (who is time sensitive) would like to call
@@ -20,14 +21,14 @@ func (e *Engine) enqueueEntityResyncIfInteresting(ctx context.Context, enthash i
 		return err
 	}
 	if interesting {
-		return e.queueEntityForSync(enthash)
+		return e.queueEntityForSync(enthash.Value())
 	}
 	return nil
 }
 
 //This function should be quick. Processing should happen elsewhere
-func (e *Engine) markEntityInterestingAndQueueForSync(dest *iapi.Entity) error {
-	err := e.ws.MoveEntityInterestingP(e.ctx, dest)
+func (e *Engine) markEntityInterestingAndQueueForSync(dest *iapi.Entity, loc iapi.LocationSchemeInstance) error {
+	err := e.ws.MoveEntityInterestingP(e.ctx, dest, loc)
 	if err != nil {
 		return err
 	}
@@ -124,7 +125,7 @@ func (e *Engine) syncLoop() {
 		delete(queue, ent)
 		//We have our element, tell the reader to start
 		syncup <- true
-		resolvedEnt, err := e.ws.GetEntityByHashG(e.ctx, ent[:])
+		resolvedEnt, err := e.ws.GetEntityByHashSchemeInstanceG(e.ctx, &iapi.HashSchemeInstance_Keccak_256{Val: ent[:]})
 		if err != nil {
 			panic(err)
 		}
@@ -155,7 +156,7 @@ func (e *Engine) synchronizeEntity(ctx context.Context, dest *iapi.Entity) (err 
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	_, err = e.moveInterestingDotsToPending(dest)
+	_, err = e.moveInterestingAttestationsToPending(dest)
 	if err != nil {
 		return err
 	}
@@ -184,7 +185,7 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 		// if err != nil {
 		// 	return err
 		// }
-		err = e.queueEntityForSync(res.Entity.Keccak256())
+		err := e.queueEntityForSync(res.Entity.Keccak256())
 		if err != nil {
 			return err
 		}

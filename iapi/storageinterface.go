@@ -50,12 +50,15 @@ type StorageDriverInterface interface {
 	//work out which storage requests to route its way
 	Location(context.Context) LocationSchemeInstance
 
+	//When constructing an attestation with a particular location in mind,
+	//the entity hashes used within the attestation should match the scheme of
+	//the storage. This method enables the engine to know the hash in advance
 	PreferredHashScheme() HashScheme
 
 	//Given a set of key/value options from the user's configuration file,
 	//create an instance of this storage driver. Initialize will be called
 	//on an empty struct instance (e.g (&MyStorage{}).Initialize(cfg))
-	Initialize(ctx context.Context, config map[string]string) error
+	Initialize(ctx context.Context, name string, config map[string]string) error
 
 	//Retrieve the status of this storage driver (ready for use etc)
 	//You should only return an error on context timeout, any other
@@ -80,6 +83,10 @@ type StorageDriverInterface interface {
 	IterateQueue(ctx context.Context, queueId HashSchemeInstance, iteratorToken string) (object HashSchemeInstance, nextToken string, err error)
 }
 
+type StorageDriverStatus struct {
+	Operational bool
+	Info        map[string]string
+}
 type StorageInterface interface {
 	GetEntity(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*Entity, error)
 	PutEntity(ctx context.Context, loc LocationSchemeInstance, ent *Entity) error
@@ -88,6 +95,7 @@ type StorageInterface interface {
 	IterateQeueue(ctx context.Context, loc LocationSchemeInstance, queueId HashSchemeInstance, token string) (object HashSchemeInstance, nextToken string, err error)
 	Enqueue(ctx context.Context, loc LocationSchemeInstance, queueId HashSchemeInstance, object HashSchemeInstance) error
 	HashSchemeFor(loc LocationSchemeInstance) (HashScheme, error)
+	Status(ctx context.Context) (map[string]StorageDriverStatus, error)
 }
 
 func SI() StorageInterface {

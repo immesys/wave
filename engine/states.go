@@ -19,18 +19,19 @@ func (e *Engine) moveInterestingAttestationsToPending(dest *iapi.Entity) (change
 	sctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
 	changes := 0
+	locs, err := e.ws.LocationsForEntity(sctx, dest)
+	if err != nil {
+		return 0, err
+	}
 nextlocation:
-	for loc := range e.ws.LocationsForEntity(sctx, dest) {
-		if loc.Err != nil {
-			return 0, err
-		}
-		hashscheme, err := e.st.HashSchemeFor(loc.Location)
+	for _, loc := range locs {
+		hashscheme, err := e.st.HashSchemeFor(loc)
 		if err != nil {
 			panic(err)
 		}
 		for {
 			// get current token
-			okay, token, err := e.ws.GetEntityQueueTokenP(sctx, loc.Location, dest.Keccak256HI())
+			okay, token, err := e.ws.GetEntityQueueTokenP(sctx, loc, dest.Keccak256HI())
 			if err != nil {
 				return 0, err
 			}
@@ -42,8 +43,11 @@ nextlocation:
 			if err != nil {
 				panic(err)
 			}
-			hi := hashscheme.Instance(der)
-			object, nextToken, err := e.st.IterateQeueue(e.ctx, loc.Location, hi, token)
+			hi, err := hashscheme.Instance(der)
+			if err != nil {
+				panic(err)
+			}
+			object, nextToken, err := e.st.IterateQeueue(e.ctx, loc, hi, token)
 			if err != nil {
 				return 0, err
 			}
@@ -52,7 +56,7 @@ nextlocation:
 				continue nextlocation
 			}
 			//The object is probably an attestation
-			attestation, err := e.st.GetAttestation(e.ctx, loc.Location, object)
+			attestation, err := e.st.GetAttestation(e.ctx, loc, object)
 			if err != nil {
 				return 0, err
 			}
@@ -60,13 +64,13 @@ nextlocation:
 				//object was not an attestation, that is fine
 			} else {
 				//do not trigger a resync of dst, we are already syncing dst
-				err = e.insertPendingAttestation(attestation, false)
+				err = e.insertPendingAttestationSync(attestation, false)
 				if err != nil {
 					return 0, err
 				}
 				changes++
 			}
-			err := e.ws.SetEntityQueueTokenP(sctx, loc.Location, dest.Keccak256HI(), nextToken)
+			err = e.ws.SetEntityQueueTokenP(sctx, loc, dest.Keccak256HI(), nextToken)
 			if err != nil {
 				panic(err)
 			}
@@ -97,7 +101,7 @@ func (e *Engine) moveEntityToExpired(ctx context.Context, ent *iapi.Entity) erro
 }
 
 func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
-	okay, targetIndex, err := e.ws.GetEntityPartitionLabelKeyIndexP(e.ctx, dest.Hash)
+	okay, targetIndex, err := e.ws.GetEntityPartitionLabelKeyIndexP(e.ctx, dest.Keccak256HI())
 	if err != nil {
 		return err
 	}
@@ -126,7 +130,8 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				secretCache[sidx] = secret
 			}
 		}
-		dctx := NewEngineDecryptionContext(e, secretCache)
+		dctx := NewEngineDecryptionContext(e)
+		dctx.SetPartitionSecrets(secretCache)
 		e.partitionMutex.Lock()
 		defer e.partitionMutex.Unlock()
 		//When we parse the attestation here, it is for a given set of
@@ -154,12 +159,12 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 
 		if rpa.Attestation.DecryptedBody != nil {
 			//DOT is transitioning to active
-			if err := e.insertActiveDot(fullDecodeResult.DOT); err != nil {
+			if err := e.insertActiveAttestation(rpa.Attestation); err != nil {
 				return err
 			}
 			continue
 		}
-		if ex, ok := rpa.ExtraInfo.(iapi.WR1PartitionExtra); ok {
+		if _, ok := rpa.ExtraInfo.(iapi.WR1Extra); ok {
 			//This is a WR1 dot that has been labelled, transition to labelled
 			if err := e.ws.MoveAttestationLabelledP(subctx, rpa.Attestation); err != nil {
 				return err
@@ -173,6 +178,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 		}
 		continue
 	} //next pending attestation
+	return nil
 }
 
 //Returns a map of source entities to the number of dots they have granted
@@ -229,7 +235,7 @@ func (e *Engine) insertKeyAndUnlockLabelled(ent *iapi.Entity, key iapi.SlottedSe
 	defer e.partitionMutex.Unlock()
 	ctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
-	dctx := NewEngineDecryptionContext(e, nil)
+	dctx := NewEngineDecryptionContext(e)
 	for dt := range e.ws.GetLabelledAttestationsP(ctx, ent.Keccak256HI(), key.Slots()) {
 		//No need to pass list of label keys to use, label is already
 		//decrypted
@@ -276,12 +282,9 @@ func (e *Engine) recursiveInsertKeyAndMoveLabelled(ent *iapi.Entity, newkey iapi
 				return err
 			}
 			for _, d := range newDots {
-				kz, err := d.WR1SecretKeys()
-				if err != nil {
-					panic(err)
-				}
+				kz := d.WR1SecretSlottedKeys()
 				for _, k := range kz {
-					keysToProcess[k.IdHash] = k
+					keysToProcess[k.IdHash()] = k
 				}
 			}
 		}
@@ -297,7 +300,7 @@ func (e *Engine) moveAttestationToActiveWithoutProcessingKeys(d *iapi.Attestatio
 //it should not be called while the partition mutex for the SRC
 //of the dot is held
 func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
-	okay, err := e.checkAttestationAndSave(d)
+	okay, err := e.checkAttestationAndSave(context.Background(), d)
 	if err != nil {
 		return err
 	}
@@ -305,17 +308,27 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 		//checkdot will handle the repercussions, we can just return
 		return nil
 	}
-	attester, _, err := d.Attester()
+	attesterHI, attesterLoc, err := d.Attester()
 	if err != nil {
 		return err
+	}
+	attester, validity, err := e.LookupEntity(context.Background(), attesterHI, attesterLoc)
+	if err != nil {
+		return err
+	}
+	if validity == nil || !validity.Valid {
+		panic("what should we do here, dot from invalid ent")
 	}
 	//Process the label keys
 	for _, k := range d.WR1DomainVisibilityKeys() {
 
-		_, err := e.ws.InsertPartitionLabelKeyP(e.ctx, attester, k)
+		_, err := e.ws.InsertPartitionLabelKeyP(e.ctx, attesterHI, k)
+		if err != nil {
+			return err
+		}
 	}
 
-	for _, k := range d.WR1SlottedKeys() {
+	for _, k := range d.WR1SecretSlottedKeys() {
 		err := e.recursiveInsertKeyAndMoveLabelled(attester, k)
 		if err != nil {
 			return err
@@ -330,7 +343,7 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	//This must also queue for resync the granting entity. This will take care of the
 	//new dots that can move from pending to labelled (and we just took care of
 	//the ones alreay in labelled that moved to active)
-	return e.markEntityInterestingAndQueueForSync(attester)
+	return e.markEntityInterestingAndQueueForSync(attester, attesterLoc)
 }
 
 //Learned OOB or something
@@ -358,7 +371,7 @@ func (e *Engine) insertPendingAttestation(d *iapi.Attestation) error {
 //the dst will be asynchronously brought up to date
 //to ensure this new dot is decrypted if possible
 func (e *Engine) insertPendingAttestationSync(d *iapi.Attestation, resyncDestination bool) error {
-	err = e.insertPendingDot(d)
+	err := e.insertPendingAttestation(d)
 	if err != nil {
 		return err
 	}

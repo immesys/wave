@@ -20,7 +20,7 @@ func HashSchemeFor(h asn1.External) HashScheme {
 	}
 }
 func HashSchemeInstanceEqual(lhs HashSchemeInstance, rhs HashSchemeInstance) bool {
-	return bytes.Equal(lhs.Value() && rhs.Value()) && lhs.OID().Equal(rhs.OID())
+	return bytes.Equal(lhs.Value(), rhs.Value()) && lhs.OID().Equal(rhs.OID())
 }
 
 // func NewHashScheme(oid asn1.ObjectIdentifier) HashScheme {

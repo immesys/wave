@@ -18,7 +18,7 @@ func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestatio
 	if err != nil {
 		return false, err
 	}
-	attester, err := getEntityFromHashLoc(ctx, attesterh, attloc)
+	attester, err := e.getEntityFromHashLoc(ctx, attesterh, attloc)
 	if err != nil {
 		return false, err
 	}
@@ -27,7 +27,7 @@ func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestatio
 		return false, err
 	}
 	subjecth, subjloc := d.Subject()
-	subject, err := getEntityFromHashLoc(ctx, subjecth, subjloc)
+	subject, err := e.getEntityFromHashLoc(ctx, subjecth, subjloc)
 	if err != nil {
 		return false, err
 	}
@@ -49,11 +49,11 @@ func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestatio
 
 	if !srcokay || !dstokay {
 		//This dot must move to EntRevoked
-		return false, e.ws.MoveAttestationEntRevoked(e.ctx, d)
+		return false, e.ws.MoveAttestationEntRevokedP(e.ctx, d)
 	}
-	if revoked {
-		return false, e.ws.MoveAttestationRevokedG(e.ctx, d)
-	}
+	// if revoked {
+	// 	return false, e.ws.MoveAttestationRevokedG(e.ctx, d)
+	// }
 	if expired {
 		return false, e.ws.MoveAttestationExpiredP(e.ctx, d)
 	}
@@ -63,7 +63,7 @@ func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestatio
 func (e *Engine) checkPendingAttestationAndSave(d *iapi.Attestation) (okay bool, err error) {
 	//Like checkDot but don't check (nonexistant) content
 	subjecth, subjloc := d.Subject()
-	subject, err := getEntityFromHashLoc(ctx, subjecth, subjloc)
+	subject, err := e.getEntityFromHashLoc(context.Background(), subjecth, subjloc)
 	if err != nil {
 		return false, err
 	}

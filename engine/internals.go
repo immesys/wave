@@ -27,7 +27,7 @@ type Engine struct {
 
 	ws          iapi.WaveState
 	st          iapi.StorageInterface
-	perspective *iapi.Entity
+	perspective *iapi.EntitySecrets
 
 	//If a dot enters labelled, it must be tested against all keys
 	//to ensure none of them match before entering labelled.
@@ -55,7 +55,7 @@ type Engine struct {
 	totalCompletedSyncs int64
 }
 
-func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface, perspective *iapi.Entity) (*Engine, error) {
+func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface, perspective *iapi.EntitySecrets) (*Engine, error) {
 	subctx, cancel := context.WithCancel(ctx)
 	var err error
 	rv := Engine{
@@ -71,11 +71,11 @@ func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterfa
 
 	//This function must only return once it knows that it has started watching
 	//we don't want a race/gap between processing new and processing old
-	err = rv.watchHeaders()
-	if err != nil {
-		rv.ctxcancel()
-		return nil, err
-	}
+	// err = rv.watchHeaders()
+	// if err != nil {
+	// 	rv.ctxcancel()
+	// 	return nil, err
+	// }
 	//This will process all the old interesting entities
 	err = rv.updateAllInterestingEntities(subctx)
 	if err != nil {

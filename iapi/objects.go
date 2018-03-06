@@ -168,6 +168,9 @@ func (e *Attestation) Hash(ctx context.Context, scheme HashScheme) (HashSchemeIn
 	return rv, err
 }
 
+func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
+	panic("ni")
+}
 func (e *Attestation) Keccak256() []byte {
 	hi, err := e.Hash(context.Background(), KECCAK256)
 	if err != nil {
@@ -208,10 +211,7 @@ func (e *Attestation) ArrayKeccak256() [32]byte {
 	copy(rv[:], e.Keccak256())
 	return rv
 }
-func (e *Attestation) WR1SlottedKeys() ([]SlottedSecretKey, error) {
-	panic("ni")
-}
-func (e *Attestation) WR1DomainVisibilityKeys() ([]EntitySecretKeySchemeInstance, error) {
+func (e *Attestation) WR1DomainVisibilityKeys() []EntitySecretKeySchemeInstance {
 	panic("ni")
 }
 func (e *Attestation) DER() ([]byte, error) {
