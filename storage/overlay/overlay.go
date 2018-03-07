@@ -3,17 +3,36 @@ package overlay
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/storage/simplehttp"
 )
 
 type Overlay struct {
-	providers []iapi.StorageDriverInterface
+	providers map[string]iapi.StorageDriverInterface
 }
 
-func NewOverlay(config map[string]map[string]string) {
-
+//config is a map of name->config map
+func NewOverlay(config map[string]map[string]string) (iapi.StorageInterface, error) {
+	rv := &Overlay{providers: make(map[string]iapi.StorageDriverInterface)}
+	for name, cfg := range config {
+		switch cfg["provider"] {
+		case "http_v1":
+			driver := &simplehttp.SimpleHTTPStorage{}
+			err := driver.Initialize(context.Background(), name, cfg)
+			if err != nil {
+				return nil, fmt.Errorf("storage driver %s::%s error: %s", cfg["provider"], name, err)
+			}
+			rv.providers[name] = driver
+		case "":
+			return nil, fmt.Errorf("storage driver %q has no provider field", name)
+		default:
+			return nil, fmt.Errorf("storage driver type %q unknown", cfg["provider"])
+		}
+	}
+	return rv, nil
 }
 
 var MaximumTimeout = 5 * time.Second
@@ -29,6 +48,23 @@ func (ov *Overlay) getProvider(ctx context.Context, loc iapi.LocationSchemeInsta
 		}
 	}
 	return nil, ErrUnknownLocation
+}
+func (ov *Overlay) Status(ctx context.Context) (map[string]iapi.StorageDriverStatus, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	rv := make(map[string]iapi.StorageDriverStatus)
+	for name, driver := range ov.providers {
+		operating, stat, err := driver.Status(ctx)
+		if err != nil {
+			return nil, err
+		}
+		rv[name] = iapi.StorageDriverStatus{
+			Operational: operating,
+			Info:        stat,
+		}
+	}
+	return rv, nil
 }
 func (ov *Overlay) GetEntity(ctx context.Context, loc iapi.LocationSchemeInstance, hash iapi.HashSchemeInstance) (*iapi.Entity, error) {
 	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)

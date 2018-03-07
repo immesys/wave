@@ -50,7 +50,11 @@ func (s *SimpleHTTPStorage) Location(context.Context) iapi.LocationSchemeInstanc
 	return iapi.NewLocationSchemeInstanceURL(s.url, 1)
 }
 
-func (s *SimpleHTTPStorage) Initialize(ctx context.Context, config map[string]string) error {
+func (s *SimpleHTTPStorage) PreferredHashScheme() iapi.HashScheme {
+	//TODO
+	return iapi.KECCAK256
+}
+func (s *SimpleHTTPStorage) Initialize(ctx context.Context, name string, config map[string]string) error {
 	url, ok := config["url"]
 	if !ok {
 		return fmt.Errorf("the 'url' config option is mandatory")
@@ -60,7 +64,7 @@ func (s *SimpleHTTPStorage) Initialize(ctx context.Context, config map[string]st
 }
 
 func (s *SimpleHTTPStorage) Status(ctx context.Context) (operational bool, info map[string]string, err error) {
-	panic("ni")
+	return true, make(map[string]string), nil
 }
 
 func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashSchemeInstance, error) {

@@ -90,7 +90,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 	wr1dctx, ok := dc.(WR1DecryptionContext)
 	if !ok {
-		panic("incorrect decryption context for WR1 body scheme")
+		return nil, nil, nil
 	}
 	subjectHI := HashSchemeInstanceFor(&canonicalForm.TBS.Subject)
 	if !subjectHI.Supported() {

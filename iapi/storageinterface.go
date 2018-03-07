@@ -89,15 +89,26 @@ type StorageDriverStatus struct {
 }
 type StorageInterface interface {
 	GetEntity(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*Entity, error)
-	PutEntity(ctx context.Context, loc LocationSchemeInstance, ent *Entity) error
+	PutEntity(ctx context.Context, loc LocationSchemeInstance, ent *Entity) (HashSchemeInstance, error)
 	GetAttestation(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*Attestation, error)
-	PutAttestation(ctx context.Context, loc LocationSchemeInstance, att *Attestation) error
+	PutAttestation(ctx context.Context, loc LocationSchemeInstance, att *Attestation) (HashSchemeInstance, error)
 	IterateQeueue(ctx context.Context, loc LocationSchemeInstance, queueId HashSchemeInstance, token string) (object HashSchemeInstance, nextToken string, err error)
 	Enqueue(ctx context.Context, loc LocationSchemeInstance, queueId HashSchemeInstance, object HashSchemeInstance) error
 	HashSchemeFor(loc LocationSchemeInstance) (HashScheme, error)
 	Status(ctx context.Context) (map[string]StorageDriverStatus, error)
 }
 
+var injectedStorageInterface StorageInterface
+
+func InjectStorageInterface(si StorageInterface) {
+	if injectedStorageInterface != nil {
+		panic("injected SI more than once")
+	}
+	injectedStorageInterface = si
+}
 func SI() StorageInterface {
-	panic("ni")
+	if injectedStorageInterface == nil {
+		panic("did not inject SI")
+	}
+	return injectedStorageInterface
 }

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/immesys/wave/consts"
@@ -44,6 +45,8 @@ type Validity struct {
 	//Only for dots
 	SrcInvalid bool
 	DstInvalid bool
+
+	Message string
 }
 
 type Filter struct {
@@ -128,7 +131,7 @@ func (e *Engine) SyncStatus(ctx context.Context) (*SyncStatus, error) {
 	e.totalMutex.Lock()
 	sq := e.totalEqual
 	e.totalMutex.Unlock()
-	stat, err := iapi.SI().Status(ctx)
+	stat, err := e.st.Status(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +175,7 @@ func (e *Engine) LookupAttestationNoPerspective(ctx context.Context, hash iapi.H
 	var der []byte
 	if att == nil {
 		//We need to try retrieve it from storage
-		att, err = iapi.SI().GetAttestation(ctx, location, hash)
+		att, err = e.st.GetAttestation(ctx, location, hash)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -256,54 +259,67 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 
 //Unlike checkDot, this should not touch the DB, it is a read-only operation
 func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Validity, error) {
-	panic("ni")
-	//REFACTOR srcokay, err := e.CheckEntity(ctx, d.SRC)
-	//REFACTOR if err != nil {
-	//REFACTOR 	return nil, err
-	//REFACTOR }
-	//REFACTOR dstokay, err := e.CheckEntity(ctx, d.DST)
-	//REFACTOR if err != nil {
-	//REFACTOR 	return nil, err
-	//REFACTOR }
-	//REFACTOR expired, err := d.Expired()
-	//REFACTOR if err != nil {
-	//REFACTOR 	return nil, err
-	//REFACTOR }
-	//REFACTOR revoked, err := e.IsRevoked(e.ctx, d.PlaintextHeader.RevocationHash)
-	//REFACTOR if err != nil {
-	//REFACTOR 	return nil, err
-	//REFACTOR }
 
-	//REFACTOR if !srcokay.Valid {
-	//REFACTOR 	return &Validity{
-	//REFACTOR 		Valid:      false,
-	//REFACTOR 		SrcInvalid: true,
-	//REFACTOR 	}, nil
-	//REFACTOR }
-	//REFACTOR if !dstokay.Valid {
-	//REFACTOR 	return &Validity{
-	//REFACTOR 		Valid:      false,
-	//REFACTOR 		DstInvalid: true,
-	//REFACTOR 	}, nil
-	//REFACTOR }
+	subjecth, subjloc := d.Subject()
+	subject, err := e.getEntityFromHashLoc(ctx, subjecth, subjloc)
+	if err != nil {
+		return nil, err
+	}
+	if subject == nil {
+		return &Validity{
+			DstInvalid: true,
+			Message:    "Subject entity unknown",
+		}, nil
+	}
+	dstvalid, err := e.CheckEntity(ctx, subject)
+	if err != nil {
+		return nil, err
+	}
+	if !dstvalid.Valid {
+		return &Validity{
+			DstInvalid: true,
+			Message:    fmt.Sprintf("Subject invalid: %s", dstvalid.Message),
+		}, nil
+	}
 
-	//REFACTOR if revoked {
-	//REFACTOR 	return &Validity{
-	//REFACTOR 		Valid:   false,
-	//REFACTOR 		Revoked: true,
-	//REFACTOR 	}, nil
-	//REFACTOR }
-	//REFACTOR if expired {
-	//REFACTOR 	return &Validity{
-	//REFACTOR 		Valid:   false,
-	//REFACTOR 		Expired: true,
-	//REFACTOR 	}, nil
-	//REFACTOR }
-	//REFACTOR return &Validity{Valid: true}, nil
+	if d.DecryptedBody == nil {
+		return &Validity{
+			NotDecrypted: true,
+			Message:      "Attestation encrypted",
+		}, nil
+	}
+
+	attesterh, attesterloc, err := d.Attester()
+	if err != nil {
+		return nil, err
+	}
+	attester, err := e.getEntityFromHashLoc(ctx, attesterh, attesterloc)
+	if err != nil {
+		return nil, err
+	}
+	if attester == nil {
+		return &Validity{
+			SrcInvalid: true,
+			Message:    "Attester entity unknown",
+		}, nil
+	}
+	srcvalid, err := e.CheckEntity(ctx, attester)
+	if err != nil {
+		return nil, err
+	}
+	if !srcvalid.Valid {
+		return &Validity{
+			SrcInvalid: true,
+			Message:    fmt.Sprintf("Attester invalid: %s", srcvalid.Message),
+		}, nil
+	}
+	return &Validity{
+		Valid: true,
+	}, nil
 }
 func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, error) {
 	if ent.Expired() {
-		return &Validity{Valid: false, Expired: true}, nil
+		return &Validity{Valid: false, Expired: true, Message: "Entity expired"}, nil
 	}
 	// revoked, err := e.IsRevoked(e.ctx, ent.RevocationHash)
 	// if err != nil {
@@ -326,7 +342,7 @@ func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance,
 	}
 
 	//Get it from storage
-	ent, err = iapi.SI().GetEntity(ctx, loc, hash)
+	ent, err = e.st.GetEntity(ctx, loc, hash)
 	if err != nil || ent == nil {
 		return nil, nil, err
 	}

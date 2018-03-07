@@ -100,9 +100,10 @@ func TestAttLabelled(t *testing.T) {
 	_, _, att := mkAtt(t, nil, nil)
 	cereal, err := att.DER()
 	require.NoError(t, err)
-	att.WR1Partition = make([][]byte, 20)
-	att.WR1Partition[0] = []byte("foo")
-	att.WR1Partition[1] = []byte("bar")
+	att.WR1Extra = &iapi.WR1Extra{}
+	att.WR1Extra.Partition = make([][]byte, 20)
+	att.WR1Extra.Partition[0] = []byte("foo")
+	att.WR1Extra.Partition[1] = []byte("bar")
 	err = db.MoveAttestationLabelledP(ctx, att)
 	require.NoError(t, err)
 	//Check attestation is accessible by hash
@@ -110,7 +111,7 @@ func TestAttLabelled(t *testing.T) {
 	require.NoError(t, err)
 	rcereal, err := rback.DER()
 	require.EqualValues(t, cereal, rcereal)
-	require.EqualValues(t, att.WR1Partition, rback.WR1Partition)
+	require.EqualValues(t, att.WR1Extra.Partition, rback.WR1Extra.Partition)
 
 	//Check it shows up in getLabeledded when its supposed to
 
@@ -129,7 +130,7 @@ func TestAttLabelled(t *testing.T) {
 
 	//Here because its equal
 	count = 0
-	for rez := range db.GetLabelledAttestationsP(ctx, subj, att.WR1Partition) {
+	for rez := range db.GetLabelledAttestationsP(ctx, subj, att.WR1Extra.Partition) {
 		require.NoError(t, rez.Err)
 		require.EqualValues(t, rez.Keccak256, att.Keccak256())
 		require.EqualValues(t, rez.Attestation.Keccak256(), att.Keccak256())

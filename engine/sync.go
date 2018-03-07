@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/immesys/wave/iapi"
@@ -27,7 +28,7 @@ func (e *Engine) enqueueEntityResyncIfInteresting(ctx context.Context, enthash i
 }
 
 //This function should be quick. Processing should happen elsewhere
-func (e *Engine) markEntityInterestingAndQueueForSync(dest *iapi.Entity, loc iapi.LocationSchemeInstance) error {
+func (e *Engine) MarkEntityInterestingAndQueueForSync(dest *iapi.Entity, loc iapi.LocationSchemeInstance) error {
 	err := e.ws.MoveEntityInterestingP(e.ctx, dest, loc)
 	if err != nil {
 		return err
@@ -181,6 +182,7 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 		if res.Err != nil {
 			return res.Err
 		}
+		fmt.Printf("found an interesting entity")
 		// ent, err := e.ws.GetEntityByHashG(subctx, res.Hash)
 		// if err != nil {
 		// 	return err

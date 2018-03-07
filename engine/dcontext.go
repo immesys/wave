@@ -12,6 +12,8 @@ type EngineDecryptionContext struct {
 	verifierKey      iapi.AttestationVerifierKeySchemeInstance
 }
 
+var _ iapi.WR1DecryptionContext = &EngineDecryptionContext{}
+
 //The map is just for IBE keys decrypting the partition. The OAQUE keys must come from E
 func NewEngineDecryptionContext(e *Engine) *EngineDecryptionContext {
 	return &EngineDecryptionContext{e: e}

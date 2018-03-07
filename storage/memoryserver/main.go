@@ -1,4 +1,4 @@
-package main
+package memoryserver
 
 import (
 	"encoding/base64"
@@ -143,7 +143,7 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(201)
 	w.Write([]byte("{}"))
 }
-func main() {
+func Main() {
 	db = make(map[string][]byte)
 	queues = make(map[string][][]byte)
 	r := pat.New()

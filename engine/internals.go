@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
 )
 
@@ -56,6 +57,7 @@ type Engine struct {
 }
 
 func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface, perspective *iapi.EntitySecrets) (*Engine, error) {
+	ctx = context.WithValue(ctx, consts.PerspectiveKey, perspective)
 	subctx, cancel := context.WithCancel(ctx)
 	var err error
 	rv := Engine{

@@ -255,7 +255,10 @@ func (p *poc) GetPendingAttestationsP(pctx context.Context, dsthi iapi.HashSchem
 
 func (p *poc) MoveAttestationLabelledP(ctx context.Context, att *iapi.Attestation) error {
 	dsthash := keccakFromExt(&att.CanonicalForm.TBS.Subject)
-	err := p.insertPartitionToAttestationLink(ctx, dsthash, att.WR1Partition, att)
+	if att.WR1Extra == nil {
+		panic("how are we here")
+	}
+	err := p.insertPartitionToAttestationLink(ctx, dsthash, att.WR1Extra.Partition, att)
 	if err != nil {
 		return err
 	}

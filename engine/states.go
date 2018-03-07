@@ -343,7 +343,7 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	//This must also queue for resync the granting entity. This will take care of the
 	//new dots that can move from pending to labelled (and we just took care of
 	//the ones alreay in labelled that moved to active)
-	return e.markEntityInterestingAndQueueForSync(attester, attesterLoc)
+	return e.MarkEntityInterestingAndQueueForSync(attester, attesterLoc)
 }
 
 //Learned OOB or something
