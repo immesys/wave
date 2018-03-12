@@ -2,12 +2,25 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
 )
 
 func (e *Engine) getEntityFromHashLoc(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, error) {
-	panic("ni")
+	fmt.Printf("getEntityFromHashLoc: %x %v\n", hash, loc)
+	ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
+	ent, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	if ent != nil {
+		return ent, nil
+	}
+	//Fall back to storage
+	ent, err = e.st.GetEntity(ctx, loc, hash)
+	return ent, err
 }
 
 //Check for revocations
@@ -18,6 +31,9 @@ func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestatio
 	if err != nil {
 		return false, err
 	}
+	//spew.Dump(d)
+	//spew.Dump(attesterh)
+	//spew.Dump(attloc)
 	attester, err := e.getEntityFromHashLoc(ctx, attesterh, attloc)
 	if err != nil {
 		return false, err
@@ -27,6 +43,8 @@ func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestatio
 		return false, err
 	}
 	subjecth, subjloc := d.Subject()
+	//spew.Dump(subjecth)
+	//spew.Dump(subjloc)
 	subject, err := e.getEntityFromHashLoc(ctx, subjecth, subjloc)
 	if err != nil {
 		return false, err

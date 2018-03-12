@@ -222,7 +222,7 @@ func (p *poc) GetPendingAttestationsP(pctx context.Context, dsthi iapi.HashSchem
 			if !bytes.Equal(dst, dsthash) {
 				continue
 			}
-			if ds.LabelKeyIndex >= lkiLT {
+			if lkiLT >= 0 && ds.LabelKeyIndex >= lkiLT {
 				continue
 			}
 			pdr := iapi.PendingAttestation{

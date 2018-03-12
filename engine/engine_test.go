@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/localdb/lls"
 	"github.com/immesys/wave/localdb/poc"
@@ -22,6 +21,7 @@ var inmem iapi.LocationSchemeInstance
 func init() {
 	//Do the storage
 	go memoryserver.Main()
+	time.Sleep(100 * time.Millisecond)
 	cfg := make(map[string]map[string]string)
 	cfg["inmem"] = make(map[string]string)
 	cfg["inmem"]["provider"] = "http_v1"
@@ -40,6 +40,7 @@ func init() {
 	}
 	ws = poc.NewPOC(llsdb)
 }
+
 func TestAttestationOneHop(t *testing.T) {
 	ctx := context.Background()
 	src, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
@@ -68,7 +69,6 @@ func TestAttestationOneHop(t *testing.T) {
 	readback, err := iapi.ParseAttestation(context.Background(), &iapi.PParseAttestation{
 		DER: rv.DER,
 	})
-	require.NoError(t, err)
 	atthash, err := iapi.SI().PutAttestation(context.Background(), inmem, readback.Attestation)
 	require.NoError(t, err)
 	_, err = iapi.SI().PutEntity(context.Background(), inmem, src.EntitySecrets.Entity)
@@ -78,25 +78,135 @@ func TestAttestationOneHop(t *testing.T) {
 	err = iapi.SI().Enqueue(context.Background(), inmem, dst.EntitySecrets.Entity.Keccak256HI(), atthash)
 	require.NoError(t, err)
 
-	eng, err := NewEngine(ctx, ws, iapi.SI(), dst.EntitySecrets)
+	eng, err := NewEngine(ctx, ws, iapi.SI(), dst.EntitySecrets, inmem)
 	require.NoError(t, err)
 	select {
 	case <-eng.WaitForEmptySyncQueue():
-	case <-time.After(5 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for empty sync")
 	}
 	clr, cerr := eng.LookupAttestationsFrom(ctx, src.EntitySecrets.Entity.Keccak256HI(), &iapi.LookupFromFilter{})
+	count := 0
 	for {
 		select {
 		case c, ok := <-clr:
 			if !ok {
 				return
 			}
-			fmt.Printf("got c:\n")
-			spew.Dump(c)
+			_ = c
+			count++
+			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
-			return
+			require.NoError(t, e)
 		}
 	}
+	require.EqualValues(t, 1, count)
+}
+
+func TestAttestationTwoHop(t *testing.T) {
+	ctx := context.Background()
+	A, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, err)
+	B, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, err)
+	C, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, err)
+
+	//Create the attestation from A to B
+	pol, err := iapi.NewTrustLevelPolicy(3)
+	require.NoError(t, err)
+	bodyscheme := &iapi.WR1BodyScheme{}
+	rv, err := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
+		Policy: pol,
+		//TODO test with this, it fails right now
+		//HashScheme:        &HashScheme_Sha3_256{},
+		HashScheme:        &iapi.HashScheme_Keccak_256{},
+		BodyScheme:        bodyscheme,
+		EncryptionContext: nil,
+		Attester:          A.EntitySecrets,
+		AttesterLocation:  inmem,
+		Subject:           B.EntitySecrets.Entity,
+		SubjectLocation:   inmem,
+	})
+	require.NoError(t, err)
+	readbackAB, err := iapi.ParseAttestation(context.Background(), &iapi.PParseAttestation{
+		DER: rv.DER,
+	})
+	hashAB, err := iapi.SI().PutAttestation(context.Background(), inmem, readbackAB.Attestation)
+	require.NoError(t, err)
+
+	//BC
+	rv, err = iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
+		Policy: pol,
+		//TODO test with this, it fails right now
+		//HashScheme:        &HashScheme_Sha3_256{},
+		HashScheme:        &iapi.HashScheme_Keccak_256{},
+		BodyScheme:        bodyscheme,
+		EncryptionContext: nil,
+		Attester:          B.EntitySecrets,
+		AttesterLocation:  inmem,
+		Subject:           C.EntitySecrets.Entity,
+		SubjectLocation:   inmem,
+	})
+	require.NoError(t, err)
+	readbackBC, err := iapi.ParseAttestation(context.Background(), &iapi.PParseAttestation{
+		DER: rv.DER,
+	})
+	hashBC, err := iapi.SI().PutAttestation(context.Background(), inmem, readbackBC.Attestation)
+	require.NoError(t, err)
+
+	_, err = iapi.SI().PutEntity(context.Background(), inmem, A.EntitySecrets.Entity)
+	require.NoError(t, err)
+	_, err = iapi.SI().PutEntity(context.Background(), inmem, B.EntitySecrets.Entity)
+	require.NoError(t, err)
+	_, err = iapi.SI().PutEntity(context.Background(), inmem, C.EntitySecrets.Entity)
+	require.NoError(t, err)
+	err = iapi.SI().Enqueue(context.Background(), inmem, B.EntitySecrets.Entity.Keccak256HI(), hashAB)
+	require.NoError(t, err)
+	err = iapi.SI().Enqueue(context.Background(), inmem, C.EntitySecrets.Entity.Keccak256HI(), hashBC)
+	require.NoError(t, err)
+
+	eng, err := NewEngine(ctx, ws, iapi.SI(), C.EntitySecrets, inmem)
+	require.NoError(t, err)
+	select {
+	case <-eng.WaitForEmptySyncQueue():
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for empty sync")
+	}
+	clr, cerr := eng.LookupAttestationsFrom(ctx, B.EntitySecrets.Entity.Keccak256HI(), &iapi.LookupFromFilter{})
+	count := 0
+	for {
+		select {
+		case c, ok := <-clr:
+			if !ok {
+				return
+			}
+			_ = c
+			count++
+			//spew.Dump(c)
+		case e := <-cerr:
+			fmt.Printf("got err %v\n", e)
+			require.NoError(t, e)
+		}
+	}
+	require.EqualValues(t, 1, count)
+
+	clr, cerr = eng.LookupAttestationsFrom(ctx, A.EntitySecrets.Entity.Keccak256HI(), &iapi.LookupFromFilter{})
+	count = 0
+	for {
+		select {
+		case c, ok := <-clr:
+			if !ok {
+				return
+			}
+			_ = c
+			count++
+			//spew.Dump(c)
+		case e := <-cerr:
+			fmt.Printf("got err %v\n", e)
+			require.NoError(t, e)
+		}
+	}
+	require.EqualValues(t, 1, count)
 }

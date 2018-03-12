@@ -49,10 +49,19 @@ func nsToSlots(ns []byte) [][]byte {
 
 //TODO some kind of mutex on the entity PLKS ? we have a bit of a race here with the index
 func (p *poc) InsertPartitionLabelKeyP(ctx context.Context, ent iapi.HashSchemeInstance, key iapi.EntitySecretKeySchemeInstance) (new bool, err error) {
+	if ent == nil {
+		panic("nil ent insert")
+	}
+	if key == nil {
+		panic("nil key insert")
+	}
 	ehash := keccakFromHI(ent)
 	es, err := p.loadEntity(ctx, ehash)
 	if err != nil {
 		return false, err
+	}
+	if es == nil {
+		panic(fmt.Sprintf("unknown entity: %x", ent.Value()))
 	}
 	//Scan through all PLKs to check if this one is new
 	for i := 0; i < es.MaxLabelKeyIndex; i++ {

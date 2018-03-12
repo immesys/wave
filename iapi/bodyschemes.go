@@ -65,7 +65,7 @@ func (u *UnsupportedBodyScheme) EncryptBody(ctx context.Context, ec BodyEncrypti
 type WR1DecryptionContext interface {
 	WR1VerifierBodyKey(ctx context.Context) AttestationVerifierKeySchemeInstance
 	//WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error)
-	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k EntitySecretKeySchemeInstance) bool) error
+	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
 	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 	WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 }
@@ -135,7 +135,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 	fmt.Printf("dc B\n")
 	if envelopeKey == nil {
-		fmt.Printf("dc C\n")
+		fmt.Printf("XXXXXXX dc C\n")
 		//Try using label secrets
 		err := wr1dctx.WR1IBEKeysForPartitionLabel(ctx, subjectHI, func(k EntitySecretKeySchemeInstance) bool {
 			var err error
@@ -148,6 +148,8 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		if err != nil {
 			return nil, nil, err
 		}
+	} else {
+		fmt.Printf("DIRECT WORKED\n")
 	}
 	if envelopeKey == nil {
 		fmt.Printf("dc no label\n")
@@ -164,6 +166,8 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	if !ok {
 		fmt.Printf("dc F\n")
 		return nil, nil, ErrDecryptBodyMalformed
+	} else {
+		fmt.Printf("envelope decrypted ok\n")
 	}
 
 	envelope := serdes.WR1Envelope{}
@@ -179,7 +183,8 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	extra = rvextra
 	var bodyKeys []byte
 	//Try decrypt with those labels
-	err = wr1dctx.WR1OAQUEKeysForContent(ctx, subjectHI, envelope.Partition, func(k EntitySecretKeySchemeInstance) bool {
+	err = wr1dctx.WR1OAQUEKeysForContent(ctx, subjectHI, envelope.Partition, func(k SlottedSecretKey) bool {
+		fmt.Printf("got an oq key\n")
 		var err error
 		bodyKeys, err = k.DecryptMessageAsChild(ctx, envelope.BodyKeys_OAQUE, envelope.Partition)
 		if err == nil {
@@ -192,6 +197,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		panic(err)
 	}
 	if bodyKeys == nil {
+		fmt.Printf("no body keys obtained\n")
 		//We could not decrypt the dot. Just return with whatever we have
 		return nil, extra, nil
 	}

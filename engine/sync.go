@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 
 	"github.com/immesys/wave/iapi"
 )
@@ -47,6 +46,7 @@ func (e *Engine) queueEntityForSync(dest []byte) error {
 	}
 	e.totalSyncRequests++
 	e.totalMutex.Unlock()
+	fmt.Printf("enqueueing %x\n", dest)
 	e.resyncQueue <- sliceToArray(dest)
 	return nil
 }
@@ -59,6 +59,7 @@ func (e *Engine) syncLoop() {
 
 	//This reads from the queue and inserts into a map of
 	//entities to process
+	fmt.Printf("starting sync loop\n")
 	syncup := make(chan bool, 1)
 	syncdown := make(chan bool, 1)
 	queue := make(map[[32]byte]bool)
@@ -94,7 +95,17 @@ func (e *Engine) syncLoop() {
 				for {
 					select {
 					case ent := <-e.resyncQueue:
-						queue[ent] = true
+						if queue[ent] {
+							//This entity is already queued, so we can
+							//consider this request as handled but because
+							//we know there is something in the map we know
+							//the two counts can't be equal
+							e.totalMutex.Lock()
+							e.totalCompletedSyncs++
+							e.totalMutex.Unlock()
+						} else {
+							queue[ent] = true
+						}
 					default:
 						break finalflush
 					}
@@ -130,25 +141,29 @@ func (e *Engine) syncLoop() {
 		if err != nil {
 			panic(err)
 		}
+		if resolvedEnt == nil {
+			panic("synchronize nil entity?")
+		}
+		fmt.Printf(">syncE\n")
 		err = e.synchronizeEntity(e.ctx, resolvedEnt)
 		if err != nil {
 			panic(err)
 		}
+		fmt.Printf("<syncE\n")
 		e.totalMutex.Lock()
 		e.totalCompletedSyncs++
 		if e.totalCompletedSyncs > e.totalSyncRequests {
-			panic("completed > requested")
+			panic(fmt.Sprintf("%d > %d", e.totalCompletedSyncs, e.totalSyncRequests))
 		}
 		if e.totalCompletedSyncs == e.totalSyncRequests {
 			//they are equal, close the channel to notify ppl
 			close(e.totalEqual)
 		}
 		e.totalMutex.Unlock()
-		atomic.AddInt64(&e.totalCompletedSyncs, 1)
+		//atomic.AddInt64(&e.totalCompletedSyncs, 1)
 		//Do the sync of the entity
 		syncup <- true //tell the reader to stop
 		<-syncdown     //wait for the queue to be empty
-		//TODO signal the queue is empty
 	}
 }
 
@@ -157,14 +172,20 @@ func (e *Engine) synchronizeEntity(ctx context.Context, dest *iapi.Entity) (err 
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
+	fmt.Printf(">moveInterestingAttToPending\n")
 	_, err = e.moveInterestingAttestationsToPending(dest)
 	if err != nil {
+		fmt.Printf("se Err 1\n")
 		return err
 	}
+	fmt.Printf("<moveInterestingAttToPending\n")
+	fmt.Printf(">movePendingToLabelled\n")
 	err = e.movePendingToLabelledAndActive(dest)
 	if err != nil {
+		fmt.Printf("se Err 2\n")
 		return err
 	}
+	fmt.Printf("<movePendingToLabelled\n")
 	return nil
 }
 
@@ -182,7 +203,7 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 		if res.Err != nil {
 			return res.Err
 		}
-		fmt.Printf("found an interesting entity")
+		fmt.Printf("found an interesting entity\n")
 		// ent, err := e.ws.GetEntityByHashG(subctx, res.Hash)
 		// if err != nil {
 		// 	return err
@@ -192,7 +213,12 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 			return err
 		}
 	}
-
+	//The perspective is also interesting
+	err := e.queueEntityForSync(e.perspective.Entity.Keccak256())
+	if err != nil {
+		return err
+	}
+	fmt.Printf("finished interesting entity\n")
 	//Now we have to remove our fake request, but we may actually have to
 	//handle them being equal now too
 	e.totalMutex.Lock()

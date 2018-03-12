@@ -2,9 +2,10 @@ package iapi
 
 import (
 	"context"
-	"encoding/asn1"
 	"fmt"
 	"time"
+
+	"github.com/immesys/asn1"
 
 	"github.com/immesys/wave/serdes"
 )
@@ -25,16 +26,19 @@ func (e *Entity) Hash(ctx context.Context, scheme HashScheme) (HashSchemeInstanc
 	// if ok {
 	// 	return cached
 	// }
-	tbhder, err := asn1.Marshal(*e.CanonicalForm)
+	der, err := e.DER()
 	if err != nil {
 		panic(err)
 	}
-	rv, err := scheme.Instance(tbhder)
+	rv, err := scheme.Instance(der)
 	return rv, err
 }
 
 func (e *Entity) DER() ([]byte, error) {
-	tbhder, err := asn1.Marshal(*e.CanonicalForm)
+	wo := serdes.WaveWireObject{}
+	wo.Content.OID = serdes.EntityOID
+	wo.Content.Content = *e.CanonicalForm
+	tbhder, err := asn1.Marshal(wo.Content)
 	return tbhder, err
 }
 
@@ -160,7 +164,7 @@ func (e *Attestation) Hash(ctx context.Context, scheme HashScheme) (HashSchemeIn
 	// if ok {
 	// 	return cached
 	// }
-	tbhder, err := asn1.Marshal(*e.CanonicalForm)
+	tbhder, err := e.DER()
 	if err != nil {
 		panic(err)
 	}
@@ -169,7 +173,27 @@ func (e *Attestation) Hash(ctx context.Context, scheme HashScheme) (HashSchemeIn
 }
 
 func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
-	panic("ni")
+	rv := []SlottedSecretKey{}
+	for _, ex := range e.DecryptedBody.ProverPolicyAddendums {
+		var kre serdes.EntityKeyringEntry
+		k, ok := ex.Content.(serdes.WR1PartitionKey_OAQUE_BN256_s20)
+		if ok {
+			kre = serdes.EntityKeyringEntry(k)
+		} else {
+			k, ok := ex.Content.(serdes.WR1EncryptionKey_OAQUE_BN256_s20)
+			if ok {
+				kre = serdes.EntityKeyringEntry(k)
+			} else {
+				continue
+			}
+		}
+		realk, err := EntitySecretKeySchemeInstanceFor(&kre)
+		if err != nil {
+			panic(err)
+		}
+		rv = append(rv, realk.(SlottedSecretKey))
+	}
+	return rv
 }
 func (e *Attestation) Keccak256() []byte {
 	hi, err := e.Hash(context.Background(), KECCAK256)
@@ -212,9 +236,24 @@ func (e *Attestation) ArrayKeccak256() [32]byte {
 	return rv
 }
 func (e *Attestation) WR1DomainVisibilityKeys() []EntitySecretKeySchemeInstance {
-	panic("ni")
+	rv := []EntitySecretKeySchemeInstance{}
+	for _, ex := range e.DecryptedBody.ProverPolicyAddendums {
+		k, ok := ex.Content.(serdes.WR1DomainVisibilityKey_IBE_BN256)
+		if ok {
+			kre := serdes.EntityKeyringEntry(k)
+			realk, err := EntitySecretKeySchemeInstanceFor(&kre)
+			if err != nil {
+				panic(err)
+			}
+			rv = append(rv, realk)
+		}
+	}
+	return rv
 }
 func (e *Attestation) DER() ([]byte, error) {
-	tbhder, err := asn1.Marshal(*e.CanonicalForm)
+	wo := serdes.WaveWireObject{}
+	wo.Content.OID = serdes.AttestationOID
+	wo.Content.Content = *e.CanonicalForm
+	tbhder, err := asn1.Marshal(wo.Content)
 	return tbhder, err
 }

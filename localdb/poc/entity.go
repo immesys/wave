@@ -75,6 +75,10 @@ func (p *poc) MoveEntityInterestingP(ctx context.Context, ent *iapi.Entity, loc 
 
 	//We know about it, probably revoked / expired or already intersting
 	if es != nil {
+		if loc == nil {
+			//Nothing new we would need to add
+			return nil
+		}
 		//Check if this location is known
 		found := false
 		for _, eloc := range es.KnownLocations {
@@ -89,10 +93,13 @@ func (p *poc) MoveEntityInterestingP(ctx context.Context, ent *iapi.Entity, loc 
 		return nil
 	}
 	es = &EntityState{
-		Entity:         ent,
-		Hash:           ent.Keccak256(),
-		KnownLocations: []iapi.LocationSchemeInstance{loc},
-		State:          StateInteresting,
+		Entity: ent,
+		Hash:   ent.Keccak256(),
+
+		State: StateInteresting,
+	}
+	if loc != nil {
+		es.KnownLocations = []iapi.LocationSchemeInstance{loc}
 	}
 	return p.saveEntityState(ctx, es)
 }

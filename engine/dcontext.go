@@ -31,13 +31,20 @@ func (dctx *EngineDecryptionContext) SetVerifierKey(k iapi.AttestationVerifierKe
 func (dctx *EngineDecryptionContext) WR1VerifierBodyKey(ctx context.Context) iapi.AttestationVerifierKeySchemeInstance {
 	return dctx.verifierKey
 }
-func (dctx *EngineDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst iapi.HashSchemeInstance, slots [][]byte, onResult func(k iapi.EntitySecretKeySchemeInstance) bool) error {
+func (dctx *EngineDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst iapi.HashSchemeInstance, slots [][]byte, onResult func(k iapi.SlottedSecretKey) bool) error {
 	if dctx.e == nil {
 		return nil
 	}
-	return dctx.e.ws.WR1KeysForP(ctx, dst, slots, func(k iapi.SlottedSecretKey) bool {
-		return onResult(k)
-	})
+	if iapi.HashSchemeInstanceEqual(dctx.e.perspective.Entity.Keccak256HI(), dst) {
+		//This is out perspective entity, generate the direct key
+		k, err := dctx.e.perspective.WR1BodyKey(ctx, slots)
+		if err != nil {
+			return err
+		}
+		onResult(k)
+		return nil
+	}
+	return dctx.e.ws.WR1KeysForP(ctx, dst, slots, onResult)
 }
 func (dctx *EngineDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Context, dst iapi.HashSchemeInstance, onResult func(k iapi.EntitySecretKeySchemeInstance) bool) error {
 	for _, k := range dctx.partitionSecrets {
@@ -70,7 +77,7 @@ func (dctx *EngineDecryptionContext) WR1DirectDecryptionKey(ctx context.Context,
 	}
 	if iapi.HashSchemeInstanceEqual(dctx.e.perspective.Entity.Keccak256HI(), dst) {
 		dek, err := dctx.e.perspective.WR1DirectDecryptionKey(ctx)
-		if err == nil {
+		if err != nil {
 			panic(err)
 		}
 		if dek != nil {

@@ -26,9 +26,10 @@ type Engine struct {
 	ctx       context.Context
 	ctxcancel context.CancelFunc
 
-	ws          iapi.WaveState
-	st          iapi.StorageInterface
-	perspective *iapi.EntitySecrets
+	ws             iapi.WaveState
+	st             iapi.StorageInterface
+	perspective    *iapi.EntitySecrets
+	perspectiveLoc iapi.LocationSchemeInstance
 
 	//If a dot enters labelled, it must be tested against all keys
 	//to ensure none of them match before entering labelled.
@@ -56,21 +57,26 @@ type Engine struct {
 	totalCompletedSyncs int64
 }
 
-func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface, perspective *iapi.EntitySecrets) (*Engine, error) {
+func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface, perspective *iapi.EntitySecrets, perspectiveLoc iapi.LocationSchemeInstance) (*Engine, error) {
 	ctx = context.WithValue(ctx, consts.PerspectiveKey, perspective)
 	subctx, cancel := context.WithCancel(ctx)
 	var err error
 	rv := Engine{
-		ctx:         subctx,
-		ctxcancel:   cancel,
-		ws:          state,
-		st:          st,
-		perspective: perspective,
-		totalEqual:  make(chan struct{}),
+		ctx:            subctx,
+		ctxcancel:      cancel,
+		ws:             state,
+		st:             st,
+		perspective:    perspective,
+		perspectiveLoc: perspectiveLoc,
+		totalEqual:     make(chan struct{}),
 		//TODO make buffered. Unbuffered for now to find deadlocks
 		resyncQueue: make(chan [32]byte),
 	}
-
+	err = state.MoveEntityInterestingP(ctx, perspective.Entity, perspectiveLoc)
+	if err != nil {
+		return nil, err
+	}
+	go rv.syncLoop()
 	//This function must only return once it knows that it has started watching
 	//we don't want a race/gap between processing new and processing old
 	// err = rv.watchHeaders()

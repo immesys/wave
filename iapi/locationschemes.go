@@ -9,9 +9,13 @@ import (
 )
 
 func LocationSchemeInstanceFor(e *asn1.External) LocationSchemeInstance {
-	lsurl, ok := e.Content.(*LocationSchemeInstanceURL)
+	//fmt.Printf("LOC SHEM INSTANCE\n")
+	//spew.Dump(e)
+	lsurl, ok := e.Content.(serdes.LocationURL)
 	if ok {
-		return lsurl
+		return &LocationSchemeInstanceURL{
+			SerdesForm: &lsurl,
+		}
 	}
 	return &UnsupportedLocationSchemeInstance{}
 }

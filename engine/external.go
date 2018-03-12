@@ -332,6 +332,7 @@ func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, 
 }
 
 func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, *Validity, error) {
+	ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
 	ent, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
 	if err != nil {
 		return nil, nil, err

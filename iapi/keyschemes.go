@@ -1376,6 +1376,7 @@ type EntitySecretKey_OAQUE_BN256_S20 struct {
 	PrivateKey   *oaque.PrivateKey
 	Params       *oaque.Params
 	AttributeSet [][]byte
+	idhash       *[32]byte
 }
 
 func (ek *EntitySecretKey_OAQUE_BN256_S20) HasCapability(c Capability) bool {
@@ -1593,7 +1594,14 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20) Slots() [][]byte {
 	return ek.AttributeSet
 }
 func (ek *EntitySecretKey_OAQUE_BN256_S20) IdHash() [32]byte {
-	panic("ni")
+	if ek.idhash == nil {
+		h := sha3.New256()
+		h.Write(ek.PrivateKey.Marshal())
+		res := [32]byte{}
+		h.Sum(res[:])
+		ek.idhash = &res
+	}
+	return *ek.idhash
 }
 
 var _ EntitySecretKeySchemeInstance = &EntitySecretKey_OAQUE_BN256_S20_Master{}

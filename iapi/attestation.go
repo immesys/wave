@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 
 	"github.com/immesys/wave/serdes"
@@ -165,45 +166,56 @@ type RParseAttestation struct {
 }
 
 func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttestation, error) {
-	wo := serdes.WaveWireObject{}
-	trailing, err := asn1.Unmarshal(p.DER, &wo.Content)
-	if err != nil {
-		fmt.Printf("failed initial parse: %v\n", err)
-		return &RParseAttestation{
-			IsMalformed: true,
-		}, nil
-	}
-	if len(trailing) != 0 {
-		fmt.Printf("failed parse2: %v\n", err)
-		return &RParseAttestation{
-			IsMalformed: true,
-		}, nil
-	}
-	att, ok := wo.Content.Content.(serdes.WaveAttestation)
-	if !ok {
-		fmt.Printf("failed parse3: %v\n", err)
-		return &RParseAttestation{
-			IsMalformed: true,
-		}, nil
+	var att *serdes.WaveAttestation
+	if p.Attestation == nil {
+		wo := serdes.WaveWireObject{}
+		trailing, err := asn1.Unmarshal(p.DER, &wo.Content)
+		if err != nil {
+			fmt.Printf("failed initial parse: %v\n", err)
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, nil
+		}
+		if len(trailing) != 0 {
+			fmt.Printf("failed parse2: %v\n", err)
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, nil
+		}
+		var ok bool
+		attb, ok := wo.Content.Content.(serdes.WaveAttestation)
+		if !ok {
+			fmt.Printf("failed parse3: %v\n", err)
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, nil
+		}
+		att = &attb
+	} else {
+		att = p.Attestation.CanonicalForm
 	}
 
 	scheme := AttestationBodySchemeFor(&att.TBS.Body)
-	if err != nil {
-		fmt.Printf("failed parse4: %v\n", err)
-		return &RParseAttestation{
-			IsMalformed: true,
-		}, nil
+	if !scheme.Supported() {
+		spew.Dump(att.TBS.Body)
+		panic("5")
 	}
-	decoded, extra, err := scheme.DecryptBody(ctx, p.DecryptionContext, &att)
+	// if err != nil {
+	// 	fmt.Printf("failed parse4: %v\n", err)
+	// 	return &RParseAttestation{
+	// 		IsMalformed: true,
+	// 	}, nil
+	// }
+	decoded, extra, err := scheme.DecryptBody(ctx, p.DecryptionContext, att)
 	if err != nil {
-		fmt.Printf("failed parse5: %v\n", err)
+		fmt.Printf("failed parse5: %v %s\n", err, att.TBS.Body.OID)
 		return &RParseAttestation{
 			IsMalformed: true,
 		}, nil
 	}
 	fmt.Printf("parse success\n")
 	rv := Attestation{
-		CanonicalForm: &att,
+		CanonicalForm: att,
 		DecryptedBody: decoded,
 	}
 	wr1extra, ok := extra.(*WR1Extra)
