@@ -229,7 +229,7 @@ BEGIN
 
   RTreeStatement ::= SEQUENCE {
     permissionSet EntityHash,
-    permission UTF8String,
+    permissions SEQUENCE OF UTF8String,
     resource UTF8String,
     comment UTF8String OPTIONAL
   }
@@ -321,7 +321,7 @@ BEGIN
     --we have PartitionKeys that reveal the content
     --we have a Domain Key that reveals the partition attribute set
     addendums SEQUENCE OF PolicyAddendum,
-    
+
     extensions SEQUENCE OF Extension
   }
 

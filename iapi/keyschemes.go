@@ -1157,6 +1157,8 @@ func (k *EntityKey_OAQUE_BN256_S20_Params) GenerateChildKey(ctx context.Context,
 		return nil, fmt.Errorf("only [][]byte identities are supported")
 	}
 	if len(id) != 20 {
+		fmt.Printf("A\n")
+		panic(id)
 		return nil, fmt.Errorf("only 20 slot identities are supported")
 	}
 	ch := serdes.EntityPublicOAQUE_BN256_s20{
@@ -1302,6 +1304,7 @@ func (k *EntityKey_OAQUE_BN256_S20) GenerateChildKey(ctx context.Context, identi
 		return nil, fmt.Errorf("only [][]byte identities are supported")
 	}
 	if len(id) != 20 {
+		fmt.Printf("B\n")
 		return nil, fmt.Errorf("only 20 slot identities are supported")
 	}
 	for idx, slot := range id {
@@ -1399,6 +1402,7 @@ func (k *EntitySecretKey_OAQUE_BN256_S20) DecryptMessageAsChild(ctx context.Cont
 		return nil, fmt.Errorf("only [][]byte identities are supported")
 	}
 	if len(id) != 20 {
+		fmt.Printf("C\n")
 		return nil, fmt.Errorf("only 20 slot identities are supported")
 	}
 	for idx, slot := range id {
@@ -1485,6 +1489,7 @@ func (k *EntitySecretKey_OAQUE_BN256_S20) GenerateChildSecretKey(ctx context.Con
 		return nil, fmt.Errorf("only [][]byte identities are supported")
 	}
 	if len(id) != 20 {
+		fmt.Printf("D\n")
 		return nil, fmt.Errorf("only 20 slot identities are supported")
 	}
 	for idx, slot := range id {
@@ -1666,6 +1671,7 @@ func (k *EntitySecretKey_OAQUE_BN256_S20_Master) GenerateChildSecretKey(ctx cont
 		return nil, fmt.Errorf("only [][]byte identities are supported")
 	}
 	if len(id) != 20 {
+		fmt.Printf("E\n")
 		return nil, fmt.Errorf("only 20 slot identities are supported")
 	}
 	al := slotsToAttrMap(id)

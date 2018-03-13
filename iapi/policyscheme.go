@@ -12,6 +12,12 @@ func PolicySchemeInstanceFor(e *asn1.External) (PolicySchemeInstance, error) {
 	switch {
 	case e.OID.Equal(serdes.TrustLevelPolicyOID):
 		return &TrustLevelPolicy{SerdesForm: *e, Trust: e.Content.(serdes.TrustLevel).Trust}, nil
+	case e.OID.Equal(serdes.ResourceTreePolicyOID):
+		rtp, ok := e.Content.(serdes.RTreePolicy)
+		if !ok {
+			return &UnsupportedPolicySchemeInstance{*e}, nil
+		}
+		return &RTreePolicy{SerdesForm: rtp}, nil
 	}
 	return &UnsupportedPolicySchemeInstance{*e}, nil
 }
@@ -62,4 +68,38 @@ func (ps *TrustLevelPolicy) WR1DomainEntity(ctx context.Context) (HashSchemeInst
 }
 func (ps *TrustLevelPolicy) WR1Partition(ctx context.Context) ([][]byte, error) {
 	return make([][]byte, 20), nil
+}
+
+type RTreePolicy struct {
+	SerdesForm    serdes.RTreePolicy
+	VisibilityURI [][]byte
+}
+
+func NewRTreePolicyScheme(policy serdes.RTreePolicy, visuri [][]byte) (*RTreePolicy, error) {
+	if len(visuri) > 20 {
+		return nil, fmt.Errorf("too many elements in visibility URI")
+	}
+	vuri := make([][]byte, 20)
+	for idx, p := range visuri {
+		vuri[idx] = p
+	}
+	return &RTreePolicy{
+		SerdesForm:    policy,
+		VisibilityURI: vuri,
+	}, nil
+}
+
+func (ps *RTreePolicy) Supported() bool {
+	return true
+}
+func (ps *RTreePolicy) CanonicalForm(ctx context.Context) (*asn1.External, error) {
+	ext := asn1.NewExternal(ps.SerdesForm)
+	return &ext, nil
+}
+
+func (ps *RTreePolicy) WR1DomainEntity(ctx context.Context) (HashSchemeInstance, error) {
+	return HashSchemeInstanceFor(&ps.SerdesForm.Namespace), nil
+}
+func (ps *RTreePolicy) WR1Partition(ctx context.Context) ([][]byte, error) {
+	return ps.VisibilityURI, nil
 }

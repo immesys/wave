@@ -1,0 +1,122 @@
+syntax = "proto3";
+//Version 1.0
+package pb;
+
+service WAVE {
+  rpc CreateEntity(CreateEntityParams) returns (CreateEntityResponse);
+  rpc CreateAttestation(CreateAttestationParams) returns (CreateAttestationResponse);
+  rpc PublishEntity(PublishEntityParams) returns (PublishEntityResponse);
+  rpc PublishAttestation(PublishAttestationParams) returns (PublishAttestationResponse);
+  rpc AddAttestation(AddAttestationParams) returns (AddAttestationResponse);
+  rpc LookupAttestations(LookupAttestationsParams) returns (LookupAttestationsResponse);
+}
+
+message CreateEntityParams {
+  //Milliseconds since the epoch
+  int64 validFrom = 1;
+  int64 validUntil = 2;
+  Location revocationLocation = 3;
+}
+message CreateEntityResponse {
+  Error error = 1;
+  bytes DER = 2;
+}
+message CreateAttestationParams {
+  Perspective perspective = 1;
+  string bodyScheme = 2;
+  string attesterHashScheme = 3;
+  Hash subject = 4;
+  Location subjectLocation = 5;
+  //If 0, will be set to time.Now
+  int64 validFrom = 6;
+  //If 0, will be set to some arbitrary default
+  int64 validUntil = 7;
+  Policy policy = 8;
+}
+
+message CreateAttestationResponse {
+  Error error = 1;
+  bytes DER = 2;
+  bytes verifierKey = 3;
+  bytes proverKey = 4;
+}
+message PublishEntityParams {
+  bytes DER = 1;
+  Location location = 2;
+}
+message PublishEntityResponse {
+  Error error = 1;
+  Hash hash = 2;
+}
+message PublishAttestationParams {
+  bytes DER = 1;
+  Location location = 2;
+}
+message PublishAttestationResponse {
+  Error error = 1;
+  Hash hash = 2;
+}
+message AddAttestationParams {
+  bytes DER = 1;
+  bytes verifierKey = 2;
+  bytes proverKey = 3;
+}
+message AddAttestationResponse {
+  Error error = 1;
+}
+message LookupAttestationsParams {
+  Hash fromEntity = 1;
+  Hash toEntity = 2;
+}
+message LookupAttestationsResponse {
+  Error error = 1;
+  repeated Attestation results = 2;
+}
+
+message Error {
+  int32 code = 1;
+  string message = 2;
+}
+message Perspective {
+  EntitySecret entitySecret = 1;
+  Location location = 2;
+}
+message Location {
+  //One of the following
+  LocationURI locationURI = 1;
+}
+message LocationURI {
+  string URI = 1;
+  int32 version = 2;
+}
+message EntitySecret {
+  bytes DER = 1;
+  bytes passphrase = 2;
+}
+message Attestation {
+  bytes DER = 1;
+}
+message Policy {
+  TrustLevelPolicy trustLevelPolicy = 1;
+  RTreePolicy rTreePolicy = 2;
+}
+message TrustLevelPolicy {
+  int32 trust = 1;
+}
+message RTreePolicy {
+  Hash namespace = 1;
+  int32 indirections = 2;
+  repeated RTreePolicyStatement statements = 3;
+  repeated bytes visibilityURI = 4;
+}
+message RTreePolicyStatement {
+  Hash permissionSet = 1;
+  repeated string permissions = 2;
+  string resource = 3;
+}
+
+message Hash {
+  bytes keccak256 = 1;
+  bytes sha3_256 = 2;
+  bytes sha2_256 = 3;
+}

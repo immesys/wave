@@ -41,7 +41,7 @@ func (pt *PlaintextBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptio
 	rv := canonicalForm.TBS.Body.Content.(serdes.AttestationBody)
 	return &rv, nil, nil
 }
-func (pt *PlaintextBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
+func (pt *PlaintextBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, err error) {
 	return intermediateForm, nil
 }
 
@@ -57,7 +57,7 @@ func (u *UnsupportedBodyScheme) Supported() bool {
 func (u *UnsupportedBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
 	return nil, nil, fmt.Errorf("body scheme is unsupported")
 }
-func (u *UnsupportedBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
+func (u *UnsupportedBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, err error) {
 	return nil, fmt.Errorf("body scheme is unsupported")
 }
 
@@ -237,7 +237,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	return rv, rvextra, nil
 }
 
-func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
+func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, err error) {
 	//Step 0 generate the WR1 keys
 	// - IBE key using the domain visibility from the policy
 	// - OAQUE key using the WR1 partition from the entity
@@ -246,10 +246,10 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	//  basically we are only supporting same or broadening delegation in/out of order
 	//  to support narrowing in-order we would want to include extra WR1 keys in the dot
 	plaintextBody := intermediateForm.TBS.Body.Content.(serdes.AttestationBody)
-	policy, err := PolicySchemeInstanceFor(&plaintextBody.VerifierBody.Policy)
-	if err != nil {
-		return nil, err
-	}
+	// policy, err := PolicySchemeInstanceFor(&plaintextBody.VerifierBody.Policy)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	visibilityEntity, err := policy.WR1DomainEntity(ctx)
 	if err != nil {
 		return nil, err

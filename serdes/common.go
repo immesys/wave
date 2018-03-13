@@ -95,6 +95,7 @@ func init() {
 		{AttestationOID, WaveAttestation{}},
 		{UnencryptedBodyOID, AttestationBody{}},
 		{TrustLevelPolicyOID, TrustLevel{}},
+		{ResourceTreePolicyOID, RTreePolicy{}},
 		{SignedOuterKeyOID, SignedOuterKey{}},
 
 		{EntitySecretEd25519OID, EntitySecretEd25519{}},

@@ -40,6 +40,18 @@ type TrustLevel struct {
 	Trust int
 }
 
+type RTreePolicy struct {
+	Namespace    asn1.External //EntityHash
+	Indirections int
+	Statements   []RTreeStatement
+}
+
+type RTreeStatement struct {
+	PermissionSet asn1.External
+	Permissions   []string
+	Resource      string
+}
+
 type SignedOuterKey struct {
 	TBS struct {
 		OuterSignatureScheme asn1.ObjectIdentifier

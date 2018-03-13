@@ -125,7 +125,7 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	att.TBS.Body = asn1.NewExternal(body)
 
 	//Now encrypt the body
-	encryptedForm, err := p.BodyScheme.EncryptBody(ctx, p.EncryptionContext, p.Attester, p.Subject, &att)
+	encryptedForm, err := p.BodyScheme.EncryptBody(ctx, p.EncryptionContext, p.Attester, p.Subject, &att, p.Policy)
 	if err != nil {
 		return nil, err
 	}
