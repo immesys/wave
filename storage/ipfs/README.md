@@ -1,0 +1,37 @@
+# IPFS Storage Engine
+
+We are implementing the `Put()` and `Get()` API methods on top of IPFS.
+
+`ipfs.go`: storage provider implementation
+
+`cmd/main.go`: interacting with IPFS storage provider. This requires the IPFS daemon to be running.
+
+## Installation
+
+1. Install IPFS daemon:
+    - Download `ipfs` binary
+2. Initialize IPFS
+    - Execute `ipfs init` (only needs to be done once)
+    - Add the core wave3 peers to your network
+3. Run IPFS daemon
+    - Execute `ipfs daemon --enable-pubsub-experiment`
+4. Install WAVE storage provider:
+    - **TODO**
+
+## Usage
+
+
+### Supernode
+
+Supernodes are servers that have voluntarily taken on the role of storing WAVE objects from IPFS clients.
+
+1. Run WAVE storage provider
+    - `cmd pinservice`
+
+
+### Put/Get
+
+We have a simple command line interface for now
+
+1. `cmd put <file path>` returns hash
+1. `cmd put <hash>` prints the contents of the file on the screen
