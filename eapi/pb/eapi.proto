@@ -16,10 +16,12 @@ message CreateEntityParams {
   int64 validFrom = 1;
   int64 validUntil = 2;
   Location revocationLocation = 3;
+  string SecretPassphrase = 4;
 }
 message CreateEntityResponse {
   Error error = 1;
-  bytes DER = 2;
+  bytes PublicDER = 2;
+  bytes SecretDER = 3;
 }
 message CreateAttestationParams {
   Perspective perspective = 1;
