@@ -25,8 +25,8 @@ We are implementing the `Put()` and `Get()` API methods on top of IPFS.
 
 Supernodes are servers that have voluntarily taken on the role of storing WAVE objects from IPFS clients.
 
-1. Run WAVE storage provider
-    - `cmd pinservice`
+1. Clone and follow instructions for ansible
+    - [IPFS WAVE IPFS supernode setup](https://github.com/gtfierro/ansible-ipfs-cluster)
 
 
 ### Put/Get
@@ -35,3 +35,18 @@ We have a simple command line interface for now
 
 1. `cmd put <file path>` returns hash
 1. `cmd put <hash>` prints the contents of the file on the screen
+
+### Adding Supernodes
+
+Put the bootstrap peers in a file `bootstrappeers` and run
+
+```bash
+while read addr; do
+    ip bootstrap add $addr
+    ip swarm connect $addr
+done < bootstrappeers
+```
+
+```
+/ip4/54.183.252.14/tcp/4001/ipfs/QmWaDiSZhFn9JYjtUMp2wXP7j6yjaVrxdjSZKfGjaYzTjM
+```
