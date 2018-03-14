@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 	"strings"
 
+	api "github.com/gtfierro/go-ipfs-api"
 	"github.com/immesys/wave/iapi"
-	api "github.com/ipfs/go-ipfs-api"
 	"github.com/pkg/errors"
 	"gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
