@@ -42,8 +42,8 @@ Put the bootstrap peers in a file `bootstrappeers` and run
 
 ```bash
 while read addr; do
-    ip bootstrap add $addr
-    ip swarm connect $addr
+    ipfs bootstrap add $addr
+    ipfs swarm connect $addr
 done < bootstrappeers
 ```
 
