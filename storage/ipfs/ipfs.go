@@ -93,7 +93,7 @@ func (ipfs *IPFSStorageProvider) Put(ctx context.Context, content []byte) (hash 
 
 // retrieves the byte array associated with the given hash. RIGHT NOW we assume that the hash is keccak-256.
 func (ipfs *IPFSStorageProvider) Get(ctx context.Context, hash iapi.HashSchemeInstance) (content []byte, err error) {
-	mh, err := multihash.Encode(hash.Value(), 0x1b) // 0x1b is keccak-256
+	mh, err := multihash.Encode(hash.Value(), multihash.KECCAK_256)
 	if err != nil {
 		err = errors.Wrapf(err, "Could not encode hash %s", hash.Value())
 	}
