@@ -9,7 +9,8 @@ import (
 type EngineDecryptionContext struct {
 	e                *Engine
 	partitionSecrets []iapi.EntitySecretKeySchemeInstance
-	verifierKey      iapi.AttestationVerifierKeySchemeInstance
+	verifierKey      []byte
+	proverBodyKey    []byte
 }
 
 var _ iapi.WR1DecryptionContext = &EngineDecryptionContext{}
@@ -25,11 +26,17 @@ func (dctx *EngineDecryptionContext) SetPartitionSecrets(m map[int]iapi.EntitySe
 		dctx.partitionSecrets = append(dctx.partitionSecrets, v)
 	}
 }
-func (dctx *EngineDecryptionContext) SetVerifierKey(k iapi.AttestationVerifierKeySchemeInstance) {
+func (dctx *EngineDecryptionContext) SetVerifierKey(k []byte) {
 	dctx.verifierKey = k
 }
-func (dctx *EngineDecryptionContext) WR1VerifierBodyKey(ctx context.Context) iapi.AttestationVerifierKeySchemeInstance {
+func (dctx *EngineDecryptionContext) WR1VerifierBodyKey(ctx context.Context) []byte {
 	return dctx.verifierKey
+}
+func (dctx *EngineDecryptionContext) SetProverKey(k []byte) {
+	dctx.proverBodyKey = k
+}
+func (dctx *EngineDecryptionContext) WR1ProverBodyKey(ctx context.Context) []byte {
+	return dctx.proverBodyKey
 }
 func (dctx *EngineDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst iapi.HashSchemeInstance, slots [][]byte, onResult func(k iapi.SlottedSecretKey) bool) error {
 	if dctx.e == nil {

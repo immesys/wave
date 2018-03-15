@@ -25,7 +25,7 @@ type BodyEncryptionContext interface {
 type AttestationBodyScheme interface {
 	Scheme
 	DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error)
-	EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, err error)
+	EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error)
 }
 
 type OuterSignatureSchemeInstance interface {
@@ -54,6 +54,8 @@ type HashSchemeInstance interface {
 	Scheme
 	//For curried hash scheme instances
 	Value() []byte
+	Multihash() []byte
+	MultihashString() string
 	CanonicalForm() (*asn1.External, error)
 	OID() asn1.ObjectIdentifier
 }
@@ -121,11 +123,10 @@ type EntityKeySchemeInstance interface {
 	CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error)
 }
 
-type AttestationVerifierKeySchemeInstance interface {
+type AttestationVerifierBodyKeySchemeInstance interface {
 	Scheme
 	DecryptBody(ctx context.Context, ciphertext []byte) ([]byte, error)
 }
-
 type ExtensionSchemeInstance interface {
 	Scheme
 	IsCritical() bool

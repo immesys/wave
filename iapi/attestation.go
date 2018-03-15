@@ -29,7 +29,9 @@ type PCreateAttestation struct {
 	ValidUntil *time.Time
 }
 type RCreateAttestation struct {
-	DER []byte
+	DER         []byte
+	VerifierKey []byte
+	ProverKey   []byte
 }
 
 func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAttestation, error) {
@@ -125,7 +127,7 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	att.TBS.Body = asn1.NewExternal(body)
 
 	//Now encrypt the body
-	encryptedForm, err := p.BodyScheme.EncryptBody(ctx, p.EncryptionContext, p.Attester, p.Subject, &att, p.Policy)
+	encryptedForm, extra, err := p.BodyScheme.EncryptBody(ctx, p.EncryptionContext, p.Attester, p.Subject, &att, p.Policy)
 	if err != nil {
 		return nil, err
 	}
@@ -147,9 +149,14 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	if err != nil {
 		return nil, err
 	}
-	return &RCreateAttestation{
+	rv := &RCreateAttestation{
 		DER: fullDER,
-	}, nil
+	}
+	if wr1ex, ok := extra.(*WR1Extra); ok {
+		rv.ProverKey = wr1ex.ProverBodyKey
+		rv.VerifierKey = wr1ex.VerifierBodyKey
+	}
+	return rv, nil
 }
 
 type PParseAttestation struct {

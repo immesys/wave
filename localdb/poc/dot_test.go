@@ -153,7 +153,7 @@ func TestAttLabelled(t *testing.T) {
 
 func TestAttActive(t *testing.T) {
 	ctx := getPctx()
-	src, _, att := mkAtt(t, nil, nil)
+	src, dst, att := mkAtt(t, nil, nil)
 	count := 0
 	for rez := range db.GetActiveAttestationsFromP(ctx, src.Entity.Keccak256HI(), &iapi.LookupFromFilter{}) {
 		require.NoError(t, rez.Err)
@@ -168,6 +168,18 @@ func TestAttActive(t *testing.T) {
 		count++
 	}
 	require.EqualValues(t, 1, count)
+	count = 0
+	for rez := range db.GetActiveAttestationsToP(ctx, dst.Entity.Keccak256HI(), &iapi.LookupFromFilter{}) {
+		require.NoError(t, rez.Err)
+		count++
+	}
+	require.EqualValues(t, 1, count)
+	count = 0
+	for rez := range db.GetActiveAttestationsToP(ctx, src.Entity.Keccak256HI(), &iapi.LookupFromFilter{}) {
+		require.NoError(t, rez.Err)
+		count++
+	}
+	require.EqualValues(t, 0, count)
 	count = 0
 	err = db.MoveAttestationRevokedG(ctx, att)
 	for rez := range db.GetActiveAttestationsFromP(ctx, src.Entity.Keccak256HI(), &iapi.LookupFromFilter{}) {

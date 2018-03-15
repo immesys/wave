@@ -106,6 +106,7 @@ type WaveState interface {
 	GetEntityPartitionLabelKeyIndexP(ctx context.Context, entHashSchemeInstance HashSchemeInstance) (bool, int, error)
 	GetAttestationP(ctx context.Context, HashSchemeInstance HashSchemeInstance) (at *Attestation, err error)
 	GetActiveAttestationsFromP(ctx context.Context, attester HashSchemeInstance, filter *LookupFromFilter) chan LookupFromResult
+	GetActiveAttestationsToP(ctx context.Context, subject HashSchemeInstance, filter *LookupFromFilter) chan LookupFromResult
 	GetEntityQueueTokenP(ctx context.Context, loc LocationSchemeInstance, hsh HashSchemeInstance) (okay bool, token string, err error)
 	SetEntityQueueTokenP(ctx context.Context, loc LocationSchemeInstance, hsh HashSchemeInstance, token string) error
 

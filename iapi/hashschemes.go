@@ -2,11 +2,13 @@ package iapi
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
+	multihash "github.com/multiformats/go-multihash"
 )
 
 func HashSchemeFor(h asn1.External) HashScheme {
@@ -21,6 +23,22 @@ func HashSchemeFor(h asn1.External) HashScheme {
 }
 func HashSchemeInstanceEqual(lhs HashSchemeInstance, rhs HashSchemeInstance) bool {
 	return bytes.Equal(lhs.Value(), rhs.Value()) && lhs.OID().Equal(rhs.OID())
+}
+func HashSchemeInstanceFromMultihash(mh []byte) HashSchemeInstance {
+	mhi, err := multihash.Decode(mh)
+	if err != nil {
+		return &UnsupportedHashSchemeInstance{}
+	}
+	if len(mhi.Digest) != 32 {
+		return &UnsupportedHashSchemeInstance{}
+	}
+	switch mhi.Code {
+	case multihash.KECCAK_256:
+		return &HashSchemeInstance_Keccak_256{Val: mhi.Digest}
+	case multihash.SHA3_256:
+		return &HashSchemeInstance_Sha3_256{Val: mhi.Digest}
+	}
+	return &UnsupportedHashSchemeInstance{}
 }
 
 // func NewHashScheme(oid asn1.ObjectIdentifier) HashScheme {
@@ -109,6 +127,12 @@ func (hs *UnsupportedHashSchemeInstance) CanonicalForm() (*asn1.External, error)
 func (hs *UnsupportedHashSchemeInstance) OID() asn1.ObjectIdentifier {
 	return nil
 }
+func (hs *UnsupportedHashSchemeInstance) Multihash() []byte {
+	return nil
+}
+func (hs *UnsupportedHashSchemeInstance) MultihashString() string {
+	return ""
+}
 
 var _ HashSchemeInstance = &HashSchemeInstance_Sha3_256{}
 
@@ -129,6 +153,16 @@ func (hs *HashSchemeInstance_Sha3_256) CanonicalForm() (*asn1.External, error) {
 func (hs *HashSchemeInstance_Sha3_256) OID() asn1.ObjectIdentifier {
 	return serdes.Sha3_256OID
 }
+func (hs *HashSchemeInstance_Sha3_256) Multihash() []byte {
+	rv, err := multihash.Encode(hs.Val, multihash.SHA3_256)
+	if err != nil {
+		panic(err)
+	}
+	return rv
+}
+func (hs *HashSchemeInstance_Sha3_256) MultihashString() string {
+	return base64.URLEncoding.EncodeToString(hs.Multihash())
+}
 
 var _ HashSchemeInstance = &HashSchemeInstance_Keccak_256{}
 
@@ -148,4 +182,14 @@ func (hs *HashSchemeInstance_Keccak_256) CanonicalForm() (*asn1.External, error)
 }
 func (hs *HashSchemeInstance_Keccak_256) OID() asn1.ObjectIdentifier {
 	return serdes.Keccak_256OID
+}
+func (hs *HashSchemeInstance_Keccak_256) Multihash() []byte {
+	rv, err := multihash.Encode(hs.Val, multihash.KECCAK_256)
+	if err != nil {
+		panic(err)
+	}
+	return rv
+}
+func (hs *HashSchemeInstance_Keccak_256) MultihashString() string {
+	return base64.URLEncoding.EncodeToString(hs.Multihash())
 }

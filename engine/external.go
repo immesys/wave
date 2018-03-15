@@ -66,6 +66,16 @@ type LookupResult struct {
 
 // TODO formulate dots decoded with AESK
 // TODO how to decrypt a dot that you granted yourself?
+// func (e *Engine) InsertAttestationDER(ctx context.Context, der []byte, proverkey []byte, verifierkey []byte) error {
+// 	todo integrate prover and verifier keys
+// 	par, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
+// 		DER: der,
+// 	})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return e.InsertAttestation(ctx, par.Attestation)
+// }
 
 //External function: insert a DOT learned out of band
 func (e *Engine) InsertAttestation(ctx context.Context, att *iapi.Attestation) error {
@@ -151,6 +161,10 @@ func (e *Engine) WaitForEmptySyncQueue() chan struct{} {
 	return rv
 }
 
+func (e *Engine) ResyncEntireGraph(ctx context.Context) error {
+	return e.updateAllInterestingEntities(ctx)
+}
+
 //
 // //We should have a function that allows applications to tap into perspective changes
 // //for the purposes of alerts and so on (also avoiding polling)
@@ -166,7 +180,7 @@ func (e *Engine) WaitForEmptySyncQueue() chan struct{} {
 
 //This should try find and decrypt a dot given the hash and aesk. No information from our
 //perspective (active entity) is used
-func (e *Engine) LookupAttestationNoPerspective(ctx context.Context, hash iapi.HashSchemeInstance, k iapi.AttestationVerifierKeySchemeInstance, location iapi.LocationSchemeInstance) (*iapi.Attestation, *Validity, error) {
+func (e *Engine) LookupAttestationNoPerspective(ctx context.Context, hash iapi.HashSchemeInstance, verifierKey []byte, location iapi.LocationSchemeInstance) (*iapi.Attestation, *Validity, error) {
 	//First get the DOT from cache. This will come back decrypted if we know about it:
 	att, err := e.ws.GetAttestationP(ctx, hash)
 	if err != nil {
@@ -197,7 +211,7 @@ func (e *Engine) LookupAttestationNoPerspective(ctx context.Context, hash iapi.H
 
 	//Don't give it our engine, so it can't use our perspective
 	dctx := NewEngineDecryptionContext(nil)
-	dctx.SetVerifierKey(k)
+	dctx.SetVerifierKey(verifierKey)
 	par, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
 		DER:               der,
 		DecryptionContext: dctx,

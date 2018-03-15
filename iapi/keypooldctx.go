@@ -6,8 +6,9 @@ import (
 )
 
 type KeyPoolDecryptionContext struct {
-	attVerKey AttestationVerifierKeySchemeInstance
-	entz      []*Entity
+	attVerKey  []byte
+	attProvKey []byte
+	entz       []*Entity
 	//These two go together
 	entsecrets          []*EntitySecrets
 	delegatedOnly       []bool
@@ -25,11 +26,17 @@ func (kpd *KeyPoolDecryptionContext) AddEntitySecret(es *EntitySecrets, delegate
 	kpd.entsecrets = append(kpd.entsecrets, es)
 	kpd.delegatedOnly = append(kpd.delegatedOnly, delegatedOnly)
 }
-func (kpd *KeyPoolDecryptionContext) SetWR1VerifierBodyKey(atv AttestationVerifierKeySchemeInstance) {
+func (kpd *KeyPoolDecryptionContext) SetWR1VerifierBodyKey(atv []byte) {
 	kpd.attVerKey = atv
 }
-func (kpd *KeyPoolDecryptionContext) WR1VerifierBodyKey(ctx context.Context) AttestationVerifierKeySchemeInstance {
+func (kpd *KeyPoolDecryptionContext) WR1VerifierBodyKey(ctx context.Context) []byte {
 	return kpd.attVerKey
+}
+func (kpd *KeyPoolDecryptionContext) SetWR1ProverBodyKey(atv []byte) {
+	kpd.attProvKey = atv
+}
+func (kpd *KeyPoolDecryptionContext) WR1ProverBodyKey(ctx context.Context) []byte {
+	return kpd.attProvKey
 }
 
 func (kpd *KeyPoolDecryptionContext) WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error) {

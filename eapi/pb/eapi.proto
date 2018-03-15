@@ -9,6 +9,9 @@ service WAVE {
   rpc PublishAttestation(PublishAttestationParams) returns (PublishAttestationResponse);
   rpc AddAttestation(AddAttestationParams) returns (AddAttestationResponse);
   rpc LookupAttestations(LookupAttestationsParams) returns (LookupAttestationsResponse);
+  rpc ResyncPerspectiveGraph(ResyncPerspectiveGraphParams) returns (ResyncPerspectiveGraphResponse);
+  rpc SyncStatus(SyncParams) returns (SyncResponse);
+  rpc WaitForSyncComplete(SyncParams) returns (stream SyncResponse);
 }
 
 message CreateEntityParams {
@@ -26,16 +29,33 @@ message CreateEntityResponse {
 message CreateAttestationParams {
   Perspective perspective = 1;
   string bodyScheme = 2;
-  string attesterHashScheme = 3;
-  Hash subject = 4;
-  Location subjectLocation = 5;
+  bytes subjectHash = 3;
+  Location subjectLocation = 4;
   //If 0, will be set to time.Now
-  int64 validFrom = 6;
+  int64 validFrom = 5;
   //If 0, will be set to some arbitrary default
-  int64 validUntil = 7;
-  Policy policy = 8;
+  int64 validUntil = 6;
+  Policy policy = 7;
 }
-
+message ResyncPerspectiveGraphParams {
+  Perspective perspective = 1;
+}
+message ResyncPerspectiveGraphResponse {
+  Error error = 1;
+}
+message SyncParams {
+  Perspective perspective = 1;
+}
+message SyncResponse {
+  Error error = 1;
+  map<string, StorageDriverStatus> storageStatus = 2;
+	int64 totalSyncRequests = 3;
+	int64 completedSyncs = 4;
+}
+message StorageDriverStatus {
+  bool operational = 1;
+  map<string, string> info = 2;
+}
 message CreateAttestationResponse {
   Error error = 1;
   bytes DER = 2;
@@ -48,7 +68,7 @@ message PublishEntityParams {
 }
 message PublishEntityResponse {
   Error error = 1;
-  Hash hash = 2;
+  bytes hash = 2;
 }
 message PublishAttestationParams {
   bytes DER = 1;
@@ -56,19 +76,19 @@ message PublishAttestationParams {
 }
 message PublishAttestationResponse {
   Error error = 1;
-  Hash hash = 2;
+  bytes hash = 2;
 }
 message AddAttestationParams {
-  bytes DER = 1;
-  bytes verifierKey = 2;
+  Perspective perspective = 1;
+  bytes DER = 2;
   bytes proverKey = 3;
 }
 message AddAttestationResponse {
   Error error = 1;
 }
 message LookupAttestationsParams {
-  Hash fromEntity = 1;
-  Hash toEntity = 2;
+  bytes fromEntity = 1;
+  bytes toEntity = 2;
 }
 message LookupAttestationsResponse {
   Error error = 1;
@@ -106,19 +126,13 @@ message TrustLevelPolicy {
   int32 trust = 1;
 }
 message RTreePolicy {
-  Hash namespace = 1;
+  bytes namespace = 1;
   int32 indirections = 2;
   repeated RTreePolicyStatement statements = 3;
   repeated bytes visibilityURI = 4;
 }
 message RTreePolicyStatement {
-  Hash permissionSet = 1;
+  bytes permissionSet = 1;
   repeated string permissions = 2;
   string resource = 3;
-}
-
-message Hash {
-  bytes keccak256 = 1;
-  bytes sha3_256 = 2;
-  bytes sha2_256 = 3;
 }

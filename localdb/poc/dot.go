@@ -270,14 +270,23 @@ func (p *poc) MoveAttestationLabelledP(ctx context.Context, att *iapi.Attestatio
 	return p.saveAttestationState(ctx, ds)
 }
 func (p *poc) insertActiveAttestationForwardLink(ctx context.Context, att *iapi.Attestation) error {
-	//dsthash := keccakFromExt(&att.CanonicalForm.TBS.Subject)
 	srchash := keccakFromExt(&att.DecryptedBody.VerifierBody.Attester)
 	k := p.PKey(ctx, "fdot", ToB64(srchash), ToB64(att.Keccak256()))
 	//We don't really need a value
 	return p.u.Store(ctx, k, []byte{1})
 }
+func (p *poc) insertActiveAttestationBackwardLink(ctx context.Context, att *iapi.Attestation) error {
+	dsthash := keccakFromExt(&att.CanonicalForm.TBS.Subject)
+	k := p.PKey(ctx, "bdot", ToB64(dsthash), ToB64(att.Keccak256()))
+	//We don't really need a value
+	return p.u.Store(ctx, k, []byte{1})
+}
 func (p *poc) MoveAttestationActiveP(ctx context.Context, att *iapi.Attestation) error {
 	err := p.insertActiveAttestationForwardLink(ctx, att)
+	if err != nil {
+		return err
+	}
+	err = p.insertActiveAttestationBackwardLink(ctx, att)
 	if err != nil {
 		return err
 	}
@@ -357,6 +366,66 @@ func (p *poc) GetActiveAttestationsFromP(pctx context.Context, srchi iapi.HashSc
 					}
 				}
 			*/
+			lfr := iapi.LookupFromResult{
+				Attestation: ds.Attestation,
+			}
+			select {
+			case rv <- lfr:
+			case <-ctx.Done():
+				rv <- iapi.LookupFromResult{
+					Err: ctx.Err(),
+				}
+				close(rv)
+				return
+			}
+		}
+		err := <-ech
+		if err != nil {
+			rv <- iapi.LookupFromResult{
+				Err: err,
+			}
+		}
+		close(rv)
+		return
+	}()
+	return rv
+}
+
+func (p *poc) GetActiveAttestationsToP(pctx context.Context, dsthi iapi.HashSchemeInstance, filter *iapi.LookupFromFilter) chan iapi.LookupFromResult {
+	dst := keccakFromHI(dsthi)
+	rv := make(chan iapi.LookupFromResult, 10)
+	ctx, cancel := context.WithCancel(pctx)
+	k := p.PKey(ctx, "bdot", ToB64(dst))
+	vch, ech := p.u.LoadPrefixKeys(ctx, k)
+	go func() {
+		defer cancel()
+		for v := range vch {
+			parts := split(v.Key)
+			dh := FromB64(parts[len(parts)-1])
+			ds, err := p.loadAttestationState(ctx, dh)
+			if err != nil {
+				rv <- iapi.LookupFromResult{
+					Err: err,
+				}
+				close(rv)
+				return
+			}
+
+			//TODO filter dot by filter
+			if filter.Valid != nil {
+				if *filter.Valid {
+					if ds.State != StateActive {
+						continue
+					}
+				} else {
+					if ds.State == StateActive {
+						continue
+					}
+					//If we are here, the forward link existed, so it USED to be active
+					//but has since expired or been revoked, presumably thats what the
+					//caller is looking for
+				}
+			}
 			lfr := iapi.LookupFromResult{
 				Attestation: ds.Attestation,
 			}

@@ -9,10 +9,6 @@ import (
 	"github.com/immesys/wave/serdes"
 )
 
-func PbHashToHashSchemeInstance(h *pb.Hash) (iapi.HashSchemeInstance, error) {
-	panic("ni")
-}
-
 func TimeFromInt64MillisWithDefault(v int64, def time.Time) *time.Time {
 	if v == 0 {
 		return &def
@@ -41,18 +37,18 @@ func ConvertHashScheme(in string) iapi.HashScheme {
 	return &iapi.UnsupportedHashScheme{}
 }
 
-func ToPbHash(in iapi.HashSchemeInstance) *pb.Hash {
-	rv := &pb.Hash{}
-	if sha3, ok := in.(*iapi.HashSchemeInstance_Sha3_256); ok {
-		rv.Sha3_256 = sha3.Value()
-		return rv
-	}
-	if keccak, ok := in.(*iapi.HashSchemeInstance_Keccak_256); ok {
-		rv.Keccak256 = keccak.Value()
-		return rv
-	}
-	panic("unknown hash")
-}
+// func ToPbHash(in iapi.HashSchemeInstance) *pb.Hash {
+// 	rv := &pb.Hash{}
+// 	if sha3, ok := in.(*iapi.HashSchemeInstance_Sha3_256); ok {
+// 		rv.Sha3_256 = sha3.Value()
+// 		return rv
+// 	}
+// 	if keccak, ok := in.(*iapi.HashSchemeInstance_Keccak_256); ok {
+// 		rv.Keccak256 = keccak.Value()
+// 		return rv
+// 	}
+// 	panic("unknown hash")
+// }
 func ConvertPolicy(in *pb.Policy) iapi.PolicySchemeInstance {
 	if in == nil {
 		panic("nil policy")
@@ -68,14 +64,14 @@ func ConvertPolicy(in *pb.Policy) iapi.PolicySchemeInstance {
 		spol := serdes.RTreePolicy{
 			Indirections: int(in.RTreePolicy.Indirections),
 		}
-		ehash := ConvertHashSchemeInstance(in.RTreePolicy.Namespace)
+		ehash := iapi.HashSchemeInstanceFromMultihash(in.RTreePolicy.Namespace)
 		ext, err := ehash.CanonicalForm()
 		if err != nil {
 			panic(err)
 		}
 		spol.Namespace = *ext
 		for _, st := range in.RTreePolicy.Statements {
-			pset := ConvertHashSchemeInstance(st.PermissionSet)
+			pset := iapi.HashSchemeInstanceFromMultihash(st.PermissionSet)
 			ext, err := pset.CanonicalForm()
 			if err != nil {
 				panic(err)
@@ -102,15 +98,6 @@ func ConvertBodyScheme(in string) iapi.AttestationBodyScheme {
 		return &iapi.WR1BodyScheme{}
 	}
 	panic("unknown body scheme")
-}
-func ConvertHashSchemeInstance(in *pb.Hash) iapi.HashSchemeInstance {
-	if in.Sha3_256 != nil {
-		return &iapi.HashSchemeInstance_Sha3_256{Val: in.Sha3_256}
-	}
-	if in.Keccak256 != nil {
-		return &iapi.HashSchemeInstance_Keccak_256{Val: in.Keccak256}
-	}
-	panic("unknown hash scheme")
 }
 func ConvertEntitySecret(ctx context.Context, in *pb.EntitySecret) *iapi.EntitySecrets {
 	passphrase := string(in.Passphrase)

@@ -41,8 +41,8 @@ func (pt *PlaintextBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptio
 	rv := canonicalForm.TBS.Body.Content.(serdes.AttestationBody)
 	return &rv, nil, nil
 }
-func (pt *PlaintextBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, err error) {
-	return intermediateForm, nil
+func (pt *PlaintextBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
+	return intermediateForm, nil, nil
 }
 
 // unsupported
@@ -57,13 +57,14 @@ func (u *UnsupportedBodyScheme) Supported() bool {
 func (u *UnsupportedBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
 	return nil, nil, fmt.Errorf("body scheme is unsupported")
 }
-func (u *UnsupportedBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, err error) {
-	return nil, fmt.Errorf("body scheme is unsupported")
+func (u *UnsupportedBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
+	return nil, nil, fmt.Errorf("body scheme is unsupported")
 }
 
 // wr1
 type WR1DecryptionContext interface {
-	WR1VerifierBodyKey(ctx context.Context) AttestationVerifierKeySchemeInstance
+	WR1VerifierBodyKey(ctx context.Context) []byte
+	WR1ProverBodyKey(ctx context.Context) []byte
 	//WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error)
 	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
 	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
@@ -75,6 +76,7 @@ type WR1BodyScheme struct {
 type WR1Extra struct {
 	Partition       [][]byte
 	VerifierBodyKey []byte
+	ProverBodyKey   []byte
 }
 
 func (w *WR1BodyScheme) Supported() bool {
@@ -100,11 +102,13 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	vbody := serdes.WR1VerifierBody{}
 	attverifierkey := wr1dctx.WR1VerifierBodyKey(ctx)
 	if attverifierkey != nil {
-		vbodyDER, err := attverifierkey.DecryptBody(ctx, wr1body.VerifierBodyCiphertext)
-		if err != nil {
+		verifierBodyKey := attverifierkey[:16]
+		verifierBodyNonce := attverifierkey[16:]
+		verifierBodyDER, ok := aesGCMDecrypt(verifierBodyKey, wr1body.VerifierBodyCiphertext, verifierBodyNonce)
+		if !ok {
 			return nil, nil, ErrDecryptBodyMalformed
 		}
-		trailing, err := asn1.Unmarshal(vbodyDER, &vbody)
+		trailing, err := asn1.Unmarshal(verifierBodyDER, &vbody)
 		if err != nil || len(trailing) != 0 {
 			return nil, nil, ErrDecryptBodyMalformed
 		}
@@ -117,21 +121,29 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	//to decrypt in the prover role
 
 	fmt.Printf("dc A\n")
+
 	//Step 1: decode the label
 	//First try get the envelope key using asymmetric direct encryption
 	var envelopeKey []byte
-	err = wr1dctx.WR1DirectDecryptionKey(ctx, subjectHI, func(k EntitySecretKeySchemeInstance) bool {
-		fmt.Printf("trying direct key %p\n", k)
-		var err error
-		envelopeKey, err = k.DecryptMessage(ctx, wr1body.EnvelopeKey_Curve25519)
-		if err == nil {
-			return false
+	//Actually first check for prover key in dctx
+	explicitProverBodyKey := wr1dctx.WR1ProverBodyKey(ctx)
+	if explicitProverBodyKey != nil {
+		envelopeKey = explicitProverBodyKey[:28]
+	}
+	if envelopeKey == nil {
+		err = wr1dctx.WR1DirectDecryptionKey(ctx, subjectHI, func(k EntitySecretKeySchemeInstance) bool {
+			fmt.Printf("trying direct key %p\n", k)
+			var err error
+			envelopeKey, err = k.DecryptMessage(ctx, wr1body.EnvelopeKey_Curve25519)
+			if err == nil {
+				return false
+			}
+			return true
+		})
+		if err != nil {
+			fmt.Printf("dc D\n")
+			return nil, nil, err
 		}
-		return true
-	})
-	if err != nil {
-		fmt.Printf("dc D\n")
-		return nil, nil, err
 	}
 	fmt.Printf("dc B\n")
 	if envelopeKey == nil {
@@ -148,8 +160,6 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		if err != nil {
 			return nil, nil, err
 		}
-	} else {
-		fmt.Printf("DIRECT WORKED\n")
 	}
 	if envelopeKey == nil {
 		fmt.Printf("dc no label\n")
@@ -182,19 +192,24 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	rvextra := &WR1Extra{Partition: envelope.Partition}
 	extra = rvextra
 	var bodyKeys []byte
-	//Try decrypt with those labels
-	err = wr1dctx.WR1OAQUEKeysForContent(ctx, subjectHI, envelope.Partition, func(k SlottedSecretKey) bool {
-		fmt.Printf("got an oq key\n")
-		var err error
-		bodyKeys, err = k.DecryptMessageAsChild(ctx, envelope.BodyKeys_OAQUE, envelope.Partition)
-		if err == nil {
-			return false
+	if explicitProverBodyKey != nil {
+		bodyKeys = explicitProverBodyKey[28:]
+	}
+	if bodyKeys == nil {
+		//Try decrypt with those labels
+		err = wr1dctx.WR1OAQUEKeysForContent(ctx, subjectHI, envelope.Partition, func(k SlottedSecretKey) bool {
+			fmt.Printf("got an oq key\n")
+			var err error
+			bodyKeys, err = k.DecryptMessageAsChild(ctx, envelope.BodyKeys_OAQUE, envelope.Partition)
+			if err == nil {
+				return false
+			}
+			return true
+		})
+		if err != nil {
+			//Why would we get an error here?
+			panic(err)
 		}
-		return true
-	})
-	if err != nil {
-		//Why would we get an error here?
-		panic(err)
 	}
 	if bodyKeys == nil {
 		fmt.Printf("no body keys obtained\n")
@@ -232,12 +247,18 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		ProverPolicyAddendums: pbody.Addendums,
 		ProverExtensions:      pbody.Extensions,
 	}
+	if explicitProverBodyKey == nil {
+		explicitProverBodyKey = make([]byte, 28*3)
+		copy(explicitProverBodyKey[0:28], envelopeKey)
+		copy(explicitProverBodyKey[28:], bodyKeys)
+	}
 	rvextra.VerifierBodyKey = bodyKeys[28:56] //include nonce
+	rvextra.ProverBodyKey = explicitProverBodyKey
 	fmt.Printf("dc Z\n")
 	return rv, rvextra, nil
 }
 
-func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, err error) {
+func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
 	//Step 0 generate the WR1 keys
 	// - IBE key using the domain visibility from the policy
 	// - OAQUE key using the WR1 partition from the entity
@@ -252,7 +273,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	// }
 	visibilityEntity, err := policy.WR1DomainEntity(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var visibilityID string = "$GLOBAL"
 	if visibilityEntity != nil {
@@ -260,37 +281,37 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	}
 	bodySlots, err := policy.WR1Partition(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	visibilityParams, err := subject.WR1_DomainVisiblityParams()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	visibilityKey, err := visibilityParams.GenerateChildKey(ctx, []byte(visibilityID))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	directKey, err := subject.WR1_DirectEncryptionKey()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	bodyParams, err := subject.WR1_BodyParams()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	oaqueBodyKey, err := bodyParams.GenerateChildKey(ctx, bodySlots)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	//Ok now we have the key material we need to encrypt. Lets generate the delegated key material
 	delegatedVisibilityKey, err := attester.WR1LabelKey(ctx, []byte(visibilityID))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	delegatedBodyKey, err := attester.WR1BodyKey(ctx, bodySlots)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	//Ok now lets generate the symmetric encryption keys
@@ -311,12 +332,12 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	proverBody.Addendums = plaintextBody.ProverPolicyAddendums
 	dvkSCF, err := delegatedVisibilityKey.SecretCanonicalForm(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(serdes.WR1DomainVisibilityKey_IBE_BN256(*dvkSCF)))
 	dbkSCF, err := delegatedBodyKey.SecretCanonicalForm(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(serdes.WR1PartitionKey_OAQUE_BN256_s20(*dbkSCF)))
 	proverBody.Extensions = plaintextBody.ProverExtensions
@@ -325,11 +346,11 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	//Get the DER
 	proverBodyDER, err := asn1.Marshal(*proverBody)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	verifierBodyDER, err := asn1.Marshal(*verifierBody)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	//Encrypt the DER using the given keys
@@ -339,14 +360,14 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	//Create the OAQUE ciphertext
 	envelope.BodyKeys_OAQUE, err = oaqueBodyKey.EncryptMessage(ctx, bodyKeys)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	envelope.Partition = bodySlots
 
 	//Get the envelope DER
 	envelopeDER, err := asn1.Marshal(*envelope)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	//Generate a key for the envelope
@@ -356,17 +377,26 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	//Encrypt under the destination's curve25519 key
 	ciphertext.EnvelopeKey_Curve25519, err = directKey.EncryptMessage(ctx, envelopeSymKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	//Encrypt under the destinations IBE key
 	ciphertext.EnvelopeKey_IBE_BN256, err = visibilityKey.EncryptMessage(ctx, envelopeSymKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	ciphertext.EnvelopeCiphertext = aesGCMEncrypt(envelopeSymKey[:16], envelopeDER, envelopeSymKey[16:])
 	//Return the intermediate form with the body replaced
 	intermediateForm.TBS.Body = asn1.NewExternal(*ciphertext)
-	return intermediateForm, nil
+	explicitProverBodyKey := make([]byte, 28*3)
+	copy(explicitProverBodyKey[0:28], envelopeSymKey)
+	copy(explicitProverBodyKey[28:], bodyKeys)
+
+	rvextra := &WR1Extra{
+		Partition:       bodySlots,
+		VerifierBodyKey: bodyKeys[28:56],
+		ProverBodyKey:   explicitProverBodyKey,
+	}
+	return intermediateForm, rvextra, nil
 }
 
 type PSKExtra struct {
@@ -420,7 +450,7 @@ func (psk *PSKBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionCont
 	panic("need to do PSK extra")
 	return
 }
-func (psk *PSKBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, err error) {
+func (psk *PSKBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, intermediateForm *serdes.WaveAttestation) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
 	pskec := ec.(PSKBodyEncryptionContext)
 	encryptedForm = nil
 	err = fmt.Errorf("no appropriate PSK found")
