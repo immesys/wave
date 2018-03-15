@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/wve"
 )
 
 type EngineDecryptionContext struct {
@@ -61,22 +62,6 @@ func (dctx *EngineDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Con
 		}
 	}
 	return nil
-
-	// numkeys, ok, err := dctx.e.ws.GetEntityPartitionLabelKeyIndexP(ctx, dst)
-	// if !ok || err != nil {
-	// 	panic(fmt.Sprintf("%v %v", ok, err))
-	// }
-	// for i := 0; i < numkeys; i++ {
-	// 	k, err := dctx.e.ws.GetPartitionLabelKeyP(ctx, dst, i)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	more := onResult(k)
-	// 	if !more {
-	// 		return nil
-	// 	}
-	// }
-	// return nil
 }
 func (dctx *EngineDecryptionContext) WR1DirectDecryptionKey(ctx context.Context, dst iapi.HashSchemeInstance, onResult func(k iapi.EntitySecretKeySchemeInstance) bool) error {
 	if dctx.e == nil {
@@ -92,4 +77,13 @@ func (dctx *EngineDecryptionContext) WR1DirectDecryptionKey(ctx context.Context,
 		}
 	}
 	return nil
+}
+func (dctx *EngineDecryptionContext) EntityByHashLoc(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, wve.WVE) {
+	ent, validity, err := dctx.e.LookupEntity(ctx, hash, loc)
+	if err != nil {
+		return nil, wve.ErrW(wve.LookupFailure, "could not lookup entity", err)
+	}
+	//Ingore the validity
+	_ = validity
+	return ent, nil
 }

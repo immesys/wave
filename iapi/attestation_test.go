@@ -18,7 +18,7 @@ func TestBasicAttestation(t *testing.T) {
 	bodyscheme := NewPlaintextBodyScheme()
 	rv, err := CreateAttestation(context.Background(), &PCreateAttestation{
 		Policy:            pol,
-		HashScheme:        &HashScheme_Sha3_256{},
+		HashScheme:        &HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
 		EncryptionContext: nil,
 		Attester:          source.EntitySecrets,
@@ -27,9 +27,12 @@ func TestBasicAttestation(t *testing.T) {
 		SubjectLocation:   NewLocationSchemeInstanceURL("test", 1),
 	})
 	require.NoError(t, err)
+	kpdc := NewKeyPoolDecryptionContext()
+	kpdc.AddEntity(source.EntitySecrets.Entity)
 
 	readback, err := ParseAttestation(context.Background(), &PParseAttestation{
-		DER: rv.DER,
+		DER:               rv.DER,
+		DecryptionContext: kpdc,
 	})
 	require.NoError(t, err)
 	//spew.Dump(readback)
@@ -45,7 +48,7 @@ func TestBasicAttestationDER(t *testing.T) {
 	bodyscheme := NewPlaintextBodyScheme()
 	rv, err := CreateAttestation(context.Background(), &PCreateAttestation{
 		Policy:            pol,
-		HashScheme:        &HashScheme_Sha3_256{},
+		HashScheme:        &HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
 		EncryptionContext: nil,
 		Attester:          source.EntitySecrets,
@@ -54,9 +57,11 @@ func TestBasicAttestationDER(t *testing.T) {
 		SubjectLocation:   NewLocationSchemeInstanceURL("test", 1),
 	})
 	require.NoError(t, err)
-
+	kpdc := NewKeyPoolDecryptionContext()
+	kpdc.AddEntity(source.EntitySecrets.Entity)
 	readback, err := ParseAttestation(context.Background(), &PParseAttestation{
-		DER: rv.DER,
+		DER:               rv.DER,
+		DecryptionContext: kpdc,
 	})
 	require.NoError(t, err)
 	rbder, err := readback.Attestation.DER()

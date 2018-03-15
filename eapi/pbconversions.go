@@ -7,6 +7,7 @@ import (
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/serdes"
+	"github.com/immesys/wave/wve"
 )
 
 func TimeFromInt64MillisWithDefault(v int64, def time.Time) *time.Time {
@@ -27,6 +28,15 @@ func LocationSchemeInstance(in *pb.Location) iapi.LocationSchemeInstance {
 	return iapi.NewLocationSchemeInstanceURL(in.LocationURI.URI, int(in.LocationURI.Version))
 }
 
+func ToError(e wve.WVE) *pb.Error {
+	if e == nil {
+		return nil
+	}
+	return &pb.Error{
+		Code:    int32(e.Code()),
+		Message: e.Error(),
+	}
+}
 func ConvertHashScheme(in string) iapi.HashScheme {
 	if in == serdes.Sha3_256OID.String() {
 		return iapi.SHA3
@@ -65,17 +75,11 @@ func ConvertPolicy(in *pb.Policy) iapi.PolicySchemeInstance {
 			Indirections: int(in.RTreePolicy.Indirections),
 		}
 		ehash := iapi.HashSchemeInstanceFromMultihash(in.RTreePolicy.Namespace)
-		ext, err := ehash.CanonicalForm()
-		if err != nil {
-			panic(err)
-		}
+		ext := ehash.CanonicalForm()
 		spol.Namespace = *ext
 		for _, st := range in.RTreePolicy.Statements {
 			pset := iapi.HashSchemeInstanceFromMultihash(st.PermissionSet)
-			ext, err := pset.CanonicalForm()
-			if err != nil {
-				panic(err)
-			}
+			ext := pset.CanonicalForm()
 			spol.Statements = append(spol.Statements, serdes.RTreeStatement{
 				Permissions:   st.Permissions,
 				PermissionSet: *ext,

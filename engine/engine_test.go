@@ -44,14 +44,14 @@ func init() {
 
 func TestAttestationOneHop(t *testing.T) {
 	ctx := context.Background()
-	src, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
-	dst, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
+	src, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	dst, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
 
 	//Create the attestation
-	pol, err := iapi.NewTrustLevelPolicy(3)
-	require.NoError(t, err)
+	pol, uerr := iapi.NewTrustLevelPolicy(3)
+	require.NoError(t, uerr)
 	bodyscheme := &iapi.WR1BodyScheme{}
 	rv, err := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
 		Policy: pol,
@@ -70,17 +70,18 @@ func TestAttestationOneHop(t *testing.T) {
 	readback, err := iapi.ParseAttestation(context.Background(), &iapi.PParseAttestation{
 		DER: rv.DER,
 	})
-	atthash, err := iapi.SI().PutAttestation(context.Background(), inmem, readback.Attestation)
 	require.NoError(t, err)
-	_, err = iapi.SI().PutEntity(context.Background(), inmem, src.EntitySecrets.Entity)
-	require.NoError(t, err)
-	_, err = iapi.SI().PutEntity(context.Background(), inmem, dst.EntitySecrets.Entity)
-	require.NoError(t, err)
-	err = iapi.SI().Enqueue(context.Background(), inmem, dst.EntitySecrets.Entity.Keccak256HI(), atthash)
-	require.NoError(t, err)
+	atthash, uerr := iapi.SI().PutAttestation(context.Background(), inmem, readback.Attestation)
+	require.NoError(t, uerr)
+	_, uerr = iapi.SI().PutEntity(context.Background(), inmem, src.EntitySecrets.Entity)
+	require.NoError(t, uerr)
+	_, uerr = iapi.SI().PutEntity(context.Background(), inmem, dst.EntitySecrets.Entity)
+	require.NoError(t, uerr)
+	uerr = iapi.SI().Enqueue(context.Background(), inmem, dst.EntitySecrets.Entity.Keccak256HI(), atthash)
+	require.NoError(t, uerr)
 
-	eng, err := NewEngine(ctx, ws, iapi.SI(), dst.EntitySecrets, inmem)
-	require.NoError(t, err)
+	eng, uerr := NewEngine(ctx, ws, iapi.SI(), dst.EntitySecrets, inmem)
+	require.NoError(t, uerr)
 	select {
 	case <-eng.WaitForEmptySyncQueue():
 	case <-time.After(10 * time.Second):
@@ -109,18 +110,18 @@ loop:
 
 func TestAttestationTwoHop(t *testing.T) {
 	ctx := context.Background()
-	A, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
-	B, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
-	C, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
+	A, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	B, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	C, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
 
 	//Create the attestation from A to B
-	pol, err := iapi.NewTrustLevelPolicy(3)
-	require.NoError(t, err)
+	pol, uerr := iapi.NewTrustLevelPolicy(3)
+	require.NoError(t, uerr)
 	bodyscheme := &iapi.WR1BodyScheme{}
-	rv, err := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
+	rv, werr := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
 		Policy: pol,
 		//TODO test with this, it fails right now
 		//HashScheme:        &HashScheme_Sha3_256{},
@@ -132,10 +133,11 @@ func TestAttestationTwoHop(t *testing.T) {
 		Subject:           B.EntitySecrets.Entity,
 		SubjectLocation:   inmem,
 	})
-	require.NoError(t, err)
-	readbackAB, err := iapi.ParseAttestation(context.Background(), &iapi.PParseAttestation{
+	require.NoError(t, werr)
+	readbackAB, werr := iapi.ParseAttestation(context.Background(), &iapi.PParseAttestation{
 		DER: rv.DER,
 	})
+	require.NoError(t, werr)
 	hashAB, err := iapi.SI().PutAttestation(context.Background(), inmem, readbackAB.Attestation)
 	require.NoError(t, err)
 
@@ -156,19 +158,19 @@ func TestAttestationTwoHop(t *testing.T) {
 	readbackBC, err := iapi.ParseAttestation(context.Background(), &iapi.PParseAttestation{
 		DER: rv.DER,
 	})
-	hashBC, err := iapi.SI().PutAttestation(context.Background(), inmem, readbackBC.Attestation)
-	require.NoError(t, err)
+	hashBC, uerr := iapi.SI().PutAttestation(context.Background(), inmem, readbackBC.Attestation)
+	require.NoError(t, uerr)
 
-	_, err = iapi.SI().PutEntity(context.Background(), inmem, A.EntitySecrets.Entity)
-	require.NoError(t, err)
-	_, err = iapi.SI().PutEntity(context.Background(), inmem, B.EntitySecrets.Entity)
-	require.NoError(t, err)
-	_, err = iapi.SI().PutEntity(context.Background(), inmem, C.EntitySecrets.Entity)
-	require.NoError(t, err)
-	err = iapi.SI().Enqueue(context.Background(), inmem, B.EntitySecrets.Entity.Keccak256HI(), hashAB)
-	require.NoError(t, err)
-	err = iapi.SI().Enqueue(context.Background(), inmem, C.EntitySecrets.Entity.Keccak256HI(), hashBC)
-	require.NoError(t, err)
+	_, uerr = iapi.SI().PutEntity(context.Background(), inmem, A.EntitySecrets.Entity)
+	require.NoError(t, uerr)
+	_, uerr = iapi.SI().PutEntity(context.Background(), inmem, B.EntitySecrets.Entity)
+	require.NoError(t, uerr)
+	_, uerr = iapi.SI().PutEntity(context.Background(), inmem, C.EntitySecrets.Entity)
+	require.NoError(t, uerr)
+	uerr = iapi.SI().Enqueue(context.Background(), inmem, B.EntitySecrets.Entity.Keccak256HI(), hashAB)
+	require.NoError(t, uerr)
+	uerr = iapi.SI().Enqueue(context.Background(), inmem, C.EntitySecrets.Entity.Keccak256HI(), hashBC)
+	require.NoError(t, uerr)
 
 	eng, err := NewEngine(ctx, ws, iapi.SI(), C.EntitySecrets, inmem)
 	require.NoError(t, err)
@@ -220,15 +222,15 @@ loop2:
 
 func TestAttestationTwoHopRTree(t *testing.T) {
 	ctx := context.Background()
-	A, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
-	B, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
-	C, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
+	A, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	B, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	C, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
 
-	NS, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
+	NS, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
 
 	//Create the attestation from A to B
 	sdpol := serdes.RTreePolicy{}
@@ -344,15 +346,15 @@ loop2:
 
 func TestAttestationTwoHopRTreeNoVis(t *testing.T) {
 	ctx := context.Background()
-	A, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
-	B, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
-	C, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
+	A, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	B, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	C, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
 
-	NS, err := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
-	require.NoError(t, err)
+	NS, werr := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	require.NoError(t, werr)
 
 	//Create the attestation from A to B
 	sdpol := serdes.RTreePolicy{}

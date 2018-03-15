@@ -8,6 +8,7 @@ import (
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/wve"
 	"google.golang.org/grpc"
 )
 
@@ -110,11 +111,15 @@ func (e *eAPI) PublishEntity(ctx context.Context, p *pb.PublishEntityParams) (*p
 		DER: p.DER,
 	})
 	if err != nil {
-		panic(err)
+		return &pb.PublishEntityResponse{
+			Error: ToError(err),
+		}, nil
 	}
-	hi, err := iapi.SI().PutEntity(ctx, loc, rve.Entity)
-	if err != nil {
-		panic(err)
+	hi, uerr := iapi.SI().PutEntity(ctx, loc, rve.Entity)
+	if uerr != nil {
+		return &pb.PublishEntityResponse{
+			Error: ToError(wve.ErrW(wve.StorageError, "could not put entity", uerr)),
+		}, nil
 	}
 	return &pb.PublishEntityResponse{
 		Hash: hi.Multihash(),
@@ -131,9 +136,11 @@ func (e *eAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationP
 	if rvp.IsMalformed {
 		panic(rvp)
 	}
-	hi, err := iapi.SI().PutAttestation(ctx, loc, rvp.Attestation)
-	if err != nil {
-		panic(err)
+	hi, uerr := iapi.SI().PutAttestation(ctx, loc, rvp.Attestation)
+	if uerr != nil {
+		return &pb.PublishAttestationResponse{
+			Error: ToError(wve.ErrW(wve.StorageError, "could not put attestation", uerr)),
+		}, nil
 	}
 	return &pb.PublishAttestationResponse{
 		Hash: hi.Multihash(),
@@ -153,14 +160,20 @@ func (e *eAPI) AddAttestation(ctx context.Context, p *pb.AddAttestationParams) (
 		DecryptionContext: dctx,
 	})
 	if err != nil {
-		panic(err)
+		return &pb.AddAttestationResponse{
+			Error: ToError(err),
+		}, nil
 	}
 	if rvp.IsMalformed {
-		panic(rvp)
+		return &pb.AddAttestationResponse{
+			Error: ToError(wve.Err(wve.MalformedObject, "attestation malformed")),
+		}, nil
 	}
-	err = eng.InsertAttestation(ctx, rvp.Attestation)
-	if err != nil {
-		panic(err)
+	uerr := eng.InsertAttestation(ctx, rvp.Attestation)
+	if uerr != nil {
+		return &pb.AddAttestationResponse{
+			Error: ToError(wve.ErrW(wve.UnknownError, "could not insert", uerr)),
+		}, nil
 	}
 	return &pb.AddAttestationResponse{}, nil
 }

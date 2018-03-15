@@ -5,6 +5,7 @@ import (
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
+	"github.com/immesys/wave/wve"
 )
 
 // In all of these, the context is assumed to contain the perspective entity secret
@@ -18,6 +19,7 @@ type RevocationScheme interface {
 }
 
 type BodyDecryptionContext interface {
+	EntityByHashLoc(ctx context.Context, h HashSchemeInstance, loc LocationSchemeInstance) (*Entity, wve.WVE)
 }
 type BodyEncryptionContext interface {
 	//EntityFromHash(ctx context.Context, hash HashScheme) (Entity, error)
@@ -28,9 +30,9 @@ type AttestationBodyScheme interface {
 	EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error)
 }
 
-type OuterSignatureSchemeInstance interface {
+type OuterSignatureScheme interface {
 	Scheme
-	VerifySignature(ctx context.Context, canonicalForm *serdes.WaveAttestation) error
+	VerifySignature(ctx context.Context, canonicalForm *serdes.WaveAttestation) wve.WVE
 }
 
 type PolicySchemeInstance interface {
@@ -64,7 +66,7 @@ type HashSchemeInstance interface {
 
 type OuterSignatureBindingScheme interface {
 	Scheme
-	VerifyBinding(ctx context.Context, decodedForm *serdes.WaveAttestation) error
+	VerifyBinding(ctx context.Context, att *Attestation, attester *Entity) wve.WVE
 }
 
 type LocationSchemeInstance interface {

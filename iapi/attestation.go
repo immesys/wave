@@ -201,7 +201,52 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 		DecryptedBody: decoded,
 	}
 
-	//TODO Check signature
+	if decoded != nil && p.DecryptionContext != nil {
+		attesterHash := HashSchemeInstanceFor(&decoded.VerifierBody.Attester)
+		attesterloc := LocationSchemeInstanceFor(&decoded.VerifierBody.AttesterLocation)
+		if err != nil {
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, wve.ErrW(wve.UnknownError, "could not get attester details", err)
+		}
+		attester, werr := p.DecryptionContext.EntityByHashLoc(ctx, attesterHash, attesterloc)
+		if werr != nil {
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, werr
+		}
+		if attester == nil {
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, wve.Err(wve.LookupFailure, "could not resolve attesting entity")
+		}
+		//Check signature binding
+		osigbinding := OuterSignatureBindingSchemeFor(&decoded.VerifierBody.OuterSignatureBinding)
+		if !osigbinding.Supported() {
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, wve.Err(wve.UnsupportedSignatureScheme, "outer signature binding not supported")
+		}
+		werr = osigbinding.VerifyBinding(ctx, &rv, attester)
+		if werr != nil {
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, werr
+		}
+		//Check signature
+		osig := OuterSignatureSchemeFor(&att.OuterSignature)
+		if !osig.Supported() {
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, wve.Err(wve.UnsupportedSignatureScheme, "outer signature not supported")
+		}
+		werr = osig.VerifySignature(ctx, att)
+		if werr != nil {
+			return &RParseAttestation{
+				IsMalformed: true,
+			}, werr
+		}
+	} //end if decrypted
 	wr1extra, ok := extra.(*WR1Extra)
 	if ok {
 		rv.WR1Extra = wr1extra
