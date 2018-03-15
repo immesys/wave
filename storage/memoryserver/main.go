@@ -55,7 +55,7 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body.Close()
-	hash, _ := iapi.KECCAK256.Instance(params.DER)
+	hash := iapi.KECCAK256.Instance(params.DER)
 	hashstring := base64.URLEncoding.EncodeToString(hash.Value())
 	db[hashstring] = params.DER
 	resp := simplehttp.PutObjectResponse{

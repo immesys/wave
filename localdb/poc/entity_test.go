@@ -46,8 +46,7 @@ func TestStoreLoadEntity(t *testing.T) {
 	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
 	err = db.MoveEntityInterestingP(ctx, ent, tloc)
 	require.NoError(t, err)
-	hi, err := ent.Hash(context.Background(), iapi.KECCAK256)
-	require.NoError(t, err)
+	hi := ent.Hash(iapi.KECCAK256)
 
 	rent, err := db.GetEntityByHashSchemeInstanceG(ctx, hi)
 	require.NoError(t, err)

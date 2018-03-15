@@ -15,10 +15,7 @@ func keccakFromHI(h iapi.HashSchemeInstance) []byte {
 	return val
 }
 func keccakFromAtt(att *iapi.Attestation) []byte {
-	hsh, err := att.Hash(context.Background(), iapi.KECCAK256)
-	if err != nil {
-		panic(err)
-	}
+	hsh := att.Hash(iapi.KECCAK256)
 	val := hsh.Value()
 	return val
 }

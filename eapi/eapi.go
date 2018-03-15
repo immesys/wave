@@ -165,6 +165,8 @@ func (e *eAPI) AddAttestation(ctx context.Context, p *pb.AddAttestationParams) (
 	return &pb.AddAttestationResponse{}, nil
 }
 func (e *eAPI) LookupAttestations(ctx context.Context, p *pb.LookupAttestationsParams) (*pb.LookupAttestationsResponse, error) {
+	// eng := e.getEngine(ctx, p.Perspective)
+	// err := eng.Loo
 	panic("ni")
 }
 func (e *eAPI) ResyncPerspectiveGraph(ctx context.Context, p *pb.ResyncPerspectiveGraphParams) (*pb.ResyncPerspectiveGraphResponse, error) {

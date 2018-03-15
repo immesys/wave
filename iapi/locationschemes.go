@@ -31,8 +31,8 @@ func (ls *UnsupportedLocationSchemeInstance) Supported() bool {
 func (ls *UnsupportedLocationSchemeInstance) Equal(rhs LocationSchemeInstance) bool {
 	return false
 }
-func (ls *UnsupportedLocationSchemeInstance) CanonicalForm() (*asn1.External, error) {
-	return nil, fmt.Errorf("Location scheme is unsupported")
+func (ls *UnsupportedLocationSchemeInstance) CanonicalForm() *asn1.External {
+	panic("CanonicalForm called on unsupported location scheme instance")
 }
 func (ls *UnsupportedLocationSchemeInstance) IdHash() [32]byte {
 	return [32]byte{}
@@ -45,9 +45,9 @@ type LocationSchemeInstanceURL struct {
 	idhash     []byte
 }
 
-func (ls *LocationSchemeInstanceURL) CanonicalForm() (*asn1.External, error) {
+func (ls *LocationSchemeInstanceURL) CanonicalForm() *asn1.External {
 	ex := asn1.NewExternal(*ls.SerdesForm)
-	return &ex, nil
+	return &ex
 }
 func (ls *LocationSchemeInstanceURL) Supported() bool {
 	return true

@@ -35,10 +35,10 @@ type OuterSignatureSchemeInstance interface {
 
 type PolicySchemeInstance interface {
 	Scheme
-	CanonicalForm(ctx context.Context) (*asn1.External, error)
+	CanonicalForm() *asn1.External
 	//These are required for WR1 support
-	WR1DomainEntity(ctx context.Context) (HashSchemeInstance, error)
-	WR1Partition(ctx context.Context) ([][]byte, error)
+	WR1DomainEntity() HashSchemeInstance
+	WR1Partition() [][]byte
 }
 type PolicyAddendumSchemeInstance interface {
 	Scheme
@@ -47,7 +47,7 @@ type PolicyAddendumSchemeInstance interface {
 type HashScheme interface {
 	Scheme
 	//Digest(ctx context.Context, input []byte) ([]byte, error)
-	Instance(input []byte) (HashSchemeInstance, error)
+	Instance(input []byte) HashSchemeInstance
 	OID() asn1.ObjectIdentifier
 }
 type HashSchemeInstance interface {
@@ -56,7 +56,7 @@ type HashSchemeInstance interface {
 	Value() []byte
 	Multihash() []byte
 	MultihashString() string
-	CanonicalForm() (*asn1.External, error)
+	CanonicalForm() *asn1.External
 	OID() asn1.ObjectIdentifier
 }
 
@@ -69,7 +69,7 @@ type OuterSignatureBindingScheme interface {
 
 type LocationSchemeInstance interface {
 	Scheme
-	CanonicalForm() (*asn1.External, error)
+	CanonicalForm() *asn1.External
 	IdHash() [32]byte
 	Equal(l LocationSchemeInstance) bool
 }
@@ -82,7 +82,8 @@ type EntityKeyringSchemeInstance interface {
 }
 
 type EntitySecretKeySchemeInstance interface {
-	Public() (EntityKeySchemeInstance, error)
+	Scheme
+	Public() EntityKeySchemeInstance
 	SignCertify(ctx context.Context, content []byte) ([]byte, error)
 	//Signing signature bindings or signing DER (for ephemeral)
 	SignAttestation(ctx context.Context, content []byte) ([]byte, error)
@@ -90,7 +91,7 @@ type EntitySecretKeySchemeInstance interface {
 	DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error)
 	DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error)
 	GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error)
-	SecretCanonicalForm(ctx context.Context) (*serdes.EntityKeyringEntry, error)
+	SecretCanonicalForm() *serdes.EntityKeyringEntry
 	Equal(rhs EntitySecretKeySchemeInstance) bool
 }
 type SlottedSecretKey interface {
@@ -120,7 +121,7 @@ type EntityKeySchemeInstance interface {
 	VerifyMessage(ctx context.Context, data []byte, signature []byte) error
 	EncryptMessage(ctx context.Context, content []byte) ([]byte, error)
 	GenerateChildKey(ctx context.Context, identity interface{}) (EntityKeySchemeInstance, error)
-	CanonicalForm(ctx context.Context) (*serdes.EntityPublicKey, error)
+	CanonicalForm() *serdes.EntityPublicKey
 }
 
 type AttestationVerifierBodyKeySchemeInstance interface {

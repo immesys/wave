@@ -1,7 +1,6 @@
 package iapi
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/immesys/asn1"
@@ -31,14 +30,14 @@ type UnsupportedPolicySchemeInstance struct {
 func (ps *UnsupportedPolicySchemeInstance) Supported() bool {
 	return false
 }
-func (ps *UnsupportedPolicySchemeInstance) CanonicalForm(ctx context.Context) (*asn1.External, error) {
-	return &ps.SerdesForm, nil
+func (ps *UnsupportedPolicySchemeInstance) CanonicalForm() *asn1.External {
+	return &ps.SerdesForm
 }
-func (ps *UnsupportedPolicySchemeInstance) WR1DomainEntity(ctx context.Context) (HashSchemeInstance, error) {
-	return nil, fmt.Errorf("this policy scheme is not supported")
+func (ps *UnsupportedPolicySchemeInstance) WR1DomainEntity() HashSchemeInstance {
+	panic("WR1DomainEntity() called on unsupported policy")
 }
-func (ps *UnsupportedPolicySchemeInstance) WR1Partition(ctx context.Context) ([][]byte, error) {
-	return nil, fmt.Errorf("this policy scheme is not supported")
+func (ps *UnsupportedPolicySchemeInstance) WR1Partition() [][]byte {
+	panic("WR1Partition() called on unsupported policy")
 }
 
 var _ PolicySchemeInstance = &TrustLevelPolicy{}
@@ -59,15 +58,15 @@ type TrustLevelPolicy struct {
 func (ps *TrustLevelPolicy) Supported() bool {
 	return true
 }
-func (ps *TrustLevelPolicy) CanonicalForm(ctx context.Context) (*asn1.External, error) {
-	return &ps.SerdesForm, nil
+func (ps *TrustLevelPolicy) CanonicalForm() *asn1.External {
+	return &ps.SerdesForm
 }
 
-func (ps *TrustLevelPolicy) WR1DomainEntity(ctx context.Context) (HashSchemeInstance, error) {
-	return nil, nil
+func (ps *TrustLevelPolicy) WR1DomainEntity() HashSchemeInstance {
+	return nil
 }
-func (ps *TrustLevelPolicy) WR1Partition(ctx context.Context) ([][]byte, error) {
-	return make([][]byte, 20), nil
+func (ps *TrustLevelPolicy) WR1Partition() [][]byte {
+	return make([][]byte, 20)
 }
 
 type RTreePolicy struct {
@@ -92,14 +91,14 @@ func NewRTreePolicyScheme(policy serdes.RTreePolicy, visuri [][]byte) (*RTreePol
 func (ps *RTreePolicy) Supported() bool {
 	return true
 }
-func (ps *RTreePolicy) CanonicalForm(ctx context.Context) (*asn1.External, error) {
+func (ps *RTreePolicy) CanonicalForm() *asn1.External {
 	ext := asn1.NewExternal(ps.SerdesForm)
-	return &ext, nil
+	return &ext
 }
 
-func (ps *RTreePolicy) WR1DomainEntity(ctx context.Context) (HashSchemeInstance, error) {
-	return HashSchemeInstanceFor(&ps.SerdesForm.Namespace), nil
+func (ps *RTreePolicy) WR1DomainEntity() HashSchemeInstance {
+	return HashSchemeInstanceFor(&ps.SerdesForm.Namespace)
 }
-func (ps *RTreePolicy) WR1Partition(ctx context.Context) ([][]byte, error) {
-	return ps.VisibilityURI, nil
+func (ps *RTreePolicy) WR1Partition() [][]byte {
+	return ps.VisibilityURI
 }

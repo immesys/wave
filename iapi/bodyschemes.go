@@ -271,18 +271,12 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	// if err != nil {
 	// 	return nil, err
 	// }
-	visibilityEntity, err := policy.WR1DomainEntity(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
+	visibilityEntity := policy.WR1DomainEntity()
 	var visibilityID string = "$GLOBAL"
 	if visibilityEntity != nil {
 		visibilityID = fmt.Sprintf("%s:%x", visibilityEntity.OID().String(), visibilityEntity.Value())
 	}
-	bodySlots, err := policy.WR1Partition(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
+	bodySlots := policy.WR1Partition()
 	visibilityParams, err := subject.WR1_DomainVisiblityParams()
 	if err != nil {
 		return nil, nil, err
@@ -330,15 +324,9 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 
 	//Copy the fields
 	proverBody.Addendums = plaintextBody.ProverPolicyAddendums
-	dvkSCF, err := delegatedVisibilityKey.SecretCanonicalForm(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
+	dvkSCF := delegatedVisibilityKey.SecretCanonicalForm()
 	proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(serdes.WR1DomainVisibilityKey_IBE_BN256(*dvkSCF)))
-	dbkSCF, err := delegatedBodyKey.SecretCanonicalForm(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
+	dbkSCF := delegatedBodyKey.SecretCanonicalForm()
 	proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(serdes.WR1PartitionKey_OAQUE_BN256_s20(*dbkSCF)))
 	proverBody.Extensions = plaintextBody.ProverExtensions
 	verifierBody.AttestationVerifierBody = plaintextBody.VerifierBody
@@ -456,16 +444,8 @@ func (psk *PSKBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionCont
 	err = fmt.Errorf("no appropriate PSK found")
 	pskec.GetEncryptPSK(ctx, intermediateForm, func(k EntitySecretKeySchemeInstance) bool {
 		ct := serdes.PSKBodyCiphertext{}
-		pub, serr := k.Public()
-		if serr != nil {
-			err = serr
-			return false
-		}
-		cf, serr := pub.CanonicalForm(ctx)
-		if serr != nil {
-			err = serr
-			return false
-		}
+		pub := k.Public()
+		cf := pub.CanonicalForm()
 		ct.EncryptedUnder = *cf
 		der, serr := asn1.Marshal(intermediateForm)
 		if serr != nil {

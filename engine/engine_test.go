@@ -232,8 +232,7 @@ func TestAttestationTwoHopRTree(t *testing.T) {
 
 	//Create the attestation from A to B
 	sdpol := serdes.RTreePolicy{}
-	nsh, err := NS.EntitySecrets.Entity.Keccak256HI().CanonicalForm()
-	require.NoError(t, err)
+	nsh := NS.EntitySecrets.Entity.Keccak256HI().CanonicalForm()
 	sdpol.Namespace = *nsh
 	sdpol.Indirections = 5
 	sdpol.Statements = append(sdpol.Statements, serdes.RTreeStatement{
@@ -357,8 +356,7 @@ func TestAttestationTwoHopRTreeNoVis(t *testing.T) {
 
 	//Create the attestation from A to B
 	sdpol := serdes.RTreePolicy{}
-	nsh, err := NS.EntitySecrets.Entity.Keccak256HI().CanonicalForm()
-	require.NoError(t, err)
+	nsh := NS.EntitySecrets.Entity.Keccak256HI().CanonicalForm()
 	sdpol.Namespace = *nsh
 	sdpol.Indirections = 5
 	sdpol.Statements = append(sdpol.Statements, serdes.RTreeStatement{

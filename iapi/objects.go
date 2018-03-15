@@ -18,20 +18,12 @@ type Entity struct {
 	Extensions    []ExtensionSchemeInstance
 }
 
-func (e *Entity) Hash(ctx context.Context, scheme HashScheme) (HashSchemeInstance, error) {
-	// e.cachemu.Lock()
-	// defer e.cachemu.Unlock()
-	// soid := scheme.String()
-	// cached, ok := e.CachedHashes[soid]
-	// if ok {
-	// 	return cached
-	// }
+func (e *Entity) Hash(scheme HashScheme) HashSchemeInstance {
 	der, err := e.DER()
 	if err != nil {
 		panic(err)
 	}
-	rv, err := scheme.Instance(der)
-	return rv, err
+	return scheme.Instance(der)
 }
 
 func (e *Entity) DER() ([]byte, error) {
@@ -71,18 +63,12 @@ func (e *Entity) WR1_DirectEncryptionKey() (EntityKeySchemeInstance, error) {
 	return nil, fmt.Errorf("no WR1 Curve25519 key found")
 }
 func (e *Entity) Keccak256() []byte {
-	hi, err := e.Hash(context.Background(), KECCAK256)
-	if err != nil {
-		panic(err)
-	}
+	hi := e.Hash(KECCAK256)
 	rv := hi.Value()
 	return rv
 }
 func (e *Entity) Keccak256HI() HashSchemeInstance {
-	rv, err := e.Hash(context.Background(), KECCAK256)
-	if err != nil {
-		panic(err)
-	}
+	rv := e.Hash(KECCAK256)
 	return rv
 }
 func (e *Entity) ArrayKeccak256() [32]byte {
@@ -156,7 +142,7 @@ type Attestation struct {
 	PSKExtra *PSKExtra
 }
 
-func (e *Attestation) Hash(ctx context.Context, scheme HashScheme) (HashSchemeInstance, error) {
+func (e *Attestation) Hash(scheme HashScheme) HashSchemeInstance {
 	// e.cachemu.Lock()
 	// defer e.cachemu.Unlock()
 	// soid := scheme.String()
@@ -168,8 +154,8 @@ func (e *Attestation) Hash(ctx context.Context, scheme HashScheme) (HashSchemeIn
 	if err != nil {
 		panic(err)
 	}
-	rv, err := scheme.Instance(tbhder)
-	return rv, err
+	rv := scheme.Instance(tbhder)
+	return rv
 }
 
 func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
@@ -196,10 +182,7 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 	return rv
 }
 func (e *Attestation) Keccak256() []byte {
-	hi, err := e.Hash(context.Background(), KECCAK256)
-	if err != nil {
-		panic(err)
-	}
+	hi := e.Hash(KECCAK256)
 	rv := hi.Value()
 	return rv
 }
@@ -224,10 +207,7 @@ func (e *Attestation) Expired() (bool, error) {
 	return time.Now().After(v.NotAfter), nil
 }
 func (e *Attestation) Keccak256HI() HashSchemeInstance {
-	hi, err := e.Hash(context.Background(), KECCAK256)
-	if err != nil {
-		panic(err)
-	}
+	hi := e.Hash(KECCAK256)
 	return hi
 }
 func (e *Attestation) ArrayKeccak256() [32]byte {

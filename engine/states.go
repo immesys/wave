@@ -45,10 +45,7 @@ nextlocation:
 			if err != nil {
 				panic(err)
 			}
-			hi, err := hashscheme.Instance(der)
-			if err != nil {
-				panic(err)
-			}
+			hi := hashscheme.Instance(der)
 			object, nextToken, err := e.st.IterateQeueue(e.ctx, loc, hi, token)
 			if err != nil && err != iapi.ErrNoMore {
 				return 0, err

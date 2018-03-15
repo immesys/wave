@@ -42,10 +42,7 @@ func (p *poc) PKey(ctx context.Context, stuff ...string) string {
 	perspective := ctx.Value(consts.PerspectiveKey)
 	//Do it as hex to ensure we can use "/" as a separator
 	//for the sake of a perspective key it is ok to have only one type of hash
-	hshi, err := perspective.(*iapi.EntitySecrets).Entity.Hash(ctx, iapi.KECCAK256)
-	if err != nil {
-		panic(err)
-	}
+	hshi := perspective.(*iapi.EntitySecrets).Entity.Hash(iapi.KECCAK256)
 	hsh := hshi.Value()
 
 	ph := ToB64(hsh)

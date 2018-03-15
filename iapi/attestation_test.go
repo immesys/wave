@@ -9,10 +9,10 @@ import (
 )
 
 func TestBasicAttestation(t *testing.T) {
-	source, err := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
-	require.NoError(t, err)
-	dst, err := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
-	require.NoError(t, err)
+	source, werr := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
+	require.NoError(t, werr)
+	dst, werr := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
+	require.NoError(t, werr)
 	pol, err := NewTrustLevelPolicy(3)
 	require.NoError(t, err)
 	bodyscheme := NewPlaintextBodyScheme()
@@ -36,10 +36,10 @@ func TestBasicAttestation(t *testing.T) {
 	_ = readback
 }
 func TestBasicAttestationDER(t *testing.T) {
-	source, err := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
-	require.NoError(t, err)
-	dst, err := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
-	require.NoError(t, err)
+	source, werr := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
+	require.NoError(t, werr)
+	dst, werr := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
+	require.NoError(t, werr)
 	pol, err := NewTrustLevelPolicy(3)
 	require.NoError(t, err)
 	bodyscheme := NewPlaintextBodyScheme()
@@ -65,10 +65,10 @@ func TestBasicAttestationDER(t *testing.T) {
 }
 
 func oneHopAttestation(t *testing.T, delegatedOnly bool) {
-	source, err := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
-	require.NoError(t, err)
-	dst, err := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
-	require.NoError(t, err)
+	source, werr := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
+	require.NoError(t, werr)
+	dst, werr := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
+	require.NoError(t, werr)
 	pol, err := NewTrustLevelPolicy(3)
 	require.NoError(t, err)
 	bodyscheme := &WR1BodyScheme{}
