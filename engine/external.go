@@ -126,6 +126,45 @@ func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.Has
 	return rv, rve
 }
 
+func (e *Engine) LookupAttestationsTo(ctx context.Context, entityHash iapi.HashSchemeInstance, filter *iapi.LookupFromFilter) (chan *LookupResult, chan error) {
+	//The external context does not have our perspective, but we want it so the caller
+	//can cancel
+	subctx, cancel := context.WithCancel(context.WithValue(ctx, consts.PerspectiveKey, e.perspective))
+	rv := make(chan *LookupResult, 10)
+	rve := make(chan error, 1)
+	go func() error {
+		defer cancel()
+		fin := func(e error) error {
+			rve <- e
+			close(rv)
+			close(rve)
+			return e
+		}
+		for res := range e.ws.GetActiveAttestationsToP(subctx, entityHash, filter) {
+			if subctx.Err() != nil {
+				return fin(subctx.Err())
+			}
+			if res.Err != nil {
+				return fin(res.Err)
+			}
+			validity, err := e.CheckAttestation(subctx, res.Attestation)
+			if err != nil {
+				return fin(err)
+			}
+			select {
+			case rv <- &LookupResult{
+				Attestation: res.Attestation,
+				Validity:    validity,
+			}:
+			case <-subctx.Done():
+				return fin(subctx.Err())
+			}
+		}
+		return fin(nil)
+	}()
+	return rv, rve
+}
+
 type SyncStatus struct {
 	WaitSyncEmpty       chan struct{}
 	StorageStatus       map[string]iapi.StorageDriverStatus

@@ -178,6 +178,34 @@ func (e *eAPI) AddAttestation(ctx context.Context, p *pb.AddAttestationParams) (
 	return &pb.AddAttestationResponse{}, nil
 }
 func (e *eAPI) LookupAttestations(ctx context.Context, p *pb.LookupAttestationsParams) (*pb.LookupAttestationsResponse, error) {
+	if len(p.ToEntity) != 0 && len(p.FromEntity) != 0 {
+		return &pb.LookupAttestationsResponse{
+			Error: ToError(wve.Err(wve.InvalidParameter, "you should specify To entity or From entity, not both")),
+		}, nil
+	}
+	eng := e.getEngine(ctx, p.Perspective)
+	var chlr chan *engine.LookupResult
+	var cherr chan error
+	filter := engine.Filter{}
+	if len(p.FromEntity) != 0 {
+		hi := iapi.HashSchemeInstanceFromMultihash(p.FromEntity)
+		if !hi.Supported() {
+			return &pb.LookupAttestationsResponse{
+				Error: ToError(wve.Err(wve.InvalidMultihash, "FromEntity is not a supported multihash")),
+			}, nil
+		}
+		chlr, cherr = eng.LookupAttestationsFrom(ctx, hi, filter)
+	} else if len(p.ToEntity) != 0 {
+		hi := iapi.HashSchemeInstanceFromMultihash(p.ToEntity)
+		if !hi.Supported() {
+			return &pb.LookupAttestationsResponse{
+				Error: ToError(wve.Err(wve.InvalidMultihash, "FromEntity is not a supported multihash")),
+			}, nil
+		}
+		chlr, cherr = eng.LookupAttestationsTo(ctx, hi, filter)
+	}
+	//TODO this should be a stream
+	todo
 	// eng := e.getEngine(ctx, p.Perspective)
 	// err := eng.Loo
 	panic("ni")
