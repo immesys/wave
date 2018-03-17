@@ -8,6 +8,17 @@ basePath: "/v1"
 schemes:
 - "https"
 paths:
+  /info:
+    get:
+      summary: "Get details about the server"
+      description: "Return information about the hash scheme used by the server, along with its status"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "Server details"
+          schema:
+            $ref: "#/definitions/ServerInfoResponse"
   /obj:
     post:
       summary: "Add a new object"
@@ -121,6 +132,15 @@ paths:
         500:
           description: "Server error"
 definitions:
+  ServerInfoResponse:
+    type: object
+    properties:
+      hashScheme:
+        description: "OID of the hash scheme used by this location"
+        type: string
+      version:
+        description: "The software version banner"
+        type: string
   PutObjectRequest:
     type: object
     properties:
