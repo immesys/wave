@@ -27,12 +27,18 @@ import (
 func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInstance, error) {
 	switch {
 	case e.Key.OID.Equal(serdes.EntityEd25519OID):
+		if len(e.Key.Content.(serdes.EntityPublicEd25519)) != 32 {
+			return nil, fmt.Errorf("key length is incorrect")
+		}
 		return &EntityKey_Ed25519{
 			SerdesForm: e,
 			PublicKey:  ed25519.PublicKey(e.Key.Content.(serdes.EntityPublicEd25519)),
 		}, nil
 	case e.Key.OID.Equal(serdes.EntityCurve25519OID):
 		ba := [32]byte{}
+		if len(e.Key.Content.(serdes.EntityPublicCurve25519)) != 32 {
+			return nil, fmt.Errorf("key length is incorrect")
+		}
 		copy(ba[:], e.Key.Content.(serdes.EntityPublicCurve25519))
 		return &EntityKey_Curve25519{
 			SerdesForm: e,

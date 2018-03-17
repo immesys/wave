@@ -172,7 +172,6 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 		var ok bool
 		attb, ok := wo.Content.Content.(serdes.WaveAttestation)
 		if !ok {
-			fmt.Printf("failed parse3: %v\n", err)
 			return &RParseAttestation{
 				IsMalformed: true,
 			}, wve.Err(wve.UnexpectedObject, "DER is not a wave attestation")
@@ -182,6 +181,21 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 		att = p.Attestation.CanonicalForm
 	}
 
+	rv := Attestation{
+		CanonicalForm: att,
+	}
+
+	subject, subjectLoc := rv.Subject()
+	if !subject.Supported() {
+		return &RParseAttestation{
+			IsMalformed: true,
+		}, wve.Err(wve.UnsupportedHashScheme, "Subject hash is unsupported")
+	}
+	if !subjectLoc.Supported() {
+		return &RParseAttestation{
+			IsMalformed: true,
+		}, wve.Err(wve.UnsupportedLocationScheme, "Subject location is unsupported")
+	}
 	scheme := AttestationBodySchemeFor(&att.TBS.Body)
 	if !scheme.Supported() {
 		return &RParseAttestation{
@@ -196,10 +210,7 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 			IsMalformed: true,
 		}, wve.ErrW(wve.BodySchemeError, "Failed to decrypt", err)
 	}
-	rv := Attestation{
-		CanonicalForm: att,
-		DecryptedBody: decoded,
-	}
+	rv.DecryptedBody = decoded
 
 	if decoded != nil && p.DecryptionContext != nil {
 		attesterHash := HashSchemeInstanceFor(&decoded.VerifierBody.Attester)
@@ -233,20 +244,22 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 				IsMalformed: true,
 			}, werr
 		}
-		//Check signature
-		osig := OuterSignatureSchemeFor(&att.OuterSignature)
-		if !osig.Supported() {
-			return &RParseAttestation{
-				IsMalformed: true,
-			}, wve.Err(wve.UnsupportedSignatureScheme, "outer signature not supported")
-		}
-		werr = osig.VerifySignature(ctx, att)
-		if werr != nil {
-			return &RParseAttestation{
-				IsMalformed: true,
-			}, werr
-		}
 	} //end if decrypted
+
+	//Check signature
+	osig := OuterSignatureSchemeFor(&att.OuterSignature)
+	if !osig.Supported() {
+		return &RParseAttestation{
+			IsMalformed: true,
+		}, wve.Err(wve.UnsupportedSignatureScheme, "outer signature not supported")
+	}
+	werr := osig.VerifySignature(ctx, att)
+	if werr != nil {
+		return &RParseAttestation{
+			IsMalformed: true,
+		}, werr
+	}
+
 	wr1extra, ok := extra.(*WR1Extra)
 	if ok {
 		rv.WR1Extra = wr1extra

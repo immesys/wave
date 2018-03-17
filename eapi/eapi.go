@@ -37,6 +37,9 @@ func (e *eAPI) StartServer(listenaddr string) {
 }
 func (e *eAPI) getEngine(ctx context.Context, in *pb.Perspective) *engine.Engine {
 	secret := ConvertEntitySecret(ctx, in.EntitySecret)
+	if secret == nil {
+		panic("nil secret")
+	}
 	loc := LocationSchemeInstance(in.Location)
 	id := secret.Entity.ArrayKeccak256()
 	eng, ok := e.engines[id]
@@ -130,16 +133,28 @@ func (e *eAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationP
 	rvp, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
 		DER: p.DER,
 	})
+
 	if err != nil {
-		panic(err)
+		return &pb.PublishAttestationResponse{
+			Error: ToError(err),
+		}, nil
 	}
 	if rvp.IsMalformed {
-		panic(rvp)
+		return &pb.PublishAttestationResponse{
+			Error: ToError(wve.Err(wve.InternalError, "attestation is malformed")),
+		}, nil
 	}
 	hi, uerr := iapi.SI().PutAttestation(ctx, loc, rvp.Attestation)
 	if uerr != nil {
 		return &pb.PublishAttestationResponse{
 			Error: ToError(wve.ErrW(wve.StorageError, "could not put attestation", uerr)),
+		}, nil
+	}
+	subjHI, subjLoc := rvp.Attestation.Subject()
+	uerr = iapi.SI().Enqueue(ctx, subjLoc, subjHI, hi)
+	if uerr != nil {
+		return &pb.PublishAttestationResponse{
+			Error: ToError(wve.ErrW(wve.StorageError, "could not enqueue attestation", uerr)),
 		}, nil
 	}
 	return &pb.PublishAttestationResponse{
@@ -186,7 +201,7 @@ func (e *eAPI) LookupAttestations(ctx context.Context, p *pb.LookupAttestationsP
 	eng := e.getEngine(ctx, p.Perspective)
 	var chlr chan *engine.LookupResult
 	var cherr chan error
-	filter := engine.Filter{}
+	filter := &iapi.LookupFromFilter{}
 	if len(p.FromEntity) != 0 {
 		hi := iapi.HashSchemeInstanceFromMultihash(p.FromEntity)
 		if !hi.Supported() {
@@ -204,11 +219,25 @@ func (e *eAPI) LookupAttestations(ctx context.Context, p *pb.LookupAttestationsP
 		}
 		chlr, cherr = eng.LookupAttestationsTo(ctx, hi, filter)
 	}
-	//TODO this should be a stream
-	todo
-	// eng := e.getEngine(ctx, p.Perspective)
-	// err := eng.Loo
-	panic("ni")
+	rv := &pb.LookupAttestationsResponse{}
+	rva := []*pb.Attestation{}
+results:
+	for {
+		select {
+		case lr, ok := <-chlr:
+			if !ok {
+				//We are done consuming results
+				break results
+			}
+			rva = append(rva, ConvertLookupResult(lr))
+		case err := <-cherr:
+			return &pb.LookupAttestationsResponse{
+				Error: ToError(wve.ErrW(wve.LookupFailure, "could not complete lookup", err)),
+			}, nil
+		}
+	}
+	rv.Results = rva
+	return rv, nil
 }
 func (e *eAPI) ResyncPerspectiveGraph(ctx context.Context, p *pb.ResyncPerspectiveGraphParams) (*pb.ResyncPerspectiveGraphResponse, error) {
 	eng := e.getEngine(ctx, p.Perspective)

@@ -58,8 +58,9 @@ type Filter struct {
 
 type LookupResult struct {
 	//The dot but also its validity
-	Attestation *iapi.Attestation
-	Validity    *Validity
+	Attestation    *iapi.Attestation
+	KnownLocations []iapi.LocationSchemeInstance
+	Validity       *Validity
 }
 
 // received proof:
@@ -112,6 +113,7 @@ func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.Has
 			if err != nil {
 				return fin(err)
 			}
+			fmt.Printf("got validity %#v\n", validity)
 			select {
 			case rv <- &LookupResult{
 				Attestation: res.Attestation,
@@ -135,9 +137,13 @@ func (e *Engine) LookupAttestationsTo(ctx context.Context, entityHash iapi.HashS
 	go func() error {
 		defer cancel()
 		fin := func(e error) error {
+			if e == nil {
+				close(rv)
+				return e
+			}
 			rve <- e
-			close(rv)
-			close(rve)
+			//close(rv)
+			//close(rve)
 			return e
 		}
 		for res := range e.ws.GetActiveAttestationsToP(subctx, entityHash, filter) {
@@ -201,6 +207,7 @@ func (e *Engine) WaitForEmptySyncQueue() chan struct{} {
 }
 
 func (e *Engine) ResyncEntireGraph(ctx context.Context) error {
+	ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
 	return e.updateAllInterestingEntities(ctx)
 }
 
@@ -312,7 +319,6 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 
 //Unlike checkDot, this should not touch the DB, it is a read-only operation
 func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Validity, error) {
-
 	subjecth, subjloc := d.Subject()
 	subject, err := e.getEntityFromHashLoc(ctx, subjecth, subjloc)
 	if err != nil {
@@ -364,6 +370,19 @@ func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Va
 		return &Validity{
 			SrcInvalid: true,
 			Message:    fmt.Sprintf("Attester invalid: %s", srcvalid.Message),
+		}, nil
+	}
+	exp, err := d.Expired()
+	if err != nil {
+		return &Validity{
+			Expired: true,
+			Message: fmt.Sprintf("Could not check expiry: %v", err.Error()),
+		}, nil
+	}
+	if exp {
+		return &Validity{
+			Expired: true,
+			Message: fmt.Sprintf("Attestation expired"),
 		}, nil
 	}
 	return &Validity{

@@ -87,8 +87,9 @@ message AddAttestationResponse {
   Error error = 1;
 }
 message LookupAttestationsParams {
-  bytes fromEntity = 1;
-  bytes toEntity = 2;
+  Perspective perspective = 1;
+  bytes fromEntity = 2;
+  bytes toEntity = 3;
 }
 message LookupAttestationsResponse {
   Error error = 1;
@@ -117,6 +118,33 @@ message EntitySecret {
 }
 message Attestation {
   bytes DER = 1;
+  bytes hash = 2;
+  AttestationBody body = 3;
+  bytes verifierKey = 4;
+  bytes proverKey = 5;
+  bytes subjectHash = 6;
+  Location subjectLocation = 7;
+  AttestationValidity validity = 8;
+}
+
+message AttestationBody {
+  bytes DecodedBodyDER = 1;
+  bytes attesterHash = 2;
+  Location attesterLocation = 3;
+  Policy policy = 4;
+  int64 validFrom = 5;
+  int64 validUntil = 6;
+}
+
+message AttestationValidity {
+  bool valid = 1;
+  bool revoked = 2;
+  bool expired = 3;
+  bool malformed = 4;
+  bool notDecrypted = 5;
+  bool srcInvalid = 6;
+  bool dstInvalid = 7;
+  string message = 8;
 }
 message Policy {
   TrustLevelPolicy trustLevelPolicy = 1;
@@ -127,7 +155,7 @@ message TrustLevelPolicy {
 }
 message RTreePolicy {
   bytes namespace = 1;
-  int32 indirections = 2;
+  uint32 indirections = 2;
   repeated RTreePolicyStatement statements = 3;
   repeated bytes visibilityURI = 4;
 }

@@ -2,9 +2,11 @@ package eapi
 
 import (
 	"context"
+	"encoding/asn1"
 	"time"
 
 	"github.com/immesys/wave/eapi/pb"
+	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
@@ -27,7 +29,46 @@ func LocationSchemeInstance(in *pb.Location) iapi.LocationSchemeInstance {
 	}
 	return iapi.NewLocationSchemeInstanceURL(in.LocationURI.URI, int(in.LocationURI.Version))
 }
-
+func ToPbLocation(in iapi.LocationSchemeInstance) *pb.Location {
+	locuri, ok := in.(*iapi.LocationSchemeInstanceURL)
+	if !ok {
+		return nil
+	}
+	return &pb.Location{
+		LocationURI: &pb.LocationURI{
+			URI:     locuri.SerdesForm.Value,
+			Version: int32(locuri.SerdesForm.Version),
+		},
+	}
+}
+func ToPbPolicy(in iapi.PolicySchemeInstance) *pb.Policy {
+	if tl, ok := in.(*iapi.TrustLevelPolicy); ok {
+		return &pb.Policy{
+			TrustLevelPolicy: &pb.TrustLevelPolicy{
+				Trust: int32(tl.Trust),
+			},
+		}
+	}
+	if rt, ok := in.(*iapi.RTreePolicy); ok {
+		rtp := &pb.RTreePolicy{
+			Namespace:     rt.WR1DomainEntity().Multihash(),
+			Indirections:  uint32(rt.SerdesForm.Indirections),
+			VisibilityURI: rt.WR1Partition(),
+		}
+		for _, st := range rt.SerdesForm.Statements {
+			rtp.Statements = append(rtp.Statements, &pb.RTreePolicyStatement{
+				PermissionSet: iapi.HashSchemeInstanceFor(&st.PermissionSet).Multihash(),
+				Permissions:   st.Permissions,
+				Resource:      st.Resource,
+			})
+		}
+		rv := &pb.Policy{
+			RTreePolicy: rtp,
+		}
+		return rv
+	}
+	return nil
+}
 func ToError(e wve.WVE) *pb.Error {
 	if e == nil {
 		return nil
@@ -45,6 +86,55 @@ func ConvertHashScheme(in string) iapi.HashScheme {
 		return iapi.KECCAK256
 	}
 	return &iapi.UnsupportedHashScheme{}
+}
+func ConvertLookupResult(r *engine.LookupResult) *pb.Attestation {
+	rv := pb.Attestation{}
+	rv.Validity = &pb.AttestationValidity{
+		Valid:        r.Validity.Valid,
+		Revoked:      r.Validity.Revoked,
+		Expired:      r.Validity.Expired,
+		Malformed:    r.Validity.Malformed,
+		NotDecrypted: r.Validity.NotDecrypted,
+		SrcInvalid:   r.Validity.SrcInvalid,
+		DstInvalid:   r.Validity.DstInvalid,
+		Message:      r.Validity.Message,
+	}
+	der, err := r.Attestation.DER()
+	if err != nil {
+		panic(err)
+	}
+	rv.DER = der
+	rv.Hash = r.Attestation.Keccak256HI().Multihash()
+	if r.Attestation.WR1Extra != nil {
+		rv.VerifierKey = r.Attestation.WR1Extra.VerifierBodyKey
+		rv.ProverKey = r.Attestation.WR1Extra.ProverBodyKey
+	}
+	subjHI, subjLoc := r.Attestation.Subject()
+	rv.SubjectHash = subjHI.Multihash()
+	rv.SubjectLocation = ToPbLocation(subjLoc)
+
+	if r.Attestation.DecryptedBody != nil {
+		rv.Body = &pb.AttestationBody{}
+		decder, err := asn1.Marshal(*r.Attestation.DecryptedBody)
+		if err != nil {
+			panic(err)
+		}
+		rv.Body.DecodedBodyDER = decder
+		attHI, attLoc, err := r.Attestation.Attester()
+		if err != nil {
+			panic(err)
+		}
+		rv.Body.AttesterHash = attHI.Multihash()
+		rv.Body.AttesterLocation = ToPbLocation(attLoc)
+		rv.Body.ValidFrom = r.Attestation.DecryptedBody.VerifierBody.Validity.NotBefore.UnixNano()
+		rv.Body.ValidUntil = r.Attestation.DecryptedBody.VerifierBody.Validity.NotAfter.UnixNano()
+		pol, err := iapi.PolicySchemeInstanceFor(&r.Attestation.DecryptedBody.VerifierBody.Policy)
+		if err != nil {
+			panic(err)
+		}
+		rv.Body.Policy = ToPbPolicy(pol)
+	}
+	return &rv
 }
 
 // func ToPbHash(in iapi.HashSchemeInstance) *pb.Hash {

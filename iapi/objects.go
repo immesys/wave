@@ -204,7 +204,12 @@ func (e *Attestation) Expired() (bool, error) {
 		return true, fmt.Errorf("Attestation is not decrypted")
 	}
 	v := e.DecryptedBody.VerifierBody.Validity
-	return time.Now().After(v.NotAfter), nil
+	n := time.Now()
+	fmt.Printf("now is %v\n", n)
+	rv := n.After(v.NotAfter)
+	fmt.Printf("returning att expired %v\n", rv)
+	return rv, nil
+	//return time.Now().After(v.NotAfter), nil
 }
 func (e *Attestation) Keccak256HI() HashSchemeInstance {
 	hi := e.Hash(KECCAK256)
