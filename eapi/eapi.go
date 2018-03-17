@@ -35,10 +35,10 @@ func (e *eAPI) StartServer(listenaddr string) {
 	pb.RegisterWAVEServer(grpcServer, e)
 	go grpcServer.Serve(l)
 }
-func (e *eAPI) getEngine(ctx context.Context, in *pb.Perspective) *engine.Engine {
-	secret := ConvertEntitySecret(ctx, in.EntitySecret)
-	if secret == nil {
-		panic("nil secret")
+func (e *eAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engine, wve.WVE) {
+	secret, err := ConvertEntitySecret(ctx, in.EntitySecret)
+	if err != nil {
+		return nil, err
 	}
 	loc := LocationSchemeInstance(in.Location)
 	id := secret.Entity.ArrayKeccak256()
@@ -51,13 +51,16 @@ func (e *eAPI) getEngine(ctx context.Context, in *pb.Perspective) *engine.Engine
 		}
 		e.engines[id] = eng
 	}
-	return eng
+	return eng, nil
 }
 func (e *eAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.CreateEntityResponse, error) {
 	params := &iapi.PNewEntity{
 		ValidFrom:                    TimeFromInt64MillisWithDefault(p.ValidFrom, time.Now()),
 		ValidUntil:                   TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
 		CommitmentRevocationLocation: LocationSchemeInstance(p.RevocationLocation),
+	}
+	if p.SecretPassphrase != "" {
+		params.Passphrase = iapi.String(p.SecretPassphrase)
 	}
 	if params.CommitmentRevocationLocation != nil && !params.CommitmentRevocationLocation.Supported() {
 		panic("unsupported location")
@@ -73,24 +76,42 @@ func (e *eAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.
 	}, nil
 }
 func (e *eAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationParams) (*pb.CreateAttestationResponse, error) {
-	eng := e.getEngine(ctx, p.Perspective)
-	if eng == nil {
-		panic("wtf")
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.CreateAttestationResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
 	}
 	subHash := iapi.HashSchemeInstanceFromMultihash(p.SubjectHash)
 	subLoc := LocationSchemeInstance(p.SubjectLocation)
-	ent, val, err := eng.LookupEntity(ctx, subHash, subLoc)
+	ent, val, uerr := eng.LookupEntity(ctx, subHash, subLoc)
+	if uerr != nil {
+		return &pb.CreateAttestationResponse{
+			Error: ToError(wve.ErrW(wve.LookupFailure, "could not resolve subject", uerr)),
+		}, nil
+	}
 	if !val.Valid {
-		panic("Subject not valid")
+		return &pb.CreateAttestationResponse{
+			Error: ToError(wve.Err(wve.MissingParameter, "subject is not valid")),
+		}, nil
 	}
 	if ent == nil {
-		panic("subject nil")
+		return &pb.CreateAttestationResponse{
+			Error: ToError(wve.Err(wve.MissingParameter, "subject is nil")),
+		}, nil
 	}
-	secret := ConvertEntitySecret(ctx, p.Perspective.EntitySecret)
-	loc := LocationSchemeInstance(p.Perspective.Location)
-	hashScheme, err := iapi.SI().HashSchemeFor(loc)
+	secret, err := ConvertEntitySecret(ctx, p.Perspective.EntitySecret)
 	if err != nil {
-		panic(err)
+		return &pb.CreateAttestationResponse{
+			Error: ToError(err),
+		}, nil
+	}
+	loc := LocationSchemeInstance(p.Perspective.Location)
+	hashScheme, uerr := iapi.SI().HashSchemeFor(loc)
+	if err != nil {
+		return &pb.CreateAttestationResponse{
+			Error: ToError(wve.ErrW(wve.UnsupportedHashScheme, "could not get hash scheme for location", err)),
+		}, nil
 	}
 	params := &iapi.PCreateAttestation{
 		Policy:           ConvertPolicy(p.Policy),
@@ -164,7 +185,12 @@ func (e *eAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationP
 func (e *eAPI) AddAttestation(ctx context.Context, p *pb.AddAttestationParams) (*pb.AddAttestationResponse, error) {
 	//TODO even if a dot is inserted with a prover key, it seems we insert it as pending and don't actually
 	//treat it as decrypted unless we also somehow decrypt it from scratch.
-	eng := e.getEngine(ctx, p.Perspective)
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.AddAttestationResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
 	dctx := engine.NewEngineDecryptionContext(eng)
 	if p.ProverKey != nil {
 		dctx.SetProverKey(p.ProverKey)
@@ -198,7 +224,12 @@ func (e *eAPI) LookupAttestations(ctx context.Context, p *pb.LookupAttestationsP
 			Error: ToError(wve.Err(wve.InvalidParameter, "you should specify To entity or From entity, not both")),
 		}, nil
 	}
-	eng := e.getEngine(ctx, p.Perspective)
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.LookupAttestationsResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
 	var chlr chan *engine.LookupResult
 	var cherr chan error
 	filter := &iapi.LookupFromFilter{}
@@ -240,15 +271,27 @@ results:
 	return rv, nil
 }
 func (e *eAPI) ResyncPerspectiveGraph(ctx context.Context, p *pb.ResyncPerspectiveGraphParams) (*pb.ResyncPerspectiveGraphResponse, error) {
-	eng := e.getEngine(ctx, p.Perspective)
-	err := eng.ResyncEntireGraph(ctx)
+	eng, err := e.getEngine(ctx, p.Perspective)
 	if err != nil {
-		panic(err)
+		return &pb.ResyncPerspectiveGraphResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
+	uerr := eng.ResyncEntireGraph(ctx)
+	if uerr != nil {
+		return &pb.ResyncPerspectiveGraphResponse{
+			Error: ToError(wve.ErrW(wve.UnknownError, "could not sync graph", uerr)),
+		}, nil
 	}
 	return &pb.ResyncPerspectiveGraphResponse{}, nil
 }
 func (e *eAPI) SyncStatus(ctx context.Context, p *pb.SyncParams) (*pb.SyncResponse, error) {
-	eng := e.getEngine(ctx, p.Perspective)
+	eng, werr := e.getEngine(ctx, p.Perspective)
+	if werr != nil {
+		return &pb.SyncResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
+		}, nil
+	}
 	ss, err := eng.SyncStatus(ctx)
 	if err != nil {
 		panic(err)
@@ -272,10 +315,19 @@ func (e *eAPI) SyncStatus(ctx context.Context, p *pb.SyncParams) (*pb.SyncRespon
 }
 func (e *eAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncCompleteServer) error {
 	ctx := srv.Context()
-	eng := e.getEngine(ctx, p.Perspective)
+	eng, werr := e.getEngine(ctx, p.Perspective)
+	if werr != nil {
+		srv.Send(&pb.SyncResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
+		})
+		return nil
+	}
 	ss, err := eng.SyncStatus(ctx)
 	if err != nil {
-		panic(err)
+		srv.Send(&pb.SyncResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
+		})
+		return nil
 	}
 	emit := func(ss *engine.SyncStatus) {
 		rv := &pb.SyncResponse{

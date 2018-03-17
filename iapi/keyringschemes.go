@@ -83,11 +83,12 @@ func (kr *AESKeyring) DecryptKeyring(ctx context.Context, params interface{}) (d
 	if kr.SerdesForm == nil {
 		return nil, fmt.Errorf("this is not a curried keyring instance")
 	}
-	passphrase, ok := params.(string)
+	ppassphrase, ok := params.(*string)
 	if !ok {
 		return nil, fmt.Errorf("params must be a passphrase string")
 	}
-
+	passphrase := *ppassphrase
+	fmt.Printf("decrypt key %x\n", passphrase)
 	aesk := pbkdf2.Key([]byte(passphrase), kr.ciphertext.Salt, kr.ciphertext.Iterations, 32, sha3.New512)
 
 	block, err := aes.NewCipher(aesk)
@@ -118,8 +119,9 @@ func (kr *AESKeyring) DecryptKeyring(ctx context.Context, params interface{}) (d
 func (kr *AESKeyring) EncryptKeyring(ctx context.Context, plaintext *serdes.EntityKeyring, params interface{}) (encodedForm *asn1.External, err error) {
 	passphrase, ok := params.(string)
 	if !ok {
-		return nil, fmt.Errorf("requires a string passphrase")
+		return nil, fmt.Errorf("requires a *string passphrase")
 	}
+	fmt.Printf("encrypt key %x\n", passphrase)
 	salt := make([]byte, 16)
 	rand.Read(salt)
 	iterations := 100000
@@ -137,7 +139,7 @@ func (kr *AESKeyring) EncryptKeyring(ctx context.Context, plaintext *serdes.Enti
 		panic(err.Error())
 	}
 	nonce := make([]byte, aesgcm.NonceSize())
-	der, err := asn1.Marshal(plaintext)
+	der, err := asn1.Marshal(*plaintext)
 	if err != nil {
 		return nil, err
 	}

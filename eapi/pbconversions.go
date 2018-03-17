@@ -193,14 +193,14 @@ func ConvertBodyScheme(in string) iapi.AttestationBodyScheme {
 	}
 	panic("unknown body scheme")
 }
-func ConvertEntitySecret(ctx context.Context, in *pb.EntitySecret) *iapi.EntitySecrets {
+func ConvertEntitySecret(ctx context.Context, in *pb.EntitySecret) (*iapi.EntitySecrets, wve.WVE) {
 	passphrase := string(in.Passphrase)
 	ppae, err := iapi.ParseEntitySecrets(ctx, &iapi.PParseEntitySecrets{
 		DER:        in.DER,
 		Passphrase: &passphrase,
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return ppae.EntitySecrets
+	return ppae.EntitySecrets, nil
 }

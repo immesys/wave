@@ -15,6 +15,7 @@ type PNewEntity struct {
 	//If not specified defaults to Now+30 days
 	ValidUntil                   *time.Time
 	CommitmentRevocationLocation LocationSchemeInstance
+	Passphrase                   *string
 }
 type RNewEntity struct {
 	PublicDER []byte
@@ -86,8 +87,21 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 		kr.Keys = append(kr.Keys, *cf)
 	}
 
-	//Put the keyring into the secret entity object
-	en.Keyring = asn1.NewExternal(kr)
+	if p.Passphrase == nil {
+		//Put the keyring into the secret entity object
+		en.Keyring = asn1.NewExternal(kr)
+	} else {
+		//Encrypt the keyring
+		krs, err := NewEntityKeyringSchemeInstance(serdes.KeyringAES128_GCM_PBKDF2OID)
+		if err != nil {
+			panic(err)
+		}
+		ex, err := krs.EncryptKeyring(context.Background(), &kr, *p.Passphrase)
+		if err != nil {
+			panic(err)
+		}
+		en.Keyring = *ex
+	}
 
 	//For all our secret keys, put the public ones in the public entity
 	for _, ke := range kr.Keys[1:] {
@@ -230,7 +244,7 @@ func ParseEntitySecrets(ctx context.Context, p *PParseEntitySecrets) (*RParseEnt
 	}
 	keyring, uerr := krscheme.DecryptKeyring(context.Background(), p.Passphrase)
 	if uerr != nil {
-		return nil, wve.Err(wve.KeyringDecryptFailed, "could not decrypt entity secrets")
+		return nil, wve.ErrW(wve.KeyringDecryptFailed, "could not decrypt entity secrets", uerr)
 	}
 	rv := EntitySecrets{
 		Entity: en,

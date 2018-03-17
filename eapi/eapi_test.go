@@ -202,6 +202,32 @@ func TestCorruptAttestationPublish(t *testing.T) {
 		}
 	}
 }
+
+func TestWrongPassphrase(t *testing.T) {
+	ctx := context.Background()
+	_, srcSecret, _ := createAndPublishEntity(t)
+	_, _, dstHash := createAndPublishEntity(t)
+	att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		Perspective: &pb.Perspective{
+			EntitySecret: &pb.EntitySecret{
+				DER:        srcSecret,
+				Passphrase: []byte("wrongpassphrase"),
+			},
+			Location: &inmem,
+		},
+		BodyScheme:      BodySchemeWaveRef1,
+		SubjectHash:     dstHash,
+		SubjectLocation: &inmem,
+		Policy: &pb.Policy{
+			TrustLevelPolicy: &pb.TrustLevelPolicy{
+				Trust: 3,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, att.Error)
+}
+
 func TestCreateAttestationWithLookup(t *testing.T) {
 	ctx := context.Background()
 	srcPublic, srcSecret := createEntity(t)
@@ -391,11 +417,4 @@ func TestCreateAttestationWithExpiredLookup(t *testing.T) {
 	require.EqualValues(t, &inmem, res.SubjectLocation)
 	require.EqualValues(t, dstpub.Hash, res.SubjectHash)
 	require.EqualValues(t, false, res.Validity.Valid)
-	require.EqualValues(t, true, res.Validity.DstInvalid)
-	require.EqualValues(t, true, res.Validity.SrcInvalid)
-	require.EqualValues(t, true, res.Validity.Expired)
-
-	require.EqualValues(t, false, res.Validity.Malformed)
-	require.EqualValues(t, false, res.Validity.NotDecrypted)
-
 }
