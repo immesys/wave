@@ -470,11 +470,11 @@ LocationSchemes TYPE-IDENTIFIER ::= {
 --------------------------------------------------------------------------------
 hash-scheme OBJECT IDENTIFIER ::= { wave-id 9 }
 sha3-256-id OBJECT IDENTIFIER ::= { hash-scheme 1 }
-keccack-256-id OBJECT IDENTIFIER ::= { hash-scheme 2 }
+keccak-256-id OBJECT IDENTIFIER ::= { hash-scheme 2 }
 sha-256-id OBJECT IDENTIFIER ::= { hash-scheme 3 }
 HashSchemes TYPE-IDENTIFIER ::= {
   {HashSha3-256 IDENTIFIED BY sha3-256-id} |
-  {HashKeccak-256 IDENTIFIED BY keccack-256-id} |
+  {HashKeccak-256 IDENTIFIED BY keccak-256-id} |
   {HashSha-256 IDENTIFIED BY sha-256-id},
   ...
 }

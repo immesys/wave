@@ -52,15 +52,10 @@ paths:
       parameters:
       - name: "hash"
         in: "path"
-        description: "Base64 encoding of a hash returned by POST /obj"
+        description: "Base64 encoding of a multihash representation returned by POST /obj"
         required: true
         type: "string"
         format: "byte"
-      - name: "scheme"
-        in: "query"
-        description: "OID of the hash scheme used"
-        type: "string"
-        format: "oid"
       responses:
         404:
           description: "No such object exists"
@@ -72,6 +67,8 @@ paths:
             $ref: "#/definitions/ObjectResponse"
         500:
           description: "Server error"
+        400:
+            description: "Invalid input"
   /queue/{id}:
     post:
       summary: "Enqueue an object notification"
@@ -81,23 +78,25 @@ paths:
       consumes:
       - "application/json"
       parameters:
-      - name: "content"
+      - name: "body"
         in: "body"
         schema:
           $ref: "#/definitions/EnqueueRequest"
       - name: "id"
         in: "path"
-        description: "Base64 encoding of a queue id"
+        description: "Base64 encoding of a multihash formatted queue id"
         required: true
         type: "string"
         format: "byte"
       responses:
-        200:
+        201:
           description: "Queue entry accepted"
           schema:
             $ref: "#/definitions/EnqueueResponse"
         500:
           description: "Server error"
+        400:
+          description: "Invalid input"
     get:
       summary: "Retrieve a queue entry"
       description: "Retrieve a queue entry identified by the queue id and the token"
@@ -108,17 +107,13 @@ paths:
       parameters:
       - name: id
         in: path
-        description: "Base64 encoding of a hash identifying a queue"
+        description: "Base64 encoding of a multihash formatted queue id"
         required: true
         type: "string"
         format: "byte"
       - name: token
         in: query
         description: "A token indicating which element of the queue to retrieve"
-        type: "string"
-      - name: scheme
-        in: query
-        description: "An OID indicating the hash scheme"
         type: "string"
       responses:
         404:
@@ -131,6 +126,8 @@ paths:
             $ref: "#/definitions/IterateQueueResponse"
         500:
           description: "Server error"
+        400:
+          description: "Invalid input"
 definitions:
   ServerInfoResponse:
     type: object
@@ -151,11 +148,8 @@ definitions:
   PutObjectResponse:
     type: object
     properties:
-      hashScheme:
-        description: "a string OID identifying the hash scheme used by the storage"
-        type: string
       hash:
-        description: "base64 encoded hash contents"
+        description: "base64 encoded multihash giving hash scheme and contents"
         type: string
         format: binary
   ObjectResponse:
@@ -170,11 +164,8 @@ definitions:
   IterateQueueResponse:
     type: object
     properties:
-      hashScheme:
-        description: "a string OID identifying the hash scheme used by the storage"
-        type: string
       hash:
-        description: "base64 encoded hash contents"
+        description: "base64 encoded multihash of queue item's hash scheme and contents"
         type: string
         format: binary
       nextToken:
@@ -187,13 +178,7 @@ definitions:
   EnqueueRequest:
     type: object
     properties:
-      idHashScheme:
-        description: "a string OID identifying the hash scheme used by idHash"
-        type: string
-      entryHashScheme:
-        description: "a string OID identifying the hash scheme used by the entry"
-        type: string
       entryHash:
-        description: "base64 encoded entry hash contents"
+        description: "base64 encoded multihash representation of hash scheme and contents"
         type: string
         format: binary
