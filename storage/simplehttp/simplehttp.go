@@ -21,6 +21,10 @@ type PutObjectResponse struct {
 	HashScheme string `json:"hashScheme"`
 	Hash       []byte `json:"hash"`
 }
+type InfoResponse struct {
+	HashScheme string `json:"hashScheme"`
+	Version    string `json:"version"`
+}
 type ObjectResponse struct {
 	DER []byte `json:"der"`
 }

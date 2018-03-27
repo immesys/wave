@@ -13,6 +13,8 @@ import (
 	"github.com/immesys/wave/storage/simplehttp"
 )
 
+const VersionBanner = "InMem 1.1.0"
+
 var globalmu sync.Mutex
 var db map[string][]byte
 
@@ -39,6 +41,15 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	rv := simplehttp.ObjectResponse{
 		DER: content,
+	}
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(&rv)
+}
+func InfoHandler(w http.ResponseWriter, r *http.Request) {
+	r.Body.Close()
+	rv := simplehttp.InfoResponse{
+		HashScheme: iapi.KECCAK256.OID().String(),
+		Version:    VersionBanner,
 	}
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(&rv)
@@ -148,6 +159,7 @@ func Main() {
 	queues = make(map[string][][]byte)
 	r := pat.New()
 	r.Post("/v1/obj", PutHandler)
+	r.Get("/v1/info", InfoHandler)
 	r.Get("/v1/obj/{hash}", GetHandler)
 	r.Get("/v1/queue/{id}", IterateHandler)
 	r.Post("/v1/queue/{id}", EnqueueHandler)
