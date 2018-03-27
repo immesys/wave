@@ -3,10 +3,16 @@ syntax = "proto3";
 package pb;
 
 service WAVE {
+  //Create a new WAVE entity, but do not publish it
   rpc CreateEntity(CreateEntityParams) returns (CreateEntityResponse);
+  //Create a WAVE attestation, both the source and destination entities must
+  //be published
   rpc CreateAttestation(CreateAttestationParams) returns (CreateAttestationResponse);
+  //Publish the given entity
   rpc PublishEntity(PublishEntityParams) returns (PublishEntityResponse);
+  //Publish an attestation
   rpc PublishAttestation(PublishAttestationParams) returns (PublishAttestationResponse);
+  //Add an attestation to the given perspective graph
   rpc AddAttestation(AddAttestationParams) returns (AddAttestationResponse);
   rpc LookupAttestations(LookupAttestationsParams) returns (LookupAttestationsResponse);
   rpc ResyncPerspectiveGraph(ResyncPerspectiveGraphParams) returns (ResyncPerspectiveGraphResponse);

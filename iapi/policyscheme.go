@@ -1,7 +1,9 @@
 package iapi
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
@@ -101,4 +103,214 @@ func (ps *RTreePolicy) WR1DomainEntity() HashSchemeInstance {
 }
 func (ps *RTreePolicy) WR1Partition() [][]byte {
 	return ps.VisibilityURI
+}
+
+//This is only valid for attestation policies not derived policies from
+//intersections
+func (ps *RTreePolicy) CheckValid() error {
+	if len(ps.SerdesForm.Statements) > 10 {
+		return fmt.Errorf("Too many statements in RTree policy")
+	}
+	for sidx, s := range ps.SerdesForm.Statements {
+		if len(s.Permissions) > 50 {
+			return fmt.Errorf("Too many permissions in statement %d", sidx)
+		}
+		valid, _, _ := AnalyzeSuffix(s.Resource)
+		if !valid {
+			return fmt.Errorf("Statement %d has an invalid resource", sidx)
+		}
+	}
+	return true
+}
+
+//The intersection of two RTreePolicies is the set of permissions that they would
+//grant if they appeared in succession in an attestation chain
+//This function does not check indirections
+//This function assumes the policy has been checked
+func (lhs *RTreePolicy) Intersect(rhs *RTreePolicy) (result *RTreePolicy, okay bool, message string, err error) {
+	rv := &RTreePolicy{
+	//We do not copy the VisibilityURI
+	}
+	rhs_ns := HashSchemeInstanceFor(&rhs.SerdesForm.Namespace)
+	lhs_ns := HashSchemeInstanceFor(&lhs.SerdesForm.Namespace)
+	if !bytes.Equal(rhs_ns.Multihash(), lhs_ns.Multihash()) {
+		return nil, false, "different authority domain", nil
+	}
+	//todo intersect every statement
+}
+
+func intersectStatement(lhs *serdes.RTreeStatement, rhs *serdes.RTreeStatement) (result *serdes.RTreeStatement, okay bool) {
+	lhs_ps := HashSchemeInstanceFor(&lhs.PermissionSet)
+	rhs_phs := HashSchemeInstanceFor(&rhs.PermissionSet)
+	if !HashSchemeInstanceEqual(lhs_ps, rhs_ps) {
+		return nil, false
+	}
+	lhs_perms := make(map[string]bool)
+	for _, perm := range lhs.Permissions {
+		lhs_perms[perm] = true
+	}
+	intersectionPerms := []string{}
+	for _, rperm := range rhs.Permissions {
+		if lhs_perms[rperm] {
+			intersectionPerms = append(intersectionPerms, rperm)
+		}
+	}
+	if len(intersectionPerms) == 0 {
+		return nil, false
+	}
+	//Now to intersect the resource itself:
+	intersectionResource, okay := RestrictBy(lhs.Resource, rhs.Resource)
+	if !okay {
+		return nil, false
+	}
+	return &serdes.RTreeStatement{
+		PermissionSet: lhs.PermissionSet,
+		Permissions:   intersectionPerms,
+		Resource:      intersectionResource,
+	}, true
+}
+
+// Copied verbatim from bosswave
+// RestrictBy takes a topic, and a permission, and returns the intersection
+// that represents the from topic restricted by the permission. It took a
+// looong time to work out this logic...
+func RestrictBy(from string, by string) (string, bool) {
+	fp := strings.Split(from, "/")
+	bp := strings.Split(by, "/")
+	fout := make([]string, 0, len(fp)+len(bp))
+	bout := make([]string, 0, len(fp)+len(bp))
+	var fsx, bsx int
+	for fsx = 0; fsx < len(fp) && fp[fsx] != "*"; fsx++ {
+	}
+	for bsx = 0; bsx < len(bp) && bp[bsx] != "*"; bsx++ {
+	}
+	fi, bi := 0, 0
+	fni, bni := len(fp)-1, len(bp)-1
+	emit := func() (string, bool) {
+		for i := 0; i < len(bout); i++ {
+			fout = append(fout, bout[len(bout)-i-1])
+		}
+		return strings.Join(fout, "/"), true
+	}
+	//phase 1
+	//emit matching prefix
+	for ; fi < len(fp) && bi < len(bp); fi, bi = fi+1, bi+1 {
+		if fp[fi] != "*" && (fp[fi] == bp[bi] || (bp[bi] == "+" && fp[fi] != "*")) {
+			fout = append(fout, fp[fi])
+		} else if fp[fi] == "+" && bp[bi] != "*" {
+			fout = append(fout, bp[bi])
+		} else {
+			break
+		}
+	}
+	//phase 2
+	//emit matching suffix
+	for ; fni >= fi && bni >= bi; fni, bni = fni-1, bni-1 {
+		if bp[bni] != "*" && (fp[fni] == bp[bni] || (bp[bni] == "+" && fp[fni] != "*")) {
+			bout = append(bout, fp[fni])
+		} else if fp[fni] == "+" && bp[bni] != "*" {
+			bout = append(bout, bp[bni])
+		} else {
+			break
+		}
+	}
+	//phase 3
+	//emit front
+	if fi < len(fp) && fp[fi] == "*" {
+		for ; bi < len(bp) && bp[bi] != "*" && bi <= bni; bi++ {
+			fout = append(fout, bp[bi])
+		}
+	} else if bi < len(bp) && bp[bi] == "*" {
+		for ; fi < len(fp) && fp[fi] != "*" && fi <= fni; fi++ {
+			fout = append(fout, fp[fi])
+		}
+	}
+	//phase 4
+	//emit back
+	if fni >= 0 && fp[fni] == "*" {
+		for ; bni >= 0 && bp[bni] != "*" && bni >= bi; bni-- {
+			bout = append(bout, bp[bni])
+		}
+	} else if bni >= 0 && bp[bni] == "*" {
+		for ; fni >= 0 && fp[fni] != "*" && fni >= fi; fni-- {
+			bout = append(bout, fp[fni])
+		}
+	}
+	//phase 5
+	//emit star if they both have it
+	if fi == fni && fp[fi] == "*" && bi == bni && bp[bi] == "*" {
+		fout = append(fout, "*")
+		return emit()
+	}
+	//Remove any stars
+	if fi < len(fp) && fp[fi] == "*" {
+		fi++
+	}
+	if bi < len(bp) && bp[bi] == "*" {
+		bi++
+	}
+	if (fi == fni+1 || fi == len(fp)) && (bi == bni+1 || bi == len(bp)) {
+		return emit()
+	}
+	return "", false
+}
+
+//A URI looks like
+// a/b/c/d ..
+// it has no slash at the start or end. There may be many plusses, and/or one star
+// each cell must look like:
+// [a-zA-Z0-9-_.\(\),]?[a-zA-Z0-9-_.\(\),]+
+// or "+", "*"
+// Note that a cell starting with an exclamation point denotes the xattr listing
+// tree. It is an error to have more than one exclamation point in
+// a URI or for it to occur not at the first character of a cell
+
+//AnalyzeSuffix checks a given URI for schema validity and possession of characteristics
+func AnalyzeSuffix(uri string) (valid, hasStar, hasPlus bool) {
+	cells := strings.Split(uri, "/")
+	valid = false
+	hasStar = false
+	hasPlus = false
+
+	for _, c := range cells {
+		ln := len(c)
+		switch ln {
+		case 0:
+			return
+		case 1:
+			switch c {
+			case "*":
+				if hasStar {
+					return
+				}
+				hasStar = true
+			case "+":
+				hasPlus = true
+			default:
+				k := c[0]
+				if !('0' <= k && k <= '9' ||
+					'a' <= k && k <= 'z' ||
+					'A' <= k && k <= 'Z' ||
+					k == '-' || k == '_' ||
+					k == ',' || k == '(' ||
+					k == ')' || k == '.') {
+					return
+				}
+			}
+		default:
+			for i := 0; i < len(c); i++ {
+				k := c[i]
+				if !('0' <= k && k <= '9' ||
+					'a' <= k && k <= 'z' ||
+					'A' <= k && k <= 'Z' ||
+					k == '-' || k == '_' ||
+					k == ',' || k == '(' ||
+					k == ')' || k == '.') {
+					return
+				}
+			}
+		}
+	}
+	valid = true
+	return
 }
