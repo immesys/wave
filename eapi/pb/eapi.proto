@@ -18,6 +18,7 @@ service WAVE {
   rpc ResyncPerspectiveGraph(ResyncPerspectiveGraphParams) returns (ResyncPerspectiveGraphResponse);
   rpc SyncStatus(SyncParams) returns (SyncResponse);
   rpc WaitForSyncComplete(SyncParams) returns (stream SyncResponse);
+  rpc BuildRTreeProof(BuildRTreeParams) returns (BuildRTreeResponse);
 }
 
 message CreateEntityParams {
@@ -169,4 +170,20 @@ message RTreePolicyStatement {
   bytes permissionSet = 1;
   repeated string permissions = 2;
   string resource = 3;
+}
+message BuildRTreeParams {
+  Perspective perspective = 1;
+  bytes subjectHash = 2;
+  bytes rtreeNamespace = 3;
+  repeated RTreePolicyStatement statements = 4;
+}
+message BuildRTreeResponse {
+  Error error = 1;
+  repeated Proof results = 2;
+  bytes proofDER = 3;
+}
+
+message Proof {
+  repeated Attestation elements = 1;
+  Policy policy = 2;
 }

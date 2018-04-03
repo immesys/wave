@@ -418,3 +418,117 @@ func TestCreateAttestationWithExpiredLookup(t *testing.T) {
 	require.EqualValues(t, dstpub.Hash, res.SubjectHash)
 	require.EqualValues(t, false, res.Validity.Valid)
 }
+
+func TestBuildRTreeProof(t *testing.T) {
+	ctx := context.Background()
+	publics := make([][]byte, 9)
+	secrets := make([][]byte, 9)
+	pubs := make([]*pb.PublishEntityResponse, 9)
+	for i := 0; i < 9; i++ {
+		publics[i], secrets[i] = createEntity(t)
+		var err error
+		pubs[i], err = eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+			DER:      publics[i],
+			Location: &inmem,
+		})
+		require.NoError(t, err)
+	}
+	perspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        secrets[8],
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+	createAt := func(from int, to int, res string, ttl int) {
+		policy := pb.RTreePolicy{
+			Namespace:    pubs[0].Hash,
+			Indirections: uint32(ttl),
+			Statements: []*pb.RTreePolicyStatement{
+				&pb.RTreePolicyStatement{
+					PermissionSet: pubs[0].Hash,
+					Permissions:   []string{"foo"},
+					Resource:      res,
+				},
+			},
+		}
+		pbpolicy := &pb.Policy{
+			RTreePolicy: &policy,
+		}
+		then := time.Now()
+		att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+			Perspective: &pb.Perspective{
+				EntitySecret: &pb.EntitySecret{
+					DER:        secrets[from],
+					Passphrase: []byte("password"),
+				},
+				Location: &inmem,
+			},
+			BodyScheme:      BodySchemeWaveRef1,
+			SubjectHash:     pubs[to].Hash,
+			SubjectLocation: &inmem,
+			Policy:          pbpolicy,
+		})
+		require.NoError(t, err)
+		require.Nil(t, att.Error)
+		fmt.Printf("XXX create took %s\n", time.Now().Sub(then))
+		then = time.Now()
+		pubresp, err := eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
+			DER:      att.DER,
+			Location: &inmem,
+		})
+		require.NoError(t, err)
+		require.Nil(t, pubresp.Error)
+		fmt.Printf("XXX publish took %s\n", time.Now().Sub(then))
+	}
+	createAt(0, 1, "a/b", 5)
+	createAt(0, 2, "c/d", 5)
+	createAt(1, 3, "a/b/c", 5)
+	createAt(1, 4, "a/b", 5)
+	createAt(4, 5, "a/b", 0)
+	createAt(4, 6, "a/b", 5)
+	createAt(6, 7, "a/b", 5)
+	createAt(3, 8, "a/b", 5)
+	createAt(5, 8, "a/b", 5)
+	createAt(7, 8, "a/b", 5)
+	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
+	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+		Perspective: perspective,
+	})
+	require.NoError(t, err)
+	require.Nil(t, rv.Error)
+	//Spin until sync complete (but don't use wait because its hard to use)
+	for {
+		ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+			Perspective: perspective,
+		})
+		require.NoError(t, err)
+		require.Nil(t, ss.Error)
+		fmt.Printf("syncs %d/%d\n", ss.TotalSyncRequests, ss.CompletedSyncs)
+		if ss.CompletedSyncs == ss.TotalSyncRequests {
+			fmt.Printf("Syncs complete")
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	fmt.Printf("==== STARTING BUILD IN DESTINATION GRAPH ====\n")
+
+	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeParams{
+		Perspective:    perspective,
+		SubjectHash:    pubs[8].Hash,
+		RtreeNamespace: pubs[0].Hash,
+		Statements: []*pb.RTreePolicyStatement{
+			&pb.RTreePolicyStatement{
+				PermissionSet: pubs[0].Hash,
+				Permissions:   []string{"foo"},
+				Resource:      "a/b",
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.EqualValues(t, 1, len(resp.Results))
+	require.EqualValues(t, 1, resp.Results[0].Policy.RTreePolicy.Indirections)
+	require.EqualValues(t, 5, len(resp.Results[0].Elements))
+	require.EqualValues(t, pubs[8].Hash, resp.Results[0].Elements[4].SubjectHash)
+}

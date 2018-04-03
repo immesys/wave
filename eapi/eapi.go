@@ -2,12 +2,15 @@ package eapi
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/policyutils/rtree"
+	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
 	"google.golang.org/grpc"
 )
@@ -370,4 +373,70 @@ func (e *eAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncComp
 		}
 	}
 	return nil
+}
+
+func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb.BuildRTreeResponse, error) {
+	eng, werr := e.getEngine(ctx, p.Perspective)
+	if werr != nil {
+		return &pb.BuildRTreeResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
+		}, nil
+	}
+
+	spol := serdes.RTreePolicy{}
+	ehash := iapi.HashSchemeInstanceFromMultihash(p.RtreeNamespace)
+	ext := ehash.CanonicalForm()
+	spol.Namespace = *ext
+	for _, st := range p.Statements {
+		pset := iapi.HashSchemeInstanceFromMultihash(st.PermissionSet)
+		ext := pset.CanonicalForm()
+		spol.Statements = append(spol.Statements, serdes.RTreeStatement{
+			Permissions:   st.Permissions,
+			PermissionSet: *ext,
+			Resource:      st.Resource,
+		})
+	}
+	pol, err := iapi.NewRTreePolicyScheme(spol, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	tb, err := rtree.NewRTreeBuilder(ctx, &rtree.Params{
+		Subject:         iapi.HashSchemeInstanceFromMultihash(p.SubjectHash),
+		Engine:          eng,
+		PolicyPredicate: rtree.NewGenericPredicateFunc(pol),
+		Start:           pol.WR1DomainEntity(),
+		EnableOutput:    true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	msgs := make(chan string, 1000)
+	go func() {
+		for {
+			select {
+			case m := <-msgs:
+				fmt.Sprintf("] " + m)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	tb.Build(msgs)
+	sols := tb.Solutions()
+	resp := &pb.BuildRTreeResponse{
+		Error:   nil,
+		Results: make([]*pb.Proof, len(sols)),
+	}
+	for idx, sol := range sols {
+		proof := &pb.Proof{
+			Policy:   ToPbPolicy(sol.Policy),
+			Elements: make([]*pb.Attestation, len(sol.Attestations)),
+		}
+		for att_idx, att := range sol.Attestations {
+			proof.Elements[att_idx] = ConvertLookupResult(att)
+		}
+		resp.Results[idx] = proof
+	}
+	return resp, nil
 }

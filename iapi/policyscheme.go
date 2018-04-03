@@ -105,14 +105,18 @@ func (ps *RTreePolicy) WR1Partition() [][]byte {
 	return ps.VisibilityURI
 }
 
+const PermittedPrimaryStatements = 10
+const PermittedCombinedStatements = 1000
+const PermittedPermissions = 50
+
 //This is only valid for attestation policies not derived policies from
 //intersections
 func (ps *RTreePolicy) CheckValid() error {
-	if len(ps.SerdesForm.Statements) > 10 {
+	if len(ps.SerdesForm.Statements) > PermittedPrimaryStatements {
 		return fmt.Errorf("Too many statements in RTree policy")
 	}
 	for sidx, s := range ps.SerdesForm.Statements {
-		if len(s.Permissions) > 50 {
+		if len(s.Permissions) > PermittedPermissions {
 			return fmt.Errorf("Too many permissions in statement %d", sidx)
 		}
 		valid, _, _ := AnalyzeSuffix(s.Resource)
@@ -120,7 +124,7 @@ func (ps *RTreePolicy) CheckValid() error {
 			return fmt.Errorf("Statement %d has an invalid resource", sidx)
 		}
 	}
-	return true
+	return nil
 }
 
 //The intersection of two RTreePolicies is the set of permissions that they would
@@ -136,12 +140,102 @@ func (lhs *RTreePolicy) Intersect(rhs *RTreePolicy) (result *RTreePolicy, okay b
 	if !bytes.Equal(rhs_ns.Multihash(), lhs_ns.Multihash()) {
 		return nil, false, "different authority domain", nil
 	}
-	//todo intersect every statement
+	statements := []serdes.RTreeStatement{}
+	for lhs_idx := 0; lhs_idx < len(lhs.SerdesForm.Statements); lhs_idx++ {
+		for rhs_idx := 0; rhs_idx < len(rhs.SerdesForm.Statements); rhs_idx++ {
+			interStatement, okay := intersectStatement(
+				&lhs.SerdesForm.Statements[lhs_idx],
+				&rhs.SerdesForm.Statements[rhs_idx])
+			if okay {
+				statements = append(statements, *interStatement)
+			}
+		}
+	}
+
+	//Now remove redundant statements
+	dedup_statements := []serdes.RTreeStatement{}
+
+next:
+	for orig_idx := 0; orig_idx < len(statements); orig_idx++ {
+		for chosen_idx := 0; chosen_idx < len(dedup_statements); chosen_idx++ {
+			if isStatementSupersetOf(&statements[orig_idx], &dedup_statements[chosen_idx]) {
+				//We already have a statement more powerful
+				continue next
+			}
+			if isStatementSupersetOf(&dedup_statements[chosen_idx], &statements[orig_idx]) {
+				//This statement is more powerful than one we have chosen. Swap them
+				dedup_statements[chosen_idx] = statements[orig_idx]
+				continue next
+			}
+
+		}
+		//This statement is useful
+		dedup_statements = append(dedup_statements, statements[orig_idx])
+	}
+
+	rv.SerdesForm = serdes.RTreePolicy{
+		Namespace: lhs.SerdesForm.Namespace,
+	}
+	if lhs.SerdesForm.Indirections < rhs.SerdesForm.Indirections {
+		rv.SerdesForm.Indirections = lhs.SerdesForm.Indirections - 1
+	} else {
+		rv.SerdesForm.Indirections = rhs.SerdesForm.Indirections - 1
+	}
+	rv.SerdesForm.Statements = dedup_statements
+
+	//Check errors
+	if rv.SerdesForm.Indirections < 0 {
+		return nil, false, "insufficient permitted indirections", nil
+	}
+	if len(rv.SerdesForm.Statements) > PermittedCombinedStatements {
+		return nil, false, "statements form too many combinations", nil
+	}
+
+	//TODO maybe calculate wr1 partitions and stuff for derived policy too?
+	return rv, true, "", nil
 }
 
+func (lhs *RTreePolicy) IsSubsetOf(superset *RTreePolicy) bool {
+	superset_ns := HashSchemeInstanceFor(&superset.SerdesForm.Namespace)
+	lhs_ns := HashSchemeInstanceFor(&lhs.SerdesForm.Namespace)
+	if !bytes.Equal(superset_ns.Multihash(), lhs_ns.Multihash()) {
+		return false
+	}
+nextStatement:
+	for _, st := range lhs.SerdesForm.Statements {
+		for _, ss := range superset.SerdesForm.Statements {
+			if isStatementSupersetOf(&st, &ss) {
+				continue nextStatement
+			}
+		}
+		return false
+	}
+	return true
+}
+func isStatementSupersetOf(subset *serdes.RTreeStatement, superset *serdes.RTreeStatement) bool {
+	lhs_ps := HashSchemeInstanceFor(&subset.PermissionSet)
+	rhs_ps := HashSchemeInstanceFor(&superset.PermissionSet)
+	if !HashSchemeInstanceEqual(lhs_ps, rhs_ps) {
+		return false
+	}
+	superset_perms := make(map[string]bool)
+	for _, perm := range superset.Permissions {
+		superset_perms[perm] = true
+	}
+	for _, perm := range subset.Permissions {
+		if !superset_perms[perm] {
+			return false
+		}
+	}
+	inter_uri, okay := RestrictBy(subset.Resource, superset.Resource)
+	if !okay {
+		return false
+	}
+	return inter_uri == subset.Resource
+}
 func intersectStatement(lhs *serdes.RTreeStatement, rhs *serdes.RTreeStatement) (result *serdes.RTreeStatement, okay bool) {
 	lhs_ps := HashSchemeInstanceFor(&lhs.PermissionSet)
-	rhs_phs := HashSchemeInstanceFor(&rhs.PermissionSet)
+	rhs_ps := HashSchemeInstanceFor(&rhs.PermissionSet)
 	if !HashSchemeInstanceEqual(lhs_ps, rhs_ps) {
 		return nil, false
 	}

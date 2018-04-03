@@ -89,17 +89,18 @@ func (e *Engine) InsertAttestation(ctx context.Context, att *iapi.Attestation) e
 //global grants will also be returned. The returned channel must be consumed
 //completely, or the context must be cancelled
 func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.HashSchemeInstance, filter *iapi.LookupFromFilter) (chan *LookupResult, chan error) {
-	//The external context does not have our perspective, but we want it so the caller
-	//can cancel
 	subctx, cancel := context.WithCancel(context.WithValue(ctx, consts.PerspectiveKey, e.perspective))
 	rv := make(chan *LookupResult, 10)
 	rve := make(chan error, 1)
 	go func() error {
 		defer cancel()
 		fin := func(e error) error {
+			if e == nil {
+				close(rv)
+				close(rve)
+				return e
+			}
 			rve <- e
-			close(rv)
-			close(rve)
 			return e
 		}
 		for res := range e.ws.GetActiveAttestationsFromP(subctx, entityHash, filter) {
@@ -113,7 +114,6 @@ func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.Has
 			if err != nil {
 				return fin(err)
 			}
-			fmt.Printf("got validity %#v\n", validity)
 			select {
 			case rv <- &LookupResult{
 				Attestation: res.Attestation,
@@ -139,6 +139,7 @@ func (e *Engine) LookupAttestationsTo(ctx context.Context, entityHash iapi.HashS
 		fin := func(e error) error {
 			if e == nil {
 				close(rv)
+				close(rve)
 				return e
 			}
 			rve <- e
