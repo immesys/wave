@@ -107,7 +107,9 @@ func (ps *RTreePolicy) WR1Partition() [][]byte {
 
 const PermittedPrimaryStatements = 10
 const PermittedCombinedStatements = 1000
-const PermittedPermissions = 50
+
+//Don't change this without rewriting tree builder
+const PermittedPermissions = 64
 
 //This is only valid for attestation policies not derived policies from
 //intersections
@@ -115,14 +117,16 @@ func (ps *RTreePolicy) CheckValid() error {
 	if len(ps.SerdesForm.Statements) > PermittedPrimaryStatements {
 		return fmt.Errorf("Too many statements in RTree policy")
 	}
+	totalPermissions := 0
 	for sidx, s := range ps.SerdesForm.Statements {
-		if len(s.Permissions) > PermittedPermissions {
-			return fmt.Errorf("Too many permissions in statement %d", sidx)
-		}
+		totalPermissions += len(s.Permissions)
 		valid, _, _ := AnalyzeSuffix(s.Resource)
 		if !valid {
 			return fmt.Errorf("Statement %d has an invalid resource", sidx)
 		}
+	}
+	if totalPermissions > PermittedPermissions {
+		return fmt.Errorf("Policy has too many permission:resource combinations (max %d)", PermittedPermissions)
 	}
 	return nil
 }
