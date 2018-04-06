@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
 )
@@ -16,8 +17,9 @@ type RTreeBuilder struct {
 	outputEnabled bool
 	subject       iapi.HashSchemeInstance
 	start         iapi.HashSchemeInstance
-
-	ref *BitsetReference
+	finalSolution *Solution
+	ref           *BitsetReference
+	nodes         map[string]*Node
 }
 
 type Params struct {
@@ -30,12 +32,19 @@ type Params struct {
 }
 
 func NewRTreeBuilder(ctx context.Context, p *Params) (*RTreeBuilder, error) {
+	wrappedPolicy := WrappedRTreePolicy(*p.Policy)
+	ref, err := wrappedPolicy.GenerateBitsetReference()
+	if err != nil {
+		return nil, err
+	}
 	return &RTreeBuilder{
 		eng:           p.Engine,
 		ctx:           ctx,
 		outputEnabled: p.EnableOutput,
 		subject:       p.Subject,
 		start:         p.Start,
+		nodes:         make(map[string]*Node),
+		ref:           ref,
 	}, nil
 }
 
@@ -43,7 +52,9 @@ func (tb *RTreeBuilder) Build(msgs chan string) {
 	tb.out = msgs
 	tb.build()
 }
-
+func (tb *RTreeBuilder) Result() *Solution {
+	return tb.finalSolution
+}
 func (tb *RTreeBuilder) wout(fmts string, args ...interface{}) {
 	if !tb.outputEnabled {
 		return
@@ -55,7 +66,65 @@ func (tb *RTreeBuilder) wout(fmts string, args ...interface{}) {
 }
 
 func (tb *RTreeBuilder) build() {
+	bfsdepth := 1
+	maxbfsdepth := 255
+	//Find graph border
+	end := &Node{
+		Hash: tb.subject,
+		tb:   tb,
+	}
+	tb.nodes[tb.subject.MultihashString()] = end
+	start := &Node{
+		Hash: tb.start,
+		tb:   tb,
+		Solutions: []*Solution{&Solution{
+			Bits:  tb.ref.Bits,
+			Paths: [][]*Edge{[]*Edge{}},
+			TTL:   255,
+		}},
+	}
+	start.Solutions[0].Terminal = start
+	tb.nodes[tb.start.MultihashString()] = start
+	graphborder := map[string]*Node{}
+	graphborder[start.Ref()] = start
 
+	recheck := false
+	for ; bfsdepth < maxbfsdepth; bfsdepth++ {
+		if len(graphborder) == 0 {
+			break
+		}
+		fmt.Printf("beginning BFS depth %d (<%d)\n", bfsdepth, maxbfsdepth)
+		nextgraphborder := map[string]*Node{}
+		for _, src := range graphborder {
+			edges := src.Out()
+			for _, edge := range edges {
+				dst := edge.Dst()
+				nextgraphborder[dst.Ref()] = dst
+				dst.UpdateSolutions(src, edge)
+				if dst.Ref() == end.Ref() {
+					recheck = true
+				}
+			}
+		}
+		if recheck {
+			sols := end.BestSolutionsFor(tb.ref.Bits)
+			fmt.Printf("rechecking for final solution (%d sols)\n", len(sols))
+			weight := -1
+			for _, s := range sols {
+				if weight == -1 || s.Weight() < weight {
+					weight = s.Weight()
+					tb.finalSolution = s
+				}
+			}
+			if weight != -1 {
+				maxbfsdepth = weight - 1
+			}
+			recheck = false
+		}
+		fmt.Printf("finished BFS depth %d, new border is %d elements\n", bfsdepth, len(nextgraphborder))
+		graphborder = nextgraphborder
+	}
+	fmt.Printf("done: %v\n", tb.finalSolution)
 }
 
 type BitsetReference struct {
@@ -70,9 +139,10 @@ type Bit struct {
 }
 
 type Edge struct {
-	Attestation *iapi.Attestation
-	Policy      *WrappedRTreePolicy
-	Bits        uint64
+	tb     *RTreeBuilder
+	LRes   *engine.LookupResult
+	Policy *WrappedRTreePolicy
+	Bits   uint64
 }
 
 type Solution struct {
@@ -84,6 +154,10 @@ type Solution struct {
 	Terminal *Node
 }
 
+func (s *Solution) String() string {
+	return fmt.Sprintf("(grants=%x TTL=%d Weight=%d)", s.Bits, s.TTL, len(s.Set))
+}
+
 type Node struct {
 	tb        *RTreeBuilder
 	Hash      iapi.HashSchemeInstance
@@ -92,16 +166,86 @@ type Node struct {
 }
 
 func (n *Node) BestSolutionsFor(v uint64) []*Solution {
-	panic("moustafa doing this")
+	//Placeholder: calculate all solutions requiring 1 or 2 combos
+	rv := []*Solution{}
+	for _, sol := range n.Solutions {
+		if sol.Bits&v == v {
+			rv = append(rv, sol)
+		}
+	}
+	for lhs := 0; lhs < len(n.Solutions)-1; lhs++ {
+		for rhs := lhs + 1; rhs < len(n.Solutions); rhs++ {
+			csol := n.Solutions[lhs].Combine(n.Solutions[rhs])
+			if csol != nil && ((csol.Bits & v) == v) {
+				rv = append(rv, csol)
+			}
+		}
+	}
+	fmt.Printf("Node %s BestSolutionsFor %x, prereduction:\n", n.Ref(), v)
+	for _, el := range rv {
+		fmt.Printf(" - %s\n", el.String())
+	}
+	reduced := reduceSolutionList(rv)
+	fmt.Printf("Post reduction:\n")
+	for _, el := range reduced {
+		fmt.Printf(" - %s\n", el.String())
+	}
+	return reduced
 }
 
 func (e *Edge) Dst() *Node {
-	panic("ni")
+	subject, _ := e.LRes.Attestation.Subject()
+	rv, ok := e.tb.nodes[subject.MultihashString()]
+	if ok {
+		return rv
+	}
+	//New node:
+	n := &Node{
+		Hash:      subject,
+		Solutions: []*Solution{},
+		tb:        e.tb,
+	}
+	e.tb.nodes[subject.MultihashString()] = n
+	return n
 }
 func (e *Edge) Ref() string {
-	return e.Attestation.Keccak256HI().MultihashString()
+	return e.LRes.Attestation.Keccak256HI().MultihashString()
 }
 
+func (s *Solution) Policy() *iapi.RTreePolicy {
+	indep_policies := []*iapi.RTreePolicy{}
+	for _, path := range s.Paths {
+		lpol := iapi.RTreePolicy(*path[0].Policy)
+		pol := &lpol
+		for _, el := range path[1:] {
+			rhs := iapi.RTreePolicy(*el.Policy)
+			result, okay, msg, err := pol.Intersect(&rhs)
+			if err != nil {
+				panic(err)
+			}
+			if !okay {
+				fmt.Printf("msg: %v %v\n", msg, err)
+				panic("we should not be here")
+			}
+			pol = result
+		}
+		indep_policies = append(indep_policies, pol)
+	}
+
+	combined_policy := indep_policies[0]
+	for _, pol := range indep_policies[1:] {
+		result, okay, _, err := combined_policy.Intersect(pol)
+		if err != nil {
+			panic(err)
+		}
+		if !okay {
+			panic("maybe we can be here")
+		}
+		combined_policy = result
+	}
+
+	return combined_policy
+}
 func (n *Node) Ref() string {
 	return n.Hash.MultihashString()
 }
@@ -124,8 +268,10 @@ nextAttestation:
 			n.tb.wout("skipping %s : not decrypted", lres.Attestation.Keccak256HI().MultihashString())
 			continue nextAttestation
 		}
-		edge := Edge{}
-		edge.Attestation = lres.Attestation
+		edge := Edge{
+			tb: n.tb,
+		}
+		edge.LRes = lres
 		pol, err := iapi.PolicySchemeInstanceFor(&lres.Attestation.DecryptedBody.VerifierBody.Policy)
 		if err != nil {
 			panic(err)
@@ -158,15 +304,6 @@ nextAttestation:
 	return rv
 }
 
-type CompareResult int
-
-const Better CompareResult = 1
-const Worse CompareResult = 2
-const Different CompareResult = 3
-
-func (lhs *Solution) CompareTo(rhs *Solution) CompareResult {
-	panic("ni")
-}
 func (s *Solution) Weight() int {
 	return len(s.Set)
 }
@@ -236,46 +373,15 @@ func (w *WrappedRTreePolicy) Bitset(ref *BitsetReference) (uint64, error) {
 	return rv, nil
 }
 
-func (tb *RTreeBuilder) Alg() {
-	bfsdepth := 1
-	maxbfsdepth := 255
-	//Find graph border
-	graphborder := []*Node{}
-	var destnode *Node
-	//TODO: add starting node to border
-	recheck := false
-	for ; bfsdepth < maxbfsdepth; bfsdepth++ {
-		for _, src := range graphborder {
-			edges := src.Out()
-			for _, edge := range edges {
-				dst := edge.Dst()
-				dst.UpdateSolutions(src, edge)
-				if dst.Ref() == destnode.Ref() {
-					recheck = true
-				}
-			}
-			if recheck {
-				sols := destnode.BestSolutionsFor(tb.ref.Bits)
-				weight := -1
-				for _, s := range sols {
-					if weight == -1 || s.Weight() < weight {
-						weight = s.Weight()
-					}
-				}
-				bfsdepth = weight - 1
-				recheck = false
-			}
-		}
-	}
-	fmt.Printf("done")
-}
-
 func (s *Solution) Extend(e *Edge) *Solution {
 	rv := &Solution{}
 	if s.TTL == 0 {
 		return nil
 	}
 	rv.TTL = s.TTL - 1
+	if e.Policy.TTL() < rv.TTL {
+		rv.TTL = e.Policy.TTL()
+	}
 	rv.Set = make(map[string]*Edge)
 	for e, edge := range s.Set {
 		rv.Set[e] = edge
@@ -330,51 +436,76 @@ func (s *Solution) Combine(rhs *Solution) *Solution {
 	return rv
 }
 func (n *Node) UpdateSolutions(src *Node, edge *Edge) {
+	fmt.Printf("updating solutions at node %s, src is %s\n", n.Ref(), src.Ref())
 	askfor := make(map[uint64]bool)
 	for _, sol := range src.Solutions {
 		if sol.Bits&edge.Bits == 0 {
 			//This solution doesn't go through the edge
+			fmt.Printf("source solution doesn't pass thorugh edge\n")
 			continue
 		}
 		askfor[sol.Bits&edge.Bits] = true
 	}
 	for _, sol := range n.Solutions {
 		if sol.Bits&edge.Bits == 0 {
+			fmt.Printf("dst solution doesn't pass thorugh edge\n")
 			//This solution doesn't go through the edge
 			continue
 		}
 		askfor[sol.Bits&edge.Bits] = true
 	}
+	fmt.Printf("updatesol will ask for:\n")
+	spew.Dump(askfor)
 	newsolutions := []*Solution{}
 	for bits := range askfor {
 		sols := src.BestSolutionsFor(bits)
 		for _, sol := range sols {
+			if sol.TTL == 0 {
+				fmt.Printf("Skipping TTL 0 solution\n")
+				continue
+			}
 			nsol := sol.Extend(edge)
+			if nsol == nil {
+				panic("do we expect this?")
+			}
 			newsolutions = append(newsolutions, nsol)
 		}
+		fmt.Printf("got back %d sols for ask of %x\n", len(sols), bits)
 	}
 	allsolutions := append(n.Solutions, newsolutions...)
+	fmt.Printf("node %s updatesol, preprune:\n", n.Ref())
+	for _, el := range allsolutions {
+		fmt.Printf(" - %s\n", el.String())
+	}
 	pruned_solutions := reduceSolutionList(allsolutions)
 	n.Solutions = pruned_solutions
+	fmt.Printf("node %s setting solutions to:\n", n.Ref())
+	for _, el := range pruned_solutions {
+		fmt.Printf(" - %s\n", el.String())
+	}
 }
 
 func reduceSolutionList(sol []*Solution) []*Solution {
-	rv := []*Solution{}
-	for lhs := 0; lhs < len(sol)-1; lhs++ {
-		include := true
-		for rhs := lhs; rhs < len(sol); rhs++ {
-			if sol[lhs].Bits != sol[rhs].Bits {
+	dedup_list := []*Solution{}
+
+next:
+	for orig_idx := 0; orig_idx < len(sol); orig_idx++ {
+		for chosen_idx := 0; chosen_idx < len(dedup_list); chosen_idx++ {
+			if sol[orig_idx].Bits != dedup_list[chosen_idx].Bits {
 				continue
 			}
-			if sol[lhs].Weight() >= sol[rhs].Weight() &&
-				sol[lhs].TTL <= sol[rhs].TTL {
-				include = false
-				break
+			if sol[orig_idx].Weight() >= dedup_list[chosen_idx].Weight() &&
+				sol[orig_idx].TTL <= dedup_list[chosen_idx].TTL {
+				continue next
+			}
+
+			if sol[orig_idx].Weight() <= dedup_list[chosen_idx].Weight() &&
+				sol[orig_idx].TTL >= dedup_list[chosen_idx].TTL {
+				dedup_list[chosen_idx] = sol[orig_idx]
+				continue next
 			}
 		}
-		if include {
-			rv = append(rv, sol[lhs])
-		}
+		dedup_list = append(dedup_list, sol[orig_idx])
 	}
-	return rv
+	return dedup_list
 }

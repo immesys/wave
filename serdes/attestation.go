@@ -64,3 +64,18 @@ type PSKBodyCiphertext struct {
 	AttestationBodyCiphetext []byte
 	EncryptedUnder           EntityPublicKey
 }
+
+type WaveExplicitProof struct {
+	Attestations []AttestationReference
+	Paths        [][]int
+	Extensions   []Extension
+}
+
+type AttestationReference struct {
+	Hash             asn1.External
+	Content          []byte          `asn1:"tag:0,optional"`
+	Locations        []asn1.External `asn1:"tag:1"`
+	Keys             []asn1.External `asn1:"tag:2"`
+	RevocationChecks []asn1.External `asn1:"tag:3"`
+	Extensions       []Extension     `asn1:"tag:4"`
+}

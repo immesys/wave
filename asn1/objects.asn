@@ -177,28 +177,26 @@ BEGIN
   -- or truth conveyed is the union of the paths through the given set of
   -- attestations
   WaveExplicitProof ::= SEQUENCE {
-    waveObjectVersion OBJECT IDENTIFIER,
     attestations SEQUENCE OF AttestationReference,
-    paths SEQUENCE OF AttestationChain,
+    -- this is a chain of attestations connected end-to-end
+    -- that represent a path through the subset of the authorization
+    -- graph given in the attestations field. The integer references
+    -- an attestation inside the parent object
+    paths SEQUENCE OF SEQUENCE OF INTEGER,
     extensions SEQUENCE OF Extension
   }
 
-  -- this is a chain of attestations connected end-to-end
-  -- that represent a path through the subset of the authorization
-  -- graph given in the attestations field
-  AttestationChain ::= SEQUENCE {
-    path SEQUENCE OF AttestationHash
-  }
+
 
   AttestationReference ::= SEQUENCE {
     -- the hash of the WaveAttestation
     hash AttestationHash,
 
     -- generally the attestation is put in here verbatim
-    content [0] WaveAttestation OPTIONAL,
+    content [0] OCTET STRING OPTIONAL,
 
     -- or a location is given that permits retrieving the attestation
-    location [1] Location OPTIONAL,
+    location [1] SEQUENCE OF Location,
 
     -- the content will generally need some keys to decrypt
     keys [2] SEQUENCE OF AttestationVerifierKey,

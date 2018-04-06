@@ -58,3 +58,5 @@ type KeyringAESCiphertext struct {
 type WR1DomainVisibilityKey_IBE_BN256 EntityKeyringEntry
 type WR1PartitionKey_OAQUE_BN256_s20 EntityKeyringEntry
 type WR1EncryptionKey_OAQUE_BN256_s20 EntityKeyringEntry
+
+type AVKeyAES128GCM []byte

@@ -179,11 +179,14 @@ message BuildRTreeParams {
 }
 message BuildRTreeResponse {
   Error error = 1;
-  repeated Proof results = 2;
+  Proof result = 2;
   bytes proofDER = 3;
 }
-
 message Proof {
   repeated Attestation elements = 1;
-  Policy policy = 2;
+  repeated ProofPath paths = 2;
+  Policy policy = 3;
+}
+message ProofPath {
+  repeated bytes elements = 1;
 }

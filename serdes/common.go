@@ -18,6 +18,7 @@ var (
 	WR1BodyOID                            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 2}
 	PSKBodySchemeOID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 3}
 	AttestationVerifierKeySchemeOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4}
+	VerifierKeyAES128                     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4, 1}
 	OuterSignatureSchemeOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5}
 	EphemeralEd25519OID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5, 1}
 	OuterSignatureBindingSchemeOID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 6}
@@ -113,6 +114,8 @@ func init() {
 		{KeyringAES128_GCM_PBKDF2OID, KeyringAESCiphertext{}},
 		{PSKBodySchemeOID, PSKBodyCiphertext{}},
 		{WR1BodyOID, WR1BodyCiphertext{}},
+		{ExplicitProofOID, WaveExplicitProof{}},
+		{VerifierKeyAES128, AVKeyAES128GCM{}},
 	}
 	for _, t := range tpz {
 		asn1.RegisterExternalType(t.O, t.I)

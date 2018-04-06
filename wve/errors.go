@@ -166,3 +166,5 @@ const MalformedObject = 907
 const UnsupportedSignatureScheme = 908
 const LookupFailure = 909
 const UnsupportedLocationScheme = 910
+const NoProofFound = 911
+const ProofInvalid = 912

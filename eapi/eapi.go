@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/immesys/asn1"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
@@ -402,11 +403,11 @@ func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	}
 
 	tb, err := rtree.NewRTreeBuilder(ctx, &rtree.Params{
-		Subject:         iapi.HashSchemeInstanceFromMultihash(p.SubjectHash),
-		Engine:          eng,
-		PolicyPredicate: rtree.NewGenericPredicateFunc(pol),
-		Start:           pol.WR1DomainEntity(),
-		EnableOutput:    true,
+		Subject:      iapi.HashSchemeInstanceFromMultihash(p.SubjectHash),
+		Engine:       eng,
+		Policy:       pol,
+		Start:        pol.WR1DomainEntity(),
+		EnableOutput: true,
 	})
 	if err != nil {
 		panic(err)
@@ -423,20 +424,58 @@ func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 		}
 	}()
 	tb.Build(msgs)
-	sols := tb.Solutions()
+	sol := tb.Result()
+	if sol == nil {
+		return &pb.BuildRTreeResponse{
+			Error: ToError(wve.Err(wve.NoProofFound, "could find a proof")),
+		}, nil
+	}
 	resp := &pb.BuildRTreeResponse{
-		Error:   nil,
-		Results: make([]*pb.Proof, len(sols)),
+		Error: nil,
 	}
-	for idx, sol := range sols {
-		proof := &pb.Proof{
-			Policy:   ToPbPolicy(sol.Policy),
-			Elements: make([]*pb.Attestation, len(sol.Attestations)),
+	formalProof := serdes.WaveExplicitProof{}
+	idx := 0
+	refToIdx := make(map[string]int)
+	for ref, edge := range sol.Set {
+		refToIdx[ref] = idx
+		var attref serdes.AttestationReference
+		var err error
+		attref.Content, err = edge.LRes.Attestation.DER()
+		if err != nil {
+			panic(err)
 		}
-		for att_idx, att := range sol.Attestations {
-			proof.Elements[att_idx] = ConvertLookupResult(att)
+		attref.Hash = *edge.LRes.Attestation.Keccak256HI().CanonicalForm()
+		for _, kl := range edge.LRes.KnownLocations {
+			attref.Locations = append(attref.Locations, *kl.CanonicalForm())
 		}
-		resp.Results[idx] = proof
+		verifierKey := serdes.AVKeyAES128GCM(edge.LRes.Attestation.WR1Extra.VerifierBodyKey)
+		attref.Keys = []asn1.External{asn1.NewExternal(verifierKey)}
+		formalProof.Attestations = append(formalProof.Attestations, attref)
+		idx++
 	}
+	for _, path := range sol.Paths {
+		formalpath := make([]int, len(path))
+		for i, e := range path {
+			formalpath[i] = refToIdx[e.Ref()]
+		}
+		formalProof.Paths = append(formalProof.Paths, formalpath)
+	}
+	wrappedFormalProof := serdes.WaveWireObject{
+		Content: asn1.NewExternal(formalProof),
+	}
+	der, err := asn1.Marshal(wrappedFormalProof.Content)
+	if err != nil {
+		panic(err)
+	}
+
+	proof := &pb.Proof{
+		Policy:   ToPbPolicy(sol.Policy()),
+		Elements: make([]*pb.Attestation, 0, len(sol.Set)),
+	}
+	for _, edge := range sol.Set {
+		proof.Elements = append(proof.Elements, ConvertLookupResult(edge.LRes))
+	}
+	resp.Result = proof
+	resp.ProofDER = der
 	return resp, nil
 }

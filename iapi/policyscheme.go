@@ -199,6 +199,52 @@ next:
 	return rv, true, "", nil
 }
 
+func (lhs *RTreePolicy) Union(rhs *RTreePolicy) (result *RTreePolicy, okay bool, message string, err error) {
+	rv := &RTreePolicy{
+	//We do not copy the VisibilityURI
+	}
+	rhs_ns := HashSchemeInstanceFor(&rhs.SerdesForm.Namespace)
+	lhs_ns := HashSchemeInstanceFor(&lhs.SerdesForm.Namespace)
+	if !bytes.Equal(rhs_ns.Multihash(), lhs_ns.Multihash()) {
+		return nil, false, "different authority domain", nil
+	}
+	statements := []serdes.RTreeStatement{}
+	statements = append(statements, lhs.SerdesForm.Statements...)
+	statements = append(statements, rhs.SerdesForm.Statements...)
+
+	dedup_statements := []serdes.RTreeStatement{}
+
+next:
+	for orig_idx := 0; orig_idx < len(statements); orig_idx++ {
+		for chosen_idx := 0; chosen_idx < len(dedup_statements); chosen_idx++ {
+			if isStatementSupersetOf(&statements[orig_idx], &dedup_statements[chosen_idx]) {
+				//We already have a statement more powerful
+				continue next
+			}
+			if isStatementSupersetOf(&dedup_statements[chosen_idx], &statements[orig_idx]) {
+				//This statement is more powerful than one we have chosen. Swap them
+				dedup_statements[chosen_idx] = statements[orig_idx]
+				continue next
+			}
+
+		}
+		//This statement is useful
+		dedup_statements = append(dedup_statements, statements[orig_idx])
+	}
+	rv.SerdesForm = serdes.RTreePolicy{
+		Namespace: lhs.SerdesForm.Namespace,
+	}
+	rv.SerdesForm.Indirections = lhs.SerdesForm.Indirections
+	if rhs.SerdesForm.Indirections < rv.SerdesForm.Indirections {
+		rv.SerdesForm.Indirections = rhs.SerdesForm.Indirections
+	}
+	rv.SerdesForm.Statements = dedup_statements
+	if len(rv.SerdesForm.Statements) > PermittedCombinedStatements {
+		return nil, false, "statements form too many combinations", nil
+	}
+	return rv, true, "", nil
+}
+
 func (lhs *RTreePolicy) IsSubsetOf(superset *RTreePolicy) bool {
 	superset_ns := HashSchemeInstanceFor(&superset.SerdesForm.Namespace)
 	lhs_ns := HashSchemeInstanceFor(&lhs.SerdesForm.Namespace)
