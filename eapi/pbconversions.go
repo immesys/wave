@@ -87,6 +87,48 @@ func ConvertHashScheme(in string) iapi.HashScheme {
 	}
 	return &iapi.UnsupportedHashScheme{}
 }
+func ConvertProofAttestation(a *iapi.Attestation) *pb.Attestation {
+	rv := pb.Attestation{}
+	rv.Validity = &pb.AttestationValidity{
+		Valid: true,
+	}
+	der, err := a.DER()
+	if err != nil {
+		panic(err)
+	}
+	rv.DER = der
+	rv.Hash = a.Keccak256HI().Multihash()
+	if a.WR1Extra != nil {
+		rv.VerifierKey = a.WR1Extra.VerifierBodyKey
+		rv.ProverKey = a.WR1Extra.ProverBodyKey
+	}
+	subjHI, subjLoc := a.Subject()
+	rv.SubjectHash = subjHI.Multihash()
+	rv.SubjectLocation = ToPbLocation(subjLoc)
+
+	if a.DecryptedBody != nil {
+		rv.Body = &pb.AttestationBody{}
+		decder, err := asn1.Marshal(*a.DecryptedBody)
+		if err != nil {
+			panic(err)
+		}
+		rv.Body.DecodedBodyDER = decder
+		attHI, attLoc, err := a.Attester()
+		if err != nil {
+			panic(err)
+		}
+		rv.Body.AttesterHash = attHI.Multihash()
+		rv.Body.AttesterLocation = ToPbLocation(attLoc)
+		rv.Body.ValidFrom = a.DecryptedBody.VerifierBody.Validity.NotBefore.UnixNano()
+		rv.Body.ValidUntil = a.DecryptedBody.VerifierBody.Validity.NotAfter.UnixNano()
+		pol, err := iapi.PolicySchemeInstanceFor(&a.DecryptedBody.VerifierBody.Policy)
+		if err != nil {
+			panic(err)
+		}
+		rv.Body.Policy = ToPbPolicy(pol)
+	}
+	return &rv
+}
 func ConvertLookupResult(r *engine.LookupResult) *pb.Attestation {
 	rv := pb.Attestation{}
 	rv.Validity = &pb.AttestationValidity{

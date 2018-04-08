@@ -8,9 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/immesys/asn1"
 	"github.com/immesys/wave/eapi/pb"
-	"github.com/immesys/wave/serdes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,14 +36,24 @@ func (t *TestGraph) BuildCompare(tst *testing.T, dst string, perms string, edges
 	require.Nil(tst, rv.Error)
 	require.EqualValues(tst, edges, len(rv.Result.Elements))
 	require.EqualValues(tst, ttl, rv.Result.Policy.RTreePolicy.Indirections)
-	fmt.Printf("der:\n%x\n", rv.ProofDER)
-	wwo := serdes.WaveWireObject{}
-	rest, err := asn1.Unmarshal(rv.ProofDER, &wwo.Content)
-	require.EqualValues(tst, 0, len(rest))
+
+	resp, err := eapi.VerifyProof(context.Background(), &pb.VerifyProofParams{
+		ProofDER: rv.ProofDER,
+	})
 	require.NoError(tst, err)
-	exp, ok := wwo.Content.Content.(serdes.WaveExplicitProof)
-	require.True(tst, ok)
-	require.EqualValues(tst, edges, len(exp.Attestations))
+	require.Nil(tst, resp.Error)
+	for idx, _ := range resp.Result.Elements {
+		resp.Result.Elements[idx].Body.DecodedBodyDER = nil
+		rv.Result.Elements[idx].Body.DecodedBodyDER = nil
+		require.EqualValues(tst, resp.Result.Elements[idx].DER, rv.Result.Elements[idx].DER)
+		require.EqualValues(tst, resp.Result.Elements[idx].Body, rv.Result.Elements[idx].Body)
+	}
+	require.EqualValues(tst, resp.Result.Policy, rv.Result.Policy)
+	require.EqualValues(tst, resp.Result.Expiry, rv.Result.Expiry)
+	//require.EqualValues(tst, rv.Result, resp.Result)
+	// if diff := deep.Equal(rv.Result, resp.Result); diff != nil {
+	// 	tst.Error(diff)
+	// }
 }
 
 func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTreeResponse {

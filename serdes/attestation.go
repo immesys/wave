@@ -68,6 +68,7 @@ type PSKBodyCiphertext struct {
 type WaveExplicitProof struct {
 	Attestations []AttestationReference
 	Paths        [][]int
+	Entities     [][]byte
 	Extensions   []Extension
 }
 

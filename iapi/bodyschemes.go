@@ -92,6 +92,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 	wr1dctx, ok := dc.(WR1DecryptionContext)
 	if !ok {
+		fmt.Printf("dc failed\n")
 		return nil, nil, nil
 	}
 	subjectHI := HashSchemeInstanceFor(&canonicalForm.TBS.Subject)
@@ -101,15 +102,19 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	//Step 0: if there is a symmetric key in the decrytion context we should use that
 	vbody := serdes.WR1VerifierBody{}
 	attverifierkey := wr1dctx.WR1VerifierBodyKey(ctx)
+	fmt.Printf("dc BB\n")
 	if attverifierkey != nil {
+		fmt.Printf("found att verifier key %d\n", len(attverifierkey))
 		verifierBodyKey := attverifierkey[:16]
 		verifierBodyNonce := attverifierkey[16:]
 		verifierBodyDER, ok := aesGCMDecrypt(verifierBodyKey, wr1body.VerifierBodyCiphertext, verifierBodyNonce)
 		if !ok {
+			fmt.Printf("case B\n")
 			return nil, nil, ErrDecryptBodyMalformed
 		}
 		trailing, err := asn1.Unmarshal(verifierBodyDER, &vbody)
 		if err != nil || len(trailing) != 0 {
+			fmt.Printf("case C\n")
 			return nil, nil, ErrDecryptBodyMalformed
 		}
 		rv := &serdes.AttestationBody{

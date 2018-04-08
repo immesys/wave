@@ -77,6 +77,14 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	} else {
 		body.VerifierBody.Validity.NotAfter = time.Now().Add(30 * 24 * time.Hour)
 	}
+	attesterExpiry := p.Attester.Entity.CanonicalForm.TBS.Validity.NotAfter
+	if body.VerifierBody.Validity.NotAfter.After(attesterExpiry) {
+		body.VerifierBody.Validity.NotAfter = attesterExpiry
+	}
+	subjectExpiry := p.Subject.CanonicalForm.TBS.Validity.NotAfter
+	if body.VerifierBody.Validity.NotAfter.After(subjectExpiry) {
+		body.VerifierBody.Validity.NotAfter = subjectExpiry
+	}
 	externalPolicy := p.Policy.CanonicalForm()
 	body.VerifierBody.Policy = *externalPolicy
 

@@ -3,7 +3,6 @@ package simplehttp
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -18,8 +17,7 @@ type PutObjectRequest struct {
 	DER []byte `json:"der"`
 }
 type PutObjectResponse struct {
-	HashScheme string `json:"hashScheme"`
-	Hash       []byte `json:"hash"`
+	Hash []byte `json:"hash"`
 }
 type InfoResponse struct {
 	HashScheme string `json:"hashScheme"`
@@ -31,18 +29,15 @@ type ObjectResponse struct {
 type NoSuchObjectResponse struct {
 }
 type IterateQueueResponse struct {
-	HashScheme string `json:"hashScheme"`
-	Hash       []byte `json:"hash"`
-	NextToken  string `json:"nextToken"`
+	Hash      []byte `json:"hash"`
+	NextToken string `json:"nextToken"`
 }
 type EnqueueResponse struct {
 }
 type NoSuchQueueEntryResponse struct {
 }
 type EnqueueRequest struct {
-	IdHashScheme    string `json:"idHashScheme"`
-	EntryHashScheme string `json:"entryHashScheme"`
-	EntryHash       []byte `json:"entryHash"`
+	EntryHash []byte `json:"entryHash"`
 }
 
 type SimpleHTTPStorage struct {
@@ -98,20 +93,17 @@ func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashS
 	if err != nil {
 		return nil, err
 	}
-	if len(rv.Hash) != 32 {
-		return nil, fmt.Errorf("Remote sent invalid hash")
-	}
 	//Lazily check that the hash is keccak256
-	if rv.HashScheme != iapi.KECCAK256.OID().String() {
-		return nil, fmt.Errorf("Remote sent unsupported hash scheme")
+	hi := iapi.HashSchemeInstanceFromMultihash(rv.Hash)
+	if !hi.Supported() {
+		return nil, fmt.Errorf("remote sent invalid hash")
 	}
-	hi := &iapi.HashSchemeInstance_Keccak_256{Val: rv.Hash}
 	return hi, nil
 }
 
 func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstance) (content []byte, err error) {
-	b64 := base64.URLEncoding.EncodeToString(hash.Value())
-	resp, err := http.Get(fmt.Sprintf("%s/obj/%s?scheme=%s", s.url, b64, hash.OID().String()))
+	b64 := hash.MultihashString()
+	resp, err := http.Get(fmt.Sprintf("%s/obj/%s", s.url, b64))
 	if err != nil {
 		return nil, err
 	}
@@ -137,15 +129,13 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashSchemeInstance, object iapi.HashSchemeInstance) error {
 	buf := bytes.Buffer{}
 	queueRequest := &EnqueueRequest{
-		IdHashScheme:    queueId.OID().String(),
-		EntryHashScheme: object.OID().String(),
-		EntryHash:       object.Value(),
+		EntryHash: object.Multihash(),
 	}
 	err := json.NewEncoder(&buf).Encode(queueRequest)
 	if err != nil {
 		panic(err)
 	}
-	b64 := base64.URLEncoding.EncodeToString(queueId.Value())
+	b64 := queueId.MultihashString()
 	resp, err := http.Post(fmt.Sprintf("%s/queue/%s", s.url, b64), "application/json", &buf)
 	if err != nil {
 		return err
@@ -162,8 +152,8 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 }
 
 func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashSchemeInstance, iteratorToken string) (object iapi.HashSchemeInstance, nextToken string, err error) {
-	b64 := base64.URLEncoding.EncodeToString(queueId.Value())
-	resp, err := http.Get(fmt.Sprintf("%s/queue/%s?scheme=%s&token=%s", s.url, b64, queueId.OID().String(), iteratorToken))
+	b64 := queueId.MultihashString()
+	resp, err := http.Get(fmt.Sprintf("%s/queue/%s?token=%s", s.url, b64, iteratorToken))
 	if err != nil {
 		return nil, "", err
 	}
@@ -183,9 +173,6 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 	if err != nil {
 		return nil, "", fmt.Errorf("Remote sent invalid response")
 	}
-	if iterR.HashScheme != iapi.KECCAK256.OID().String() {
-		return nil, "", fmt.Errorf("Remote sent unsupported hash scheme")
-	}
-	hi := &iapi.HashSchemeInstance_Keccak_256{Val: iterR.Hash}
+	hi := iapi.HashSchemeInstanceFromMultihash(iterR.Hash)
 	return hi, iterR.NextToken, nil
 }

@@ -1,7 +1,6 @@
 package memoryserver
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"github.com/gorilla/pat"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/storage/simplehttp"
+	multihash "github.com/multiformats/go-multihash"
 )
 
 const VersionBanner = "InMem 1.1.0"
@@ -26,12 +26,6 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	hash := r.URL.Query().Get(":hash")
 	r.Body.Close()
-	if r.URL.Query().Get("scheme") != iapi.KECCAK256.OID().String() {
-		fmt.Printf("GET with wrong scheme\n")
-		w.WriteHeader(404)
-		w.Write([]byte("{}"))
-		return
-	}
 	content, ok := db[hash]
 	if !ok {
 		fmt.Printf("GET missing object\n")
@@ -67,11 +61,10 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body.Close()
 	hash := iapi.KECCAK256.Instance(params.DER)
-	hashstring := base64.URLEncoding.EncodeToString(hash.Value())
+	hashstring := hash.MultihashString()
 	db[hashstring] = params.DER
 	resp := simplehttp.PutObjectResponse{
-		HashScheme: hash.OID().String(),
-		Hash:       hash.Value(),
+		Hash: hash.Multihash(),
 	}
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(&resp)
@@ -79,13 +72,6 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 func IterateHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	id := r.URL.Query().Get(":id")
-	scheme := r.URL.Query().Get("scheme")
-	if scheme != iapi.KECCAK256.OID().String() {
-		fmt.Printf("ITER with wrong scheme\n")
-		w.WriteHeader(404)
-		w.Write([]byte("{}"))
-		return
-	}
 	var index64 int64
 	var err error
 	if token == "" {
@@ -114,9 +100,8 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 	if len(q) > index {
 		rv := q[index]
 		resp := simplehttp.IterateQueueResponse{
-			NextToken:  fmt.Sprintf("%d", index+1),
-			Hash:       rv,
-			HashScheme: iapi.KECCAK256.OID().String(),
+			NextToken: fmt.Sprintf("%d", index+1),
+			Hash:      rv,
 		}
 		w.WriteHeader(200)
 		json.NewEncoder(w).Encode(&resp)
@@ -137,15 +122,10 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body.Close()
-	if len(req.EntryHash) != 32 {
+	entrymulti, err := multihash.Decode(req.EntryHash)
+	if err != nil || entrymulti.Code != multihash.KECCAK_256 {
 		w.WriteHeader(400)
 		w.Write([]byte("bad hash"))
-		return
-	}
-	if req.EntryHashScheme != iapi.KECCAK256.OID().String() ||
-		req.IdHashScheme != iapi.KECCAK256.OID().String() {
-		w.WriteHeader(400)
-		w.Write([]byte("bad hash scheme"))
 		return
 	}
 	globalmu.Lock()

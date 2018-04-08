@@ -17,6 +17,8 @@ type KeyPoolDecryptionContext struct {
 	domainVisibilityIds [][]byte
 }
 
+var _ WR1DecryptionContext = &KeyPoolDecryptionContext{}
+
 func NewKeyPoolDecryptionContext() *KeyPoolDecryptionContext {
 	return &KeyPoolDecryptionContext{domainVisibilityIds: [][]byte{[]byte("$GLOBAL")}}
 }
@@ -59,7 +61,7 @@ func (kpd *KeyPoolDecryptionContext) EntityByHashLoc(ctx context.Context, hash H
 	}
 	return nil, nil
 }
-func (kpd *KeyPoolDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k EntitySecretKeySchemeInstance) bool) error {
+func (kpd *KeyPoolDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error {
 	for _, es := range kpd.entsecrets {
 		hi := es.Entity.Keccak256HI()
 		if dst.OID().Equal(hi.OID()) && bytes.Equal(hi.Value(), dst.Value()) {

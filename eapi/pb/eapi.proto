@@ -19,6 +19,7 @@ service WAVE {
   rpc SyncStatus(SyncParams) returns (SyncResponse);
   rpc WaitForSyncComplete(SyncParams) returns (stream SyncResponse);
   rpc BuildRTreeProof(BuildRTreeParams) returns (BuildRTreeResponse);
+  rpc VerifyProof(VerifyProofParams) returns (VerifyProofResponse);
 }
 
 message CreateEntityParams {
@@ -182,11 +183,19 @@ message BuildRTreeResponse {
   Proof result = 2;
   bytes proofDER = 3;
 }
+message VerifyProofParams {
+  bytes proofDER = 1;
+}
+message VerifyProofResponse {
+  Error error = 1;
+  Proof result = 2;
+}
 message Proof {
   repeated Attestation elements = 1;
   repeated ProofPath paths = 2;
   Policy policy = 3;
+  int64 expiry = 4;
 }
 message ProofPath {
-  repeated bytes elements = 1;
+  repeated int32 elements = 1;
 }

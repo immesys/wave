@@ -183,6 +183,9 @@ BEGIN
     -- graph given in the attestations field. The integer references
     -- an attestation inside the parent object
     paths SEQUENCE OF SEQUENCE OF INTEGER,
+    -- optionally, entities the sender thinks the receiver won't be
+    -- able to resolve can be included here (DER encoded)
+    entities SEQUENCE OF OCTET STRING,
     extensions SEQUENCE OF Extension
   }
 

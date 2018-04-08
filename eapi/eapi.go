@@ -376,6 +376,36 @@ func (e *eAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncComp
 	return nil
 }
 
+func (e *eAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.VerifyProofResponse, error) {
+	resp, werr := iapi.VerifyRTreeProof(ctx, &iapi.PVerifyRTreeProof{
+		DER: p.ProofDER,
+	})
+	if werr != nil {
+		return &pb.VerifyProofResponse{
+			Error: ToError(werr),
+		}, nil
+	}
+	proof := pb.Proof{
+		Elements: make([]*pb.Attestation, len(resp.Attestations)),
+		Paths:    make([]*pb.ProofPath, len(resp.Paths)),
+		Policy:   ToPbPolicy(resp.Policy),
+		Expiry:   resp.Expires.UnixNano(),
+	}
+	for idx, att := range resp.Attestations {
+		proof.Elements[idx] = ConvertProofAttestation(att)
+	}
+
+	for idx, path := range resp.Paths {
+		prp := &pb.ProofPath{}
+		for _, p := range path {
+			prp.Elements = append(prp.Elements, int32(p))
+		}
+		proof.Paths[idx] = prp
+	}
+	return &pb.VerifyProofResponse{
+		Result: &proof,
+	}, nil
+}
 func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb.BuildRTreeResponse, error) {
 	eng, werr := e.getEngine(ctx, p.Perspective)
 	if werr != nil {
@@ -435,6 +465,9 @@ func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	}
 	formalProof := serdes.WaveExplicitProof{}
 	idx := 0
+	expiry := time.Now()
+	expiryset := false
+	entities := make(map[string][]byte)
 	refToIdx := make(map[string]int)
 	for ref, edge := range sol.Set {
 		refToIdx[ref] = idx
@@ -451,6 +484,38 @@ func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 		verifierKey := serdes.AVKeyAES128GCM(edge.LRes.Attestation.WR1Extra.VerifierBodyKey)
 		attref.Keys = []asn1.External{asn1.NewExternal(verifierKey)}
 		formalProof.Attestations = append(formalProof.Attestations, attref)
+		if !expiryset || edge.LRes.Attestation.DecryptedBody.VerifierBody.Validity.NotAfter.Before(expiry) {
+			expiry = edge.LRes.Attestation.DecryptedBody.VerifierBody.Validity.NotAfter
+		}
+		attesterhi, attesterloc, err := edge.LRes.Attestation.Attester()
+		if err != nil {
+			panic("why would this happen")
+		}
+		if _, ok := entities[attesterhi.MultihashString()]; !ok {
+			entity, validity, err := eng.LookupEntity(ctx, attesterhi, attesterloc)
+			if err != nil || !validity.Valid {
+				return &pb.BuildRTreeResponse{
+					Error: ToError(wve.Err(wve.NoProofFound, "proof expired while building")),
+				}, nil
+			}
+
+			entities[entity.Keccak256HI().MultihashString()], err = entity.DER()
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		subjecthi, subjectloc := edge.LRes.Attestation.Subject()
+		entity, validity, err := eng.LookupEntity(ctx, subjecthi, subjectloc)
+		if err != nil || !validity.Valid {
+			return &pb.BuildRTreeResponse{
+				Error: ToError(wve.Err(wve.NoProofFound, "proof expired while building")),
+			}, nil
+		}
+		entities[entity.Keccak256HI().MultihashString()], err = entity.DER()
+		if err != nil {
+			panic(err)
+		}
 		idx++
 	}
 	for _, path := range sol.Paths {
@@ -459,6 +524,9 @@ func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 			formalpath[i] = refToIdx[e.Ref()]
 		}
 		formalProof.Paths = append(formalProof.Paths, formalpath)
+	}
+	for _, ent := range entities {
+		formalProof.Entities = append(formalProof.Entities, ent)
 	}
 	wrappedFormalProof := serdes.WaveWireObject{
 		Content: asn1.NewExternal(formalProof),
@@ -471,6 +539,14 @@ func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	proof := &pb.Proof{
 		Policy:   ToPbPolicy(sol.Policy()),
 		Elements: make([]*pb.Attestation, 0, len(sol.Set)),
+		Expiry:   expiry.UnixNano(),
+		Paths:    make([]*pb.ProofPath, len(formalProof.Paths)),
+	}
+	for idx, path := range formalProof.Paths {
+		proof.Paths[idx] = &pb.ProofPath{}
+		for _, pe := range path {
+			proof.Paths[idx].Elements = append(proof.Paths[idx].Elements, int32(pe))
+		}
 	}
 	for _, edge := range sol.Set {
 		proof.Elements = append(proof.Elements, ConvertLookupResult(edge.LRes))

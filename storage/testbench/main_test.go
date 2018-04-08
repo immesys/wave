@@ -19,7 +19,7 @@ func getSimpleHTTPStorageInstance(t *testing.T) iapi.StorageDriverInterface {
 	sh := &simplehttp.SimpleHTTPStorage{}
 	cfg := make(map[string]string)
 	cfg["url"] = "http://localhost:8080/v1"
-	require.NoError(t, sh.Initialize(context.Background(), cfg))
+	require.NoError(t, sh.Initialize(context.Background(), "simplehttp", cfg))
 	return sh
 }
 
