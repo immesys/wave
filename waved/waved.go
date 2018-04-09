@@ -24,8 +24,7 @@ func Main(args []string) {
 			Value: "/etc/wave/wave.toml",
 		},
 	}
-	err := app.Run(args)
-	panic(err)
+	app.Run(args)
 }
 
 func action(c *cli.Context) error {

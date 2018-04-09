@@ -20,14 +20,22 @@ func TimeFromInt64MillisWithDefault(v int64, def time.Time) *time.Time {
 	return &t
 }
 
-func LocationSchemeInstance(in *pb.Location) iapi.LocationSchemeInstance {
+func LocationSchemeInstance(in *pb.Location) (iapi.LocationSchemeInstance, wve.WVE) {
 	if in == nil {
-		return nil
+		return nil, nil
 	}
-	if in.LocationURI == nil {
-		return &iapi.UnsupportedLocationSchemeInstance{}
+	switch {
+	case in.LocationURI != nil:
+		return iapi.NewLocationSchemeInstanceURL(in.LocationURI.URI, int(in.LocationURI.Version)), nil
+	case in.AgentLocation != "":
+		rv, err := iapi.SI().LocationByName(context.Background(), in.AgentLocation)
+		if err != nil {
+			return nil, wve.ErrW(wve.UnsupportedLocationScheme, "bad agent location", err)
+		}
+		return rv, nil
+	default:
+		return nil, wve.Err(wve.UnsupportedLocationScheme, "unknown location")
 	}
-	return iapi.NewLocationSchemeInstanceURL(in.LocationURI.URI, int(in.LocationURI.Version))
 }
 func ToPbLocation(in iapi.LocationSchemeInstance) *pb.Location {
 	locuri, ok := in.(*iapi.LocationSchemeInstanceURL)

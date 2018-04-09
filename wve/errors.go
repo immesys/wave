@@ -35,11 +35,7 @@ func (wve *wVE) WrappedErrors() []error {
 	return []error{wve.cause}
 }
 func (wve *wVE) Error() string {
-	if wve.cause == nil {
-		return fmt.Sprintf("(%d: %s)", wve.code, wve.reason)
-	}
-	return fmt.Sprintf("(%d: %s because %s)", wve.code, wve.reason, wve.cause.Error())
-
+	return fmt.Sprintf("(%d: %s)", wve.code, wve.reason)
 }
 
 func MaybeWrap(err error) WVE {

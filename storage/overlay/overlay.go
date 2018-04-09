@@ -35,6 +35,14 @@ func NewOverlay(config map[string]map[string]string) (iapi.StorageInterface, err
 	return rv, nil
 }
 
+func (ov *Overlay) LocationByName(ctx context.Context, name string) (iapi.LocationSchemeInstance, error) {
+	driver, ok := ov.providers[name]
+	if !ok {
+		return nil, fmt.Errorf("location %q is not registered on this agent", name)
+	}
+	return driver.Location(ctx), nil
+}
+
 var MaximumTimeout = 5 * time.Second
 var ErrUnknownLocation = errors.New("unknown location")
 
@@ -157,4 +165,14 @@ func (ov *Overlay) HashSchemeFor(loc iapi.LocationSchemeInstance) (iapi.HashSche
 		return nil, err
 	}
 	return p.PreferredHashScheme(), nil
+}
+func (ov *Overlay) RegisteredLocations(ctx context.Context) (map[string]iapi.LocationSchemeInstance, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	rv := make(map[string]iapi.LocationSchemeInstance)
+	for name, driver := range ov.providers {
+		rv[name] = driver.Location(ctx)
+	}
+	return rv, nil
 }

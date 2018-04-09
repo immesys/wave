@@ -20,6 +20,23 @@ service WAVE {
   rpc WaitForSyncComplete(SyncParams) returns (stream SyncResponse);
   rpc BuildRTreeProof(BuildRTreeParams) returns (BuildRTreeResponse);
   rpc VerifyProof(VerifyProofParams) returns (VerifyProofResponse);
+  rpc ListLocations(ListLocationsParams) returns (ListLocationsResponse);
+  rpc Inspect(InspectParams) returns (InspectResponse);
+}
+
+message InspectParams {
+  bytes content = 1;
+}
+message InspectResponse {
+  Error error = 1;
+  EntityInfo entity = 2;
+}
+message ListLocationsParams {
+
+}
+message ListLocationsResponse {
+  Error error = 1;
+  map<string, Location> agentLocations = 2;
 }
 
 message CreateEntityParams {
@@ -33,6 +50,12 @@ message CreateEntityResponse {
   Error error = 1;
   bytes PublicDER = 2;
   bytes SecretDER = 3;
+  bytes hash = 4;
+}
+message EntityInfo {
+  bytes hash = 1;
+  int64 validFrom = 2;
+  int64 validUntil = 3;
 }
 message CreateAttestationParams {
   Perspective perspective = 1;
@@ -69,6 +92,7 @@ message CreateAttestationResponse {
   bytes DER = 2;
   bytes verifierKey = 3;
   bytes proverKey = 4;
+  bytes hash = 5;
 }
 message PublishEntityParams {
   bytes DER = 1;
@@ -115,6 +139,8 @@ message Perspective {
 message Location {
   //One of the following
   LocationURI locationURI = 1;
+  //The name of a location in the agent config
+  string agentLocation = 2;
 }
 message LocationURI {
   string URI = 1;

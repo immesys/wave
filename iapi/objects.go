@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 
 	"github.com/immesys/wave/serdes"
@@ -77,6 +78,8 @@ func (e *Entity) ArrayKeccak256() [32]byte {
 	return rv
 }
 func (e *Entity) Expired() bool {
+	fmt.Printf("validity:\n")
+	spew.Dump(e.CanonicalForm.TBS.Validity)
 	return time.Now().After(e.CanonicalForm.TBS.Validity.NotAfter)
 }
 func ToArr32(b []byte) [32]byte {

@@ -96,6 +96,8 @@ type StorageInterface interface {
 	Enqueue(ctx context.Context, loc LocationSchemeInstance, queueId HashSchemeInstance, object HashSchemeInstance) error
 	HashSchemeFor(loc LocationSchemeInstance) (HashScheme, error)
 	Status(ctx context.Context) (map[string]StorageDriverStatus, error)
+	RegisteredLocations(ctx context.Context) (map[string]LocationSchemeInstance, error)
+	LocationByName(ctx context.Context, name string) (LocationSchemeInstance, error)
 }
 
 var injectedStorageInterface StorageInterface

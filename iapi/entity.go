@@ -195,7 +195,12 @@ func ParseEntity(ctx context.Context, p *PParseEntity) (*RParseEntity, wve.WVE) 
 	}
 	en, ok := wo.Content.Content.(serdes.WaveEntity)
 	if !ok {
-		return nil, wve.Err(wve.UnexpectedObject, "object is not a wave entity")
+		//First try check, maybe this is an entity secret
+		es, ok := wo.Content.Content.(serdes.WaveEntitySecret)
+		if !ok {
+			return nil, wve.Err(wve.UnexpectedObject, "object is not a wave entity")
+		}
+		en = es.Entity
 	}
 	rv, err := parseEntityFromObject(ctx, &en)
 	if err != nil {
@@ -211,6 +216,7 @@ type PParseEntitySecrets struct {
 	Passphrase *string
 }
 type RParseEntitySecrets struct {
+	Entity        *Entity
 	EntitySecrets *EntitySecrets
 }
 
@@ -233,18 +239,26 @@ func ParseEntitySecrets(ctx context.Context, p *PParseEntitySecrets) (*RParseEnt
 	}
 	krscheme, uerr := EntityKeyringSchemeInstanceFor(es.Keyring)
 	if uerr != nil {
-		return nil, wve.ErrW(wve.UnsupportedKeyScheme, "keyring scheme is malformed", uerr)
+		return &RParseEntitySecrets{
+			Entity: en,
+		}, wve.ErrW(wve.UnsupportedKeyScheme, "keyring scheme is malformed", uerr)
 	}
 	if !krscheme.Supported() {
-		return nil, wve.Err(wve.UnsupportedKeyScheme, "keyring scheme is unsupported")
+		return &RParseEntitySecrets{
+			Entity: en,
+		}, wve.Err(wve.UnsupportedKeyScheme, "keyring scheme is unsupported")
 	}
 	//Try
 	if _, ok := krscheme.(*AESKeyring); ok && p.Passphrase == nil {
-		return nil, wve.Err(wve.PassphraseRequired, "passphrase required")
+		return &RParseEntitySecrets{
+			Entity: en,
+		}, wve.Err(wve.PassphraseRequired, "passphrase required")
 	}
 	keyring, uerr := krscheme.DecryptKeyring(context.Background(), p.Passphrase)
 	if uerr != nil {
-		return nil, wve.ErrW(wve.KeyringDecryptFailed, "could not decrypt entity secrets", uerr)
+		return &RParseEntitySecrets{
+			Entity: en,
+		}, wve.ErrW(wve.KeyringDecryptFailed, "could not decrypt entity secrets", uerr)
 	}
 	rv := EntitySecrets{
 		Entity: en,
@@ -253,15 +267,20 @@ func ParseEntitySecrets(ctx context.Context, p *PParseEntitySecrets) (*RParseEnt
 		lkey := key
 		eks, uerr := EntitySecretKeySchemeInstanceFor(&lkey)
 		if uerr != nil {
-			return nil, wve.Err(wve.KeyringDecryptFailed, "keyring contains unsupported keys")
+			return &RParseEntitySecrets{
+				Entity: en,
+			}, wve.Err(wve.KeyringDecryptFailed, "keyring contains unsupported keys")
 		}
 		if !eks.Supported() {
-			return nil, wve.Err(wve.KeyringDecryptFailed, "keyring contains unsupported keys")
+			return &RParseEntitySecrets{
+				Entity: en,
+			}, wve.Err(wve.KeyringDecryptFailed, "keyring contains unsupported keys")
 		}
 		rv.Keyring = append(rv.Keyring, eks)
 	}
 
 	return &RParseEntitySecrets{
+		Entity:        en,
 		EntitySecrets: &rv,
 	}, nil
 }

@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/engine"
@@ -44,7 +45,10 @@ func (e *eAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	if err != nil {
 		return nil, err
 	}
-	loc := LocationSchemeInstance(in.Location)
+	loc, err := LocationSchemeInstance(in.Location)
+	if err != nil {
+		return nil, err
+	}
 	id := secret.Entity.ArrayKeccak256()
 	eng, ok := e.engines[id]
 	if !ok {
@@ -57,12 +61,52 @@ func (e *eAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	}
 	return eng, nil
 }
+func (e *eAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectResponse, error) {
+	//Try as entitysecret
+	es, err := iapi.ParseEntitySecrets(ctx, &iapi.PParseEntitySecrets{
+		DER: p.Content,
+	})
+	if es.Entity == nil {
+		return &pb.InspectResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not decode entity secret", err)),
+		}, nil
+	}
+	return &pb.InspectResponse{
+		Entity: &pb.EntityInfo{
+			Hash:       es.Entity.Keccak256HI().Multihash(),
+			ValidFrom:  es.Entity.CanonicalForm.TBS.Validity.NotBefore.UnixNano(),
+			ValidUntil: es.Entity.CanonicalForm.TBS.Validity.NotAfter.UnixNano(),
+		},
+	}, nil
+}
+func (e *eAPI) ListLocations(ctx context.Context, p *pb.ListLocationsParams) (*pb.ListLocationsResponse, error) {
+	locs, err := iapi.SI().RegisteredLocations(ctx)
+	if err != nil {
+		return &pb.ListLocationsResponse{
+			Error: ToError(wve.ErrW(wve.InternalError, "could not obtain location list", err)),
+		}, nil
+	}
+	pblocs := make(map[string]*pb.Location)
+	for name, loc := range locs {
+		pblocs[name] = ToPbLocation(loc)
+	}
+	return &pb.ListLocationsResponse{
+		AgentLocations: pblocs,
+	}, nil
+}
 func (e *eAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.CreateEntityResponse, error) {
+	revloc, err := LocationSchemeInstance(p.RevocationLocation)
+	if err != nil {
+		return &pb.CreateEntityResponse{
+			Error: ToError(err),
+		}, nil
+	}
 	params := &iapi.PNewEntity{
 		ValidFrom:                    TimeFromInt64MillisWithDefault(p.ValidFrom, time.Now()),
 		ValidUntil:                   TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
-		CommitmentRevocationLocation: LocationSchemeInstance(p.RevocationLocation),
+		CommitmentRevocationLocation: revloc,
 	}
+	spew.Dump(params)
 	if p.SecretPassphrase != "" {
 		params.Passphrase = iapi.String(p.SecretPassphrase)
 	}
@@ -74,9 +118,11 @@ func (e *eAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.
 	if err != nil {
 		panic(err)
 	}
+	hi := iapi.KECCAK256.Instance(resp.PublicDER)
 	return &pb.CreateEntityResponse{
 		PublicDER: resp.PublicDER,
 		SecretDER: resp.SecretDER,
+		Hash:      hi.Multihash(),
 	}, nil
 }
 func (e *eAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationParams) (*pb.CreateAttestationResponse, error) {
@@ -87,7 +133,12 @@ func (e *eAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		}, nil
 	}
 	subHash := iapi.HashSchemeInstanceFromMultihash(p.SubjectHash)
-	subLoc := LocationSchemeInstance(p.SubjectLocation)
+	subLoc, err := LocationSchemeInstance(p.SubjectLocation)
+	if err != nil {
+		return &pb.CreateAttestationResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
 	ent, val, uerr := eng.LookupEntity(ctx, subHash, subLoc)
 	if uerr != nil {
 		return &pb.CreateAttestationResponse{
@@ -95,6 +146,8 @@ func (e *eAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		}, nil
 	}
 	if !val.Valid {
+		fmt.Printf("validity: \n")
+		spew.Dump(val)
 		return &pb.CreateAttestationResponse{
 			Error: ToError(wve.Err(wve.MissingParameter, "subject is not valid")),
 		}, nil
@@ -110,7 +163,12 @@ func (e *eAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 			Error: ToError(err),
 		}, nil
 	}
-	loc := LocationSchemeInstance(p.Perspective.Location)
+	loc, err := LocationSchemeInstance(p.Perspective.Location)
+	if err != nil {
+		return &pb.CreateAttestationResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "bad perspective location", err)),
+		}, nil
+	}
 	hashScheme, uerr := iapi.SI().HashSchemeFor(loc)
 	if err != nil {
 		return &pb.CreateAttestationResponse{
@@ -129,12 +187,21 @@ func (e *eAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		ValidUntil:       TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
 	}
 	resp, err := iapi.CreateAttestation(ctx, params)
+	hi := iapi.KECCAK256.Instance(resp.DER)
 	return &pb.CreateAttestationResponse{
-		DER: resp.DER,
+		DER:         resp.DER,
+		VerifierKey: resp.VerifierKey,
+		ProverKey:   resp.ProverKey,
+		Hash:        hi.Multihash(),
 	}, nil
 }
 func (e *eAPI) PublishEntity(ctx context.Context, p *pb.PublishEntityParams) (*pb.PublishEntityResponse, error) {
-	loc := LocationSchemeInstance(p.Location)
+	loc, err := LocationSchemeInstance(p.Location)
+	if err != nil {
+		return &pb.PublishEntityResponse{
+			Error: ToError(err),
+		}, nil
+	}
 	rve, err := iapi.ParseEntity(ctx, &iapi.PParseEntity{
 		DER: p.DER,
 	})
@@ -154,7 +221,12 @@ func (e *eAPI) PublishEntity(ctx context.Context, p *pb.PublishEntityParams) (*p
 	}, nil
 }
 func (e *eAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationParams) (*pb.PublishAttestationResponse, error) {
-	loc := LocationSchemeInstance(p.Location)
+	loc, err := LocationSchemeInstance(p.Location)
+	if err != nil {
+		return &pb.PublishAttestationResponse{
+			Error: ToError(err),
+		}, nil
+	}
 	rvp, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
 		DER: p.DER,
 	})
