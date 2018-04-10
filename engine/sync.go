@@ -156,8 +156,12 @@ func (e *Engine) syncLoop() {
 			panic(fmt.Sprintf("%d > %d", e.totalCompletedSyncs, e.totalSyncRequests))
 		}
 		if e.totalCompletedSyncs == e.totalSyncRequests {
-			//they are equal, close the channel to notify ppl
-			close(e.totalEqual)
+			//they are equal, close the channel to notify ppl if it hasn't already been closed
+			select {
+			case <-e.totalEqual:
+			default:
+				close(e.totalEqual)
+			}
 		}
 		e.totalMutex.Unlock()
 		//atomic.AddInt64(&e.totalCompletedSyncs, 1)

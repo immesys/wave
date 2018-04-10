@@ -64,6 +64,29 @@ func main() {
 			},
 		},
 		{
+			Name:      "rtprove",
+			Usage:     "create an RTree proof",
+			Action:    cli.ActionFunc(actionRTProve),
+			ArgsUsage: "permset:perm[,perm,perm...]@namespace/resource [permset...]",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:   "subject",
+					Usage:  "the subject entity secrets",
+					EnvVar: "WAVE_DEFAULT_ENTITY",
+				},
+				cli.StringFlag{
+					Name:  "passphrase",
+					Usage: "the passphrase to use if required",
+				},
+				cli.BoolFlag{
+					Name:  "skipsync",
+					Usage: "skip graph sync before proving",
+				},
+				// grant pset:perm,perm,perm@ns/suffix
+				oflag,
+			},
+		},
+		{
 			Name:      "rtgrant",
 			Usage:     "create an RTree attestation",
 			Action:    cli.ActionFunc(actionRTGrant),

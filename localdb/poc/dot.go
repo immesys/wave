@@ -268,6 +268,7 @@ func (p *poc) MoveAttestationLabelledP(ctx context.Context, att *iapi.Attestatio
 }
 func (p *poc) insertActiveAttestationForwardLink(ctx context.Context, att *iapi.Attestation) error {
 	srchash := keccakFromExt(&att.DecryptedBody.VerifierBody.Attester)
+
 	k := p.PKey(ctx, "fdot", ToB64(srchash), ToB64(att.Keccak256()))
 	//We don't really need a value
 	return p.u.Store(ctx, k, []byte{1})
@@ -320,10 +321,6 @@ func (p *poc) GetActiveAttestationsFromP(pctx context.Context, srchi iapi.HashSc
 		defer cancel()
 		for v := range vch {
 			parts := split(v.Key)
-			// srch := FromB64(parts[len(parts)-2])
-			// if !bytes.Equal(src, srch) {
-			// 	continue
-			// }
 			dh := FromB64(parts[len(parts)-1])
 			ds, err := p.loadAttestationState(ctx, dh)
 			if err != nil {

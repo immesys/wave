@@ -136,7 +136,6 @@ func (t *TestGraph) Edge(tst *testing.T, src, dst string, perms string, ttl int)
 			permarr = append(permarr, fmt.Sprintf("%x", 1<<uint(i)))
 		}
 	}
-
 	policy := pb.RTreePolicy{
 		Namespace:    t.pubs["ns"].Hash,
 		Indirections: uint32(ttl),
@@ -205,4 +204,9 @@ func TestRTreeSimpleDual(t *testing.T) {
 	tg.Edge(t, "b", "c", "11", 5)
 	tg.Edge(t, "a", "c", "11", 5)
 	tg.BuildCompare(t, "c", "11", 4, 3)
+}
+func TestRTreeSubPerm(t *testing.T) {
+	tg := TG()
+	tg.Edge(t, "ns", "a", "11", 0)
+	tg.BuildCompare(t, "a", "01", 1, 0)
 }

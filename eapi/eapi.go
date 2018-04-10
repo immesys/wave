@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/engine"
@@ -144,7 +143,7 @@ func (e *eAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.
 		ValidUntil:                   TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
 		CommitmentRevocationLocation: revloc,
 	}
-	spew.Dump(params)
+	//spew.Dump(params)
 	if p.SecretPassphrase != "" {
 		params.Passphrase = iapi.String(p.SecretPassphrase)
 	}
@@ -184,8 +183,6 @@ func (e *eAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		}, nil
 	}
 	if !val.Valid {
-		fmt.Printf("validity: \n")
-		spew.Dump(val)
 		return &pb.CreateAttestationResponse{
 			Error: ToError(wve.Err(wve.MissingParameter, "subject is not valid")),
 		}, nil
@@ -288,6 +285,7 @@ func (e *eAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationP
 	subjHI, subjLoc := rvp.Attestation.Subject()
 	uerr = iapi.SI().Enqueue(ctx, subjLoc, subjHI, hi)
 	if uerr != nil {
+
 		return &pb.PublishAttestationResponse{
 			Error: ToError(wve.ErrW(wve.StorageError, "could not enqueue attestation", uerr)),
 		}, nil
@@ -617,7 +615,6 @@ func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	if err != nil {
 		panic(err)
 	}
-
 	tb, err := rtree.NewRTreeBuilder(ctx, &rtree.Params{
 		Subject:      iapi.HashSchemeInstanceFromMultihash(p.SubjectHash),
 		Engine:       eng,

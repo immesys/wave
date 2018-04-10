@@ -191,8 +191,8 @@ func ConvertLookupResult(r *engine.LookupResult) *pb.Attestation {
 		}
 		rv.Body.AttesterHash = attHI.Multihash()
 		rv.Body.AttesterLocation = ToPbLocation(attLoc)
-		rv.Body.ValidFrom = r.Attestation.DecryptedBody.VerifierBody.Validity.NotBefore.UnixNano()
-		rv.Body.ValidUntil = r.Attestation.DecryptedBody.VerifierBody.Validity.NotAfter.UnixNano()
+		rv.Body.ValidFrom = r.Attestation.DecryptedBody.VerifierBody.Validity.NotBefore.UnixNano() / 1e6
+		rv.Body.ValidUntil = r.Attestation.DecryptedBody.VerifierBody.Validity.NotAfter.UnixNano() / 1e6
 		pol, err := iapi.PolicySchemeInstanceFor(&r.Attestation.DecryptedBody.VerifierBody.Policy)
 		if err != nil {
 			panic(err)

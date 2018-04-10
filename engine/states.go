@@ -54,7 +54,6 @@ nextlocation:
 				//There is nothing more in this queue on this location yet
 				continue nextlocation
 			}
-			fmt.Printf("getting enqueued attestation: %x\n", object)
 			//The object is probably an attestation
 			attestation, err := e.st.GetAttestation(e.ctx, loc, object)
 			if err != nil {
@@ -182,7 +181,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 			panic("nil attestation not malformed?")
 		}
 		if rpa.Attestation.DecryptedBody != nil {
-			fmt.Printf(">MPLA 6\n")
+			fmt.Printf(">MPLA 6 decrypted body\n")
 			e.partitionMutex.Unlock()
 			//DOT is transitioning to active
 			if err := e.insertActiveAttestation(rpa.Attestation); err != nil {

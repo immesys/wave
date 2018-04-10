@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -266,8 +267,6 @@ func actionRTGrant(c *cli.Context) error {
 			RTreePolicy: pol,
 		},
 	}
-	spew.Dump(pol)
-	fmt.Printf("ns %x\n", pol.Namespace)
 	resp, err := conn.CreateAttestation(context.Background(), params)
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
@@ -363,12 +362,16 @@ func actionResolve(c *cli.Context) error {
 		}
 		if resp.Attestation != nil {
 			fmt.Printf("= Attestation\n")
-			fmt.Printf("  Location: %s\n", resp.Location.AgentLocation)
-			fmt.Printf("  Hash : %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.Hash))
-			fmt.Printf("  Partition: %s\n", formatPartition(resp.Attestation.Partition))
+			fmt.Printf("    Location: %s\n", resp.Location.AgentLocation)
+			fmt.Printf("        Hash: %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.Hash))
+			fmt.Printf("   Partition: %s\n", formatPartition(resp.Attestation.Partition))
+			fmt.Printf("     Subject: %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.SubjectHash))
+			fmt.Printf("  SubjectLoc: %s\n", resp.Attestation.SubjectLocation.AgentLocation)
 			if resp.Attestation.Body != nil {
-				fmt.Printf("Created: %s\n", time.Unix(0, resp.Attestation.Body.ValidFrom*1e6))
-				fmt.Printf("Expires: %s\n", time.Unix(0, resp.Attestation.Body.ValidUntil*1e6))
+				fmt.Printf("     Created: %s\n", time.Unix(0, resp.Attestation.Body.ValidFrom*1e6))
+				fmt.Printf("     Expires: %s\n", time.Unix(0, resp.Attestation.Body.ValidUntil*1e6))
+				fmt.Printf("    Attester: %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.Body.AttesterHash))
+				fmt.Printf(" AttesterLoc: %s\n", resp.Attestation.Body.AttesterLocation.AgentLocation)
 			}
 			fmt.Printf("  Validity:\n")
 			fmt.Printf("   - Readable: %v\n", !resp.Attestation.Validity.NotDecrypted)
@@ -511,5 +514,157 @@ func actionPublish(c *cli.Context) error {
 			os.Exit(1)
 		}
 	}
+	return nil
+}
+func actionRTProve(c *cli.Context) error {
+	conn := getConn(c)
+
+	pfile := c.String("subject")
+	var perspective *pb.Perspective
+	if pfile != "" {
+		pass := []byte(c.String("passphrase"))
+		if len(pass) == 0 {
+			fmt.Printf("passphrase for subject entity: ")
+			var err error
+			pass, err = gopass.GetPasswdMasked()
+			if err != nil {
+				fmt.Printf("could not read passphrase: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		pder := loadEntitySecretDER(pfile)
+		perspective = &pb.Perspective{
+			EntitySecret: &pb.EntitySecret{
+				DER:        pder,
+				Passphrase: pass,
+			},
+		}
+	} else {
+		fmt.Printf("subject is required\n")
+		os.Exit(1)
+	}
+	statements := []*pb.RTreePolicyStatement{}
+	var namespace string
+	if len(c.Args()) == 0 {
+		fmt.Printf("need to specify some statements\n")
+		os.Exit(1)
+	}
+	for _, a := range c.Args() {
+		atsplit := strings.SplitN(a, "@", -1)
+		if len(atsplit) != 2 {
+			fmt.Printf("%v\n", atsplit)
+			fmt.Printf("err 1 expected arguments of form permset:perm[,perm,perm...]@namespace/resource\n")
+			os.Exit(1)
+		}
+		firstsplit := strings.SplitN(atsplit[0], ":", -1)
+		if len(firstsplit) != 2 {
+			fmt.Printf("err 2 expected arguments of form permset:perm[,perm,perm...]@namespace/resource\n")
+			os.Exit(1)
+		}
+		pset, err := base64.URLEncoding.DecodeString(firstsplit[0])
+		if err != nil {
+			fmt.Printf("permission set invalid\n")
+			os.Exit(1)
+		}
+		perms := strings.SplitN(firstsplit[1], ",", -1)
+		nsrez := strings.SplitN(atsplit[1], "/", 2)
+		if namespace == "" {
+			namespace = nsrez[0]
+		}
+		if namespace != nsrez[0] {
+			fmt.Printf("all statements in a single policy must be on the same namespace\n")
+			os.Exit(1)
+		}
+		statements = append(statements, &pb.RTreePolicyStatement{
+			PermissionSet: pset,
+			Permissions:   perms,
+			Resource:      nsrez[1],
+		})
+	}
+	ns, err := base64.URLEncoding.DecodeString(namespace)
+	if err != nil {
+		fmt.Printf("invalid namespace\n")
+		os.Exit(1)
+	}
+	inspectresponse, err := conn.Inspect(context.Background(), &pb.InspectParams{
+		Content: perspective.EntitySecret.DER,
+	})
+	if err != nil {
+		fmt.Printf("could not get attester hash: %v\n", err)
+		os.Exit(1)
+	}
+	if inspectresponse.Entity == nil {
+		fmt.Printf("attester file is not an entity secret\n")
+		os.Exit(1)
+	}
+	//fmt.Printf("inspect hash was: %s\n", base64.URLEncoding.EncodeToString(inspectresponse.Entity.Hash))
+	//Get the attester location
+	subjectresp, err := conn.ResolveHash(context.Background(), &pb.ResolveHashParams{
+		Hash: inspectresponse.Entity.Hash,
+	})
+	if err != nil {
+		fmt.Printf("could not find subject location: %v\n", err)
+		os.Exit(1)
+	}
+	if subjectresp.Error != nil {
+		fmt.Printf("could not find subject location: %v\n", subjectresp.Error.Message)
+		os.Exit(1)
+	}
+	perspective.Location = subjectresp.Location
+	params := &pb.BuildRTreeParams{
+		Perspective:    perspective,
+		SubjectHash:    inspectresponse.Entity.Hash,
+		RtreeNamespace: ns,
+		Statements:     statements,
+	}
+	if !c.Bool("skipsync") {
+		fmt.Printf("Resynchronizing perspective graph\n")
+		resp, err := conn.ResyncPerspectiveGraph(context.Background(), &pb.ResyncPerspectiveGraphParams{
+			Perspective: perspective,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: %v\n", resp.Error.Message)
+			os.Exit(1)
+		}
+		srv, err := conn.WaitForSyncComplete(context.Background(), &pb.SyncParams{
+			Perspective: perspective,
+		})
+		for {
+			rv, err := srv.Recv()
+			if err == io.EOF {
+				break
+			}
+			spew.Dump(rv)
+			fmt.Printf("Synchronized %d/%d entities\n", rv.CompletedSyncs, rv.TotalSyncRequests)
+		}
+		fmt.Printf("Perspective graph sync complete\n")
+	}
+	resp, err := conn.BuildRTreeProof(context.Background(), params)
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		os.Exit(1)
+	}
+	if resp.Error != nil {
+		fmt.Printf("error: %v\n", resp.Error.Message)
+		os.Exit(1)
+	}
+	bl := pem.Block{
+		Type:  eapi.PEM_EXPLICIT_PROOF,
+		Bytes: resp.ProofDER,
+	}
+	outfilename := fmt.Sprintf("proof_%s.pem", time.Now().Format(time.RFC3339))
+	if c.String("outfile") != "" {
+		outfilename = c.String("outfile")
+	}
+	err = ioutil.WriteFile(outfilename, pem.EncodeToMemory(&bl), 0600)
+	if err != nil {
+		fmt.Printf("could not write proof file: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("wrote proof: %s\n", outfilename)
 	return nil
 }
