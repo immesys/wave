@@ -16,10 +16,24 @@ func TimeFromInt64MillisWithDefault(v int64, def time.Time) *time.Time {
 	if v == 0 {
 		return &def
 	}
-	t := time.Unix(0, v*100000)
+	t := time.Unix(0, v*1000000)
 	return &t
 }
 
+func ConvertEntityWVal(e *iapi.Entity, v *engine.Validity) *pb.Entity {
+	return &pb.Entity{
+		Hash:       e.Keccak256HI().Multihash(),
+		ValidFrom:  e.CanonicalForm.TBS.Validity.NotBefore.UnixNano() / 1e6,
+		ValidUntil: e.CanonicalForm.TBS.Validity.NotAfter.UnixNano() / 1e6,
+		Validity: &pb.EntityValidity{
+			Valid:     v.Valid,
+			Revoked:   v.Revoked,
+			Expired:   v.Expired,
+			Malformed: v.Malformed,
+			Message:   v.Message,
+		},
+	}
+}
 func LocationSchemeInstance(in *pb.Location) (iapi.LocationSchemeInstance, wve.WVE) {
 	if in == nil {
 		return nil, nil
@@ -109,6 +123,7 @@ func ConvertProofAttestation(a *iapi.Attestation) *pb.Attestation {
 	if a.WR1Extra != nil {
 		rv.VerifierKey = a.WR1Extra.VerifierBodyKey
 		rv.ProverKey = a.WR1Extra.ProverBodyKey
+		rv.Partition = a.WR1Extra.Partition
 	}
 	subjHI, subjLoc := a.Subject()
 	rv.SubjectHash = subjHI.Multihash()
@@ -127,8 +142,8 @@ func ConvertProofAttestation(a *iapi.Attestation) *pb.Attestation {
 		}
 		rv.Body.AttesterHash = attHI.Multihash()
 		rv.Body.AttesterLocation = ToPbLocation(attLoc)
-		rv.Body.ValidFrom = a.DecryptedBody.VerifierBody.Validity.NotBefore.UnixNano()
-		rv.Body.ValidUntil = a.DecryptedBody.VerifierBody.Validity.NotAfter.UnixNano()
+		rv.Body.ValidFrom = a.DecryptedBody.VerifierBody.Validity.NotBefore.UnixNano() / 1e6
+		rv.Body.ValidUntil = a.DecryptedBody.VerifierBody.Validity.NotAfter.UnixNano() / 1e6
 		pol, err := iapi.PolicySchemeInstanceFor(&a.DecryptedBody.VerifierBody.Policy)
 		if err != nil {
 			panic(err)

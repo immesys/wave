@@ -113,7 +113,7 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 	}
 	resp.Body.Close()
 	if resp.StatusCode == 404 {
-		return nil, nil
+		return nil, iapi.ErrObjectNotFound
 	}
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("Remote error: %d (%s)\n", resp.StatusCode, body)

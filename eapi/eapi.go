@@ -18,9 +18,10 @@ import (
 )
 
 type eAPI struct {
-	engines map[[32]byte]*engine.Engine
-	s       *grpc.Server
-	state   iapi.WaveState
+	engines  map[[32]byte]*engine.Engine
+	npengine *engine.Engine
+	s        *grpc.Server
+	state    iapi.WaveState
 }
 
 func NewEAPI(state iapi.WaveState) *eAPI {
@@ -28,6 +29,11 @@ func NewEAPI(state iapi.WaveState) *eAPI {
 		engines: make(map[[32]byte]*engine.Engine),
 		state:   state,
 	}
+	npengine, err := engine.NewEngineWithNoPerspective(context.Background(), state, iapi.SI())
+	if err != nil {
+		panic(err)
+	}
+	api.npengine = npengine
 	return api
 }
 func (e *eAPI) StartServer(listenaddr string) {
@@ -61,22 +67,54 @@ func (e *eAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	}
 	return eng, nil
 }
+func (e *eAPI) getEngineNoPerspective() *engine.Engine {
+	return e.npengine
+}
 func (e *eAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectResponse, error) {
+	eng := e.getEngineNoPerspective()
 	//Try as entitysecret
 	es, err := iapi.ParseEntitySecrets(ctx, &iapi.PParseEntitySecrets{
 		DER: p.Content,
 	})
-	if es.Entity == nil {
+	if es != nil {
+		validity, err := eng.CheckEntity(ctx, es.Entity)
+		if err != nil {
+			return &pb.InspectResponse{
+				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not check entity", err)),
+			}, nil
+		}
 		return &pb.InspectResponse{
-			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not decode entity secret", err)),
+			Entity: ConvertEntityWVal(es.Entity, validity),
 		}, nil
 	}
+	//Try as attestation
+	att, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
+		DER: p.Content,
+	})
+	if err != nil || att.IsMalformed {
+		return &pb.InspectResponse{
+			Error: ToError(wve.Err(wve.InvalidParameter, "could not decode contents")),
+		}, nil
+	}
+	pba := ConvertProofAttestation(att.Attestation)
+	validity, uerr := eng.CheckAttestation(ctx, att.Attestation)
+	if uerr != nil {
+		return &pb.InspectResponse{
+			Error: ToError(wve.Err(wve.InvalidParameter, "could not check attestation")),
+		}, nil
+	}
+	pba.Validity = &pb.AttestationValidity{
+		Valid:        validity.Valid,
+		Revoked:      validity.Revoked,
+		Expired:      validity.Expired,
+		Malformed:    validity.Malformed,
+		NotDecrypted: validity.NotDecrypted,
+		SrcInvalid:   validity.SrcInvalid,
+		DstInvalid:   validity.DstInvalid,
+		Message:      validity.Message,
+	}
 	return &pb.InspectResponse{
-		Entity: &pb.EntityInfo{
-			Hash:       es.Entity.Keccak256HI().Multihash(),
-			ValidFrom:  es.Entity.CanonicalForm.TBS.Validity.NotBefore.UnixNano(),
-			ValidUntil: es.Entity.CanonicalForm.TBS.Validity.NotAfter.UnixNano(),
-		},
+		Attestation: pba,
 	}, nil
 }
 func (e *eAPI) ListLocations(ctx context.Context, p *pb.ListLocationsParams) (*pb.ListLocationsResponse, error) {
@@ -476,6 +514,82 @@ func (e *eAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.Ve
 	}
 	return &pb.VerifyProofResponse{
 		Result: &proof,
+	}, nil
+}
+func (e *eAPI) ResolveHash(ctx context.Context, p *pb.ResolveHashParams) (*pb.ResolveHashResponse, error) {
+	var en *engine.Engine
+	if p.Perspective == nil {
+		en = e.getEngineNoPerspective()
+	} else {
+		var err wve.WVE
+		en, err = e.getEngine(ctx, p.Perspective)
+		if err != nil {
+			return &pb.ResolveHashResponse{
+				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+			}, nil
+		}
+	}
+	hi := iapi.HashSchemeInstanceFromMultihash(p.Hash)
+	if !hi.Supported() {
+		return &pb.ResolveHashResponse{
+			Error: ToError(wve.Err(wve.InvalidParameter, "invalid hash")),
+		}, nil
+	}
+	//Try resolve it as an entity first
+	locs, err := iapi.SI().RegisteredLocations(ctx)
+	if err != nil {
+		panic(err)
+	}
+	for lname, loc := range locs {
+		pbloc := ToPbLocation(loc)
+		pbloc.AgentLocation = lname
+		entity, validity, err := en.LookupEntity(ctx, hi, loc)
+		if err != nil {
+			werr, ok := err.(wve.WVE)
+			if ok && werr.Code() == 905 {
+				//This is just not an entity
+				goto tryatt
+			}
+			if err != iapi.ErrObjectNotFound {
+				return &pb.ResolveHashResponse{
+					Error: ToError(wve.ErrW(wve.InternalError, "lookup failed", err)),
+				}, nil
+			}
+		}
+		if entity != nil {
+			return &pb.ResolveHashResponse{
+				Location: pbloc,
+				Entity:   ConvertEntityWVal(entity, validity),
+			}, nil
+		}
+	tryatt:
+		//next try as attestation
+		var attest *iapi.Attestation
+		if p.Perspective == nil {
+			attest, validity, err = en.LookupAttestationNoPerspective(ctx, hi, nil, loc)
+		} else {
+			attest, validity, err = en.LookupAttestationInPerspective(ctx, hi, loc)
+		}
+		if attest != nil {
+			pba := ConvertProofAttestation(attest)
+			pba.Validity = &pb.AttestationValidity{
+				Valid:        validity.Valid,
+				Revoked:      validity.Revoked,
+				Expired:      validity.Expired,
+				Malformed:    validity.Malformed,
+				NotDecrypted: validity.NotDecrypted,
+				SrcInvalid:   validity.SrcInvalid,
+				DstInvalid:   validity.DstInvalid,
+				Message:      validity.Message,
+			}
+			return &pb.ResolveHashResponse{
+				Location:    pbloc,
+				Attestation: pba,
+			}, nil
+		}
+	}
+	return &pb.ResolveHashResponse{
+		Error: ToError(wve.Err(wve.LookupFailure, "no objects found")),
 	}, nil
 }
 func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb.BuildRTreeResponse, error) {

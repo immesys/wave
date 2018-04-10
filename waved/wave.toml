@@ -8,8 +8,8 @@ database = "/var/lib/wave/db"
 listenIp = "127.0.0.1:777"
 
 [storage]
-  # This is the in-memory HTTP server
-  [storage.inmem]
+  # This is the default development server
+  [storage.default]
   provider = "http_v1"
-  url = "http://localhost:8001"
+  url = "https://standalone.storage.bwave.io/v1"
   version = "1"

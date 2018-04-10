@@ -108,12 +108,17 @@ func actionMkEntity(c *cli.Context) error {
 		Type:  eapi.PEM_ENTITY_SECRET,
 		Bytes: resp.SecretDER,
 	}
-	err = ioutil.WriteFile(c.String("outfile"), pem.EncodeToMemory(&bl), 0600)
+	stringhash := base64.URLEncoding.EncodeToString(resp.Hash)
+	filename := "ent_" + stringhash + ".pem"
+	if c.String("outfile") != "" {
+		filename = c.String("outfile")
+	}
+	err = ioutil.WriteFile(filename, pem.EncodeToMemory(&bl), 0600)
 	if err != nil {
 		fmt.Printf("could not write entity file: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("created entity: %s\n", base64.URLEncoding.EncodeToString(resp.Hash))
+	fmt.Printf("wrote entity: %s\n", filename)
 	return nil
 }
 func loadEntitySecretDER(filename string) []byte {
@@ -208,26 +213,55 @@ func actionRTGrant(c *cli.Context) error {
 		Statements:    statements,
 		VisibilityURI: vizuri,
 	}
-	spew.Dump(pol)
-	fmt.Printf("ns %x\n", pol.Namespace)
-	fmt.Printf("otherns:", ns)
+	inspectresponse, err := conn.Inspect(context.Background(), &pb.InspectParams{
+		Content: attesterder,
+	})
+	if err != nil {
+		fmt.Printf("could not get attester hash: %v\n", err)
+		os.Exit(1)
+	}
+	if inspectresponse.Entity == nil {
+		fmt.Printf("attester file is not an entity secret\n")
+		os.Exit(1)
+	}
+	fmt.Printf("inspect hash was: %s\n", base64.URLEncoding.EncodeToString(inspectresponse.Entity.Hash))
+	//Get the attester location
+	attesterresp, err := conn.ResolveHash(context.Background(), &pb.ResolveHashParams{
+		Hash: inspectresponse.Entity.Hash,
+	})
+	if err != nil {
+		fmt.Printf("could not find attester location: %v\n", err)
+		os.Exit(1)
+	}
+	if attesterresp.Error != nil {
+		fmt.Printf("could not find attester location: %v\n", attesterresp.Error.Message)
+		os.Exit(1)
+	}
+
+	subjresp, err := conn.ResolveHash(context.Background(), &pb.ResolveHashParams{
+		Hash: subject,
+	})
+	if err != nil {
+		fmt.Printf("could not find subject location: %v\n", err)
+		os.Exit(1)
+	}
+	if subjresp.Error != nil {
+		fmt.Printf("could not find subject location: %v\n", subjresp.Error.Message)
+		os.Exit(1)
+	}
 	params := &pb.CreateAttestationParams{
 		Perspective: &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{
 				DER:        attesterder,
 				Passphrase: pass,
 			},
-			Location: &pb.Location{
-				AgentLocation: c.String("attesterlocation"),
-			},
+			Location: attesterresp.Location,
 		},
-		BodyScheme:  eapi.BodySchemeWaveRef1,
-		SubjectHash: subject,
-		SubjectLocation: &pb.Location{
-			AgentLocation: c.String("subjectlocation"),
-		},
-		ValidFrom:  time.Now().UnixNano() / 1e6,
-		ValidUntil: time.Now().Add(*expires).UnixNano() / 1e6,
+		BodyScheme:      eapi.BodySchemeWaveRef1,
+		SubjectHash:     subject,
+		SubjectLocation: subjresp.Location,
+		ValidFrom:       time.Now().UnixNano() / 1e6,
+		ValidUntil:      time.Now().Add(*expires).UnixNano() / 1e6,
 		Policy: &pb.Policy{
 			RTreePolicy: pol,
 		},
@@ -247,15 +281,175 @@ func actionRTGrant(c *cli.Context) error {
 		Type:  eapi.PEM_ATTESTATION,
 		Bytes: resp.DER,
 	}
-	err = ioutil.WriteFile(c.String("outfile"), pem.EncodeToMemory(&bl), 0600)
+	stringhash := base64.URLEncoding.EncodeToString(resp.Hash)
+	outfilename := fmt.Sprintf("att_%s.pem", stringhash)
+	if c.String("outfile") != "" {
+		outfilename = c.String("outfile")
+	}
+	err = ioutil.WriteFile(outfilename, pem.EncodeToMemory(&bl), 0600)
 	if err != nil {
 		fmt.Printf("could not write attestation file: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("created attestation: %s\n", base64.URLEncoding.EncodeToString(resp.Hash))
+	fmt.Printf("wrote attestation: %s\n", outfilename)
 	return nil
 }
+func formatPartition(p [][]byte) string {
+	if p == nil {
+		return "< unknown >"
+	}
+	rv := ""
+	for idx, el := range p {
+		if len(el) != 0 {
+			rv += fmt.Sprintf("%d:%q ", idx, el)
+		}
+	}
+	return strings.TrimSpace(rv)
+}
+func actionResolve(c *cli.Context) error {
+	conn := getConn(c)
+	pfile := c.String("perspective")
+	var perspective *pb.Perspective
+	if pfile != "" {
+		pass := []byte(c.String("passphrase"))
+		if len(pass) == 0 {
+			fmt.Printf("passphrase for perspective entity: ")
+			var err error
+			pass, err = gopass.GetPasswdMasked()
+			if err != nil {
+				fmt.Printf("could not read passphrase: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		pder := loadEntitySecretDER(pfile)
+		perspective = &pb.Perspective{
+			EntitySecret: &pb.EntitySecret{
+				DER:        pder,
+				Passphrase: pass,
+			},
+		}
+	}
 
+	for _, hash := range c.Args() {
+		h, err := base64.URLEncoding.DecodeString(hash)
+		if err != nil {
+			fmt.Printf("invalid hash\n")
+			os.Exit(1)
+		}
+		resp, err := conn.ResolveHash(context.Background(), &pb.ResolveHashParams{
+			Perspective: perspective,
+			Hash:        h,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: %s\n", resp.Error.Message)
+			os.Exit(1)
+		}
+		if resp.Entity != nil {
+			fmt.Printf("= Entity\n")
+			fmt.Printf("  Location: %s\n", resp.Location.AgentLocation)
+			fmt.Printf("      Hash: %s\n", base64.URLEncoding.EncodeToString(resp.Entity.Hash))
+			fmt.Printf("   Created: %s\n", time.Unix(0, resp.Entity.ValidFrom*1e6))
+			fmt.Printf("   Expires: %s\n", time.Unix(0, resp.Entity.ValidUntil*1e6))
+			fmt.Printf("  Validity:\n")
+			fmt.Printf("   - Valid: %v\n", resp.Entity.Validity.Valid)
+			fmt.Printf("   - Expired: %v\n", resp.Entity.Validity.Expired)
+			fmt.Printf("   - Malformed: %v\n", resp.Entity.Validity.Malformed)
+			fmt.Printf("   - Revoked: %v\n", resp.Entity.Validity.Revoked)
+			fmt.Printf("   - Message: %v\n", resp.Entity.Validity.Message)
+		}
+		if resp.Attestation != nil {
+			fmt.Printf("= Attestation\n")
+			fmt.Printf("  Location: %s\n", resp.Location.AgentLocation)
+			fmt.Printf("  Hash : %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.Hash))
+			fmt.Printf("  Partition: %s\n", formatPartition(resp.Attestation.Partition))
+			if resp.Attestation.Body != nil {
+				fmt.Printf("Created: %s\n", time.Unix(0, resp.Attestation.Body.ValidFrom*1e6))
+				fmt.Printf("Expires: %s\n", time.Unix(0, resp.Attestation.Body.ValidUntil*1e6))
+			}
+			fmt.Printf("  Validity:\n")
+			fmt.Printf("   - Readable: %v\n", !resp.Attestation.Validity.NotDecrypted)
+			fmt.Printf("   - Revoked: %v\n", resp.Attestation.Validity.Revoked)
+			fmt.Printf("   - Malformed: %v\n", resp.Attestation.Validity.Malformed)
+			fmt.Printf("   - Subject invalid: %v\n", resp.Attestation.Validity.DstInvalid)
+			if !resp.Attestation.Validity.NotDecrypted {
+				fmt.Printf("   - Valid: %v\n", resp.Attestation.Validity.Valid)
+				fmt.Printf("   - Expired: %v\n", resp.Attestation.Validity.Expired)
+				fmt.Printf("   - Attester invalid: %v\n", resp.Attestation.Validity.SrcInvalid)
+				fmt.Printf("  Policy: RTree\n")
+				fmt.Printf("   - Namespace: %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.Body.Policy.RTreePolicy.Namespace))
+				fmt.Printf("   - Indirections: %d\n", resp.Attestation.Body.Policy.RTreePolicy.Indirections)
+				fmt.Printf("   - Statements:\n")
+				for idx, st := range resp.Attestation.Body.Policy.RTreePolicy.Statements {
+					fmt.Printf("     [%02d] Permission set: %s\n", idx, base64.URLEncoding.EncodeToString(st.PermissionSet))
+					fmt.Printf("          Permissions: %s\n", strings.Join(st.Permissions, ", "))
+					fmt.Printf("          URI: %s\n", st.Resource)
+				}
+			}
+		}
+	}
+	return nil
+}
+func actionInspect(c *cli.Context) error {
+	conn := getConn(c)
+	for _, filename := range c.Args() {
+		contents, err := ioutil.ReadFile(filename)
+		if err != nil {
+			fmt.Printf("could not read file %q: %v\n", filename, err)
+			continue
+		}
+		block, _ := pem.Decode(contents)
+		if block == nil {
+			fmt.Printf("file %q is not a PEM file\n", filename)
+			continue
+		}
+		resp, err := conn.Inspect(context.Background(), &pb.InspectParams{
+			Content: block.Bytes,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: [%d] %s\n", resp.Error.Code, resp.Error.Message)
+			os.Exit(1)
+		}
+		if resp.Entity != nil {
+			fmt.Printf("= Entity\n")
+			fmt.Printf("      Hash: %s\n", base64.URLEncoding.EncodeToString(resp.Entity.Hash))
+			fmt.Printf("   Created: %s\n", time.Unix(0, resp.Entity.ValidFrom*1e6))
+			fmt.Printf("   Expires: %s\n", time.Unix(0, resp.Entity.ValidUntil*1e6))
+			fmt.Printf("  Validity:\n")
+			fmt.Printf("   - Valid: %v\n", resp.Entity.Validity.Valid)
+			fmt.Printf("   - Expired: %v\n", resp.Entity.Validity.Expired)
+			fmt.Printf("   - Malformed: %v\n", resp.Entity.Validity.Malformed)
+			fmt.Printf("   - Revoked: %v\n", resp.Entity.Validity.Revoked)
+			fmt.Printf("   - Message: %v\n", resp.Entity.Validity.Message)
+		}
+		if resp.Attestation != nil {
+			fmt.Printf("= Attestation %q\n", filename)
+			fmt.Printf("  Hash : %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.Hash))
+			if resp.Attestation.Body != nil {
+				fmt.Printf("Created: %s\n", time.Unix(0, resp.Attestation.Body.ValidFrom*1e6))
+				fmt.Printf("Expires: %s\n", time.Unix(0, resp.Attestation.Body.ValidUntil*1e6))
+			}
+			fmt.Printf("  Validity:\n")
+			fmt.Printf("   - Readable: %v\n", !resp.Attestation.Validity.NotDecrypted)
+			fmt.Printf("   - Revoked: %v\n", resp.Attestation.Validity.Revoked)
+			fmt.Printf("   - Malformed: %v\n", resp.Attestation.Validity.Malformed)
+			fmt.Printf("   - Subject invalid: %v\n", resp.Attestation.Validity.DstInvalid)
+			if !resp.Attestation.Validity.NotDecrypted {
+				fmt.Printf("   - Valid: %v\n", resp.Attestation.Validity.Valid)
+				fmt.Printf("   - Expired: %v\n", resp.Attestation.Validity.Expired)
+				fmt.Printf("   - Attester invalid: %v\n", resp.Attestation.Validity.SrcInvalid)
+			}
+		}
+	}
+	return nil
+}
 func actionPublish(c *cli.Context) error {
 	conn := getConn(c)
 	for _, filename := range c.Args() {
@@ -277,6 +471,27 @@ func actionPublish(c *cli.Context) error {
 			}
 			for _, loc := range locs {
 				resp, err := conn.PublishEntity(context.Background(), &pb.PublishEntityParams{
+					DER: block.Bytes,
+					Location: &pb.Location{
+						AgentLocation: loc,
+					},
+				})
+				if err != nil {
+					fmt.Printf("error: %v\n", err)
+					os.Exit(1)
+				}
+				if resp.Error != nil {
+					fmt.Printf("error: [%d] %s\n", resp.Error.Code, resp.Error.Message)
+					os.Exit(1)
+				}
+			}
+		case eapi.PEM_ATTESTATION:
+			locs := []string{"default"}
+			if len(c.StringSlice("location")) != 0 {
+				locs = c.StringSlice("location")
+			}
+			for _, loc := range locs {
+				resp, err := conn.PublishAttestation(context.Background(), &pb.PublishAttestationParams{
 					DER: block.Bytes,
 					Location: &pb.Location{
 						AgentLocation: loc,

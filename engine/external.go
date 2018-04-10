@@ -229,52 +229,49 @@ func (e *Engine) ResyncEntireGraph(ctx context.Context) error {
 //perspective (active entity) is used
 func (e *Engine) LookupAttestationNoPerspective(ctx context.Context, hash iapi.HashSchemeInstance, verifierKey []byte, location iapi.LocationSchemeInstance) (*iapi.Attestation, *Validity, error) {
 	//First get the DOT from cache. This will come back decrypted if we know about it:
-	att, err := e.ws.GetAttestationP(ctx, hash)
-	if err != nil {
-		return nil, nil, err
-	}
+	//Removed, this could return a decrypted attestation from perspective
+	// att, err := e.ws.GetAttestationP(ctx, hash)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 	var der []byte
-	if att == nil {
-		//We need to try retrieve it from storage
-		att, err = e.st.GetAttestation(ctx, location, hash)
-		if err != nil {
-			return nil, nil, err
-		}
-		if att == nil {
-			return nil, nil, nil
-		}
-		der, err = att.DER()
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		//We have the attestation but we need to "unparse it"
-		der, err = att.DER()
-		if err != nil {
-			panic(err)
-		}
 
-	}
-
-	//Don't give it our engine, so it can't use our perspective
-	dctx := NewEngineDecryptionContext(nil)
-	dctx.SetVerifierKey(verifierKey)
-	par, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
-		DER:               der,
-		DecryptionContext: dctx,
-	})
+	//We need to try retrieve it from storage
+	att, err := e.st.GetAttestation(ctx, location, hash)
 	if err != nil {
 		return nil, nil, err
 	}
-	if par.IsMalformed {
-		return nil, &Validity{
-			Malformed: true,
-		}, nil
+	if att == nil {
+		return nil, nil, nil
 	}
+	if verifierKey != nil {
+		der, err = att.DER()
+		if err != nil {
+			return nil, nil, err
+		}
 
+		//Don't give it our engine, so it can't use our perspective
+		dctx := NewEngineDecryptionContext(nil)
+		if verifierKey != nil {
+			dctx.SetVerifierKey(verifierKey)
+		}
+		par, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
+			DER:               der,
+			DecryptionContext: dctx,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		if par.IsMalformed {
+			return nil, &Validity{
+				Malformed: true,
+			}, nil
+		}
+		att = par.Attestation
+	}
 	//Ok now check the attestation
-	validity, err := e.CheckAttestation(ctx, par.Attestation)
-	return par.Attestation, validity, err
+	validity, err := e.CheckAttestation(ctx, att)
+	return att, validity, err
 }
 
 func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.HashSchemeInstance, location iapi.LocationSchemeInstance) (*iapi.Attestation, *Validity, error) {
@@ -321,7 +318,8 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 //Unlike checkDot, this should not touch the DB, it is a read-only operation
 func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Validity, error) {
 	subjecth, subjloc := d.Subject()
-	subject, err := e.getEntityFromHashLoc(ctx, subjecth, subjloc)
+	subject, subjvalidity, err := e.LookupEntity(ctx, subjecth, subjloc)
+	//subject, err := e.getEntityFromHashLoc(ctx, subjecth, subjloc)
 	if err != nil {
 		return nil, err
 	}
@@ -331,14 +329,10 @@ func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Va
 			Message:    "Subject entity unknown",
 		}, nil
 	}
-	dstvalid, err := e.CheckEntity(ctx, subject)
-	if err != nil {
-		return nil, err
-	}
-	if !dstvalid.Valid {
+	if !subjvalidity.Valid {
 		return &Validity{
 			DstInvalid: true,
-			Message:    fmt.Sprintf("Subject invalid: %s", dstvalid.Message),
+			Message:    fmt.Sprintf("Subject invalid: %s", subjvalidity.Message),
 		}, nil
 	}
 
@@ -353,7 +347,7 @@ func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Va
 	if err != nil {
 		return nil, err
 	}
-	attester, err := e.getEntityFromHashLoc(ctx, attesterh, attesterloc)
+	attester, srcvalid, err := e.LookupEntity(ctx, attesterh, attesterloc)
 	if err != nil {
 		return nil, err
 	}
@@ -362,10 +356,6 @@ func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Va
 			SrcInvalid: true,
 			Message:    "Attester entity unknown",
 		}, nil
-	}
-	srcvalid, err := e.CheckEntity(ctx, attester)
-	if err != nil {
-		return nil, err
 	}
 	if !srcvalid.Valid {
 		return &Validity{
@@ -405,18 +395,20 @@ func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, 
 }
 
 func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, *Validity, error) {
-	ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
-	ent, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
-	if err != nil {
-		return nil, nil, err
-	}
-	if ent != nil {
-		val, err := e.CheckEntity(ctx, ent)
-		return ent, val, err
+	if e.perspective != nil {
+		ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
+		ent, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
+		if err != nil {
+			return nil, nil, err
+		}
+		if ent != nil {
+			val, err := e.CheckEntity(ctx, ent)
+			return ent, val, err
+		}
 	}
 
 	//Get it from storage
-	ent, err = e.st.GetEntity(ctx, loc, hash)
+	ent, err := e.st.GetEntity(ctx, loc, hash)
 	if err != nil || ent == nil {
 		return nil, nil, err
 	}

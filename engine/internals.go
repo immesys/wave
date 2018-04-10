@@ -57,6 +57,16 @@ type Engine struct {
 	totalCompletedSyncs int64
 }
 
+func NewEngineWithNoPerspective(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface) (*Engine, error) {
+	subctx, cancel := context.WithCancel(ctx)
+	rv := Engine{
+		ctx:       subctx,
+		ctxcancel: cancel,
+		ws:        state,
+		st:        st,
+	}
+	return &rv, nil
+}
 func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface, perspective *iapi.EntitySecrets, perspectiveLoc iapi.LocationSchemeInstance) (*Engine, error) {
 	ctx = context.WithValue(ctx, consts.PerspectiveKey, perspective)
 	subctx, cancel := context.WithCancel(ctx)

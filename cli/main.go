@@ -81,18 +81,8 @@ func main() {
 					EnvVar: "WAVE_DEFAULT_ENTITY",
 				},
 				cli.StringFlag{
-					Name:  "attesterlocation",
-					Usage: "the location of the attesting entity",
-					Value: "default",
-				},
-				cli.StringFlag{
 					Name:  "subject",
 					Usage: "the recipient entity hash",
-				},
-				cli.StringFlag{
-					Name:  "subjectlocation",
-					Usage: "the recipient entity location",
-					Value: "default",
 				},
 				cli.StringFlag{
 					Name:  "partition",
@@ -115,6 +105,23 @@ func main() {
 				cli.StringSliceFlag{
 					Name:  "location",
 					Usage: "a location to publish to",
+				},
+			},
+		},
+		{
+			Name:   "inspect",
+			Usage:  "print information about a file",
+			Action: cli.ActionFunc(actionInspect),
+			Flags:  []cli.Flag{},
+		},
+		{
+			Name:   "resolve",
+			Usage:  "print information about a hash",
+			Action: cli.ActionFunc(actionResolve),
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "perspective",
+					Usage: "the entity to use as a perspective",
 				},
 				cli.StringFlag{
 					Name:  "passphrase",
