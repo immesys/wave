@@ -453,6 +453,62 @@ func actionInspect(c *cli.Context) error {
 	}
 	return nil
 }
+func actionVerify(c *cli.Context) error {
+	conn := getConn(c)
+	for _, filename := range c.Args() {
+		contents, err := ioutil.ReadFile(filename)
+		if err != nil {
+			fmt.Printf("could not read file %q: %v\n", filename, err)
+			continue
+		}
+		block, _ := pem.Decode(contents)
+		if block == nil {
+			fmt.Printf("file %q is not a PEM file\n", filename)
+			continue
+		}
+		resp, err := conn.VerifyProof(context.Background(), &pb.VerifyProofParams{
+			ProofDER: block.Bytes,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: [%d] %s\n", resp.Error.Code, resp.Error.Message)
+			os.Exit(1)
+		}
+		printProof(resp.Result)
+	}
+	return nil
+}
+func printProof(p *pb.Proof) error {
+	fmt.Printf("Referenced attestations:\n")
+	for idx, att := range p.Elements {
+		fmt.Printf(" [%02d] Hash: %s\n", idx, base64.URLEncoding.EncodeToString(att.Hash))
+	}
+	fmt.Printf("Paths:\n")
+	for idx, pe := range p.Paths {
+		rv := ""
+		for _, el := range pe.Elements {
+			rv += fmt.Sprintf("%02d ", el)
+		}
+		rv = strings.TrimSpace(rv)
+		fmt.Printf(" [%02d] %s\n", idx, rv)
+	}
+	fmt.Printf("Subject: %s\n", base64.URLEncoding.EncodeToString(p.Subject))
+	fmt.Printf("SubjectLoc: %s\n", p.SubjectLocation.AgentLocation)
+	fmt.Printf("Expires: %s\n", time.Unix(0, p.Expiry*1e6))
+	fmt.Printf("Policy: RTree\n")
+	fmt.Printf(" Namespace: %s\n", base64.URLEncoding.EncodeToString(p.Policy.RTreePolicy.Namespace))
+	fmt.Printf(" Indirections: %d\n", p.Policy.RTreePolicy.Indirections)
+	fmt.Printf(" Statements:\n")
+	for idx, st := range p.Policy.RTreePolicy.Statements {
+		fmt.Printf(" [%02d] Permission set: %s\n", idx, base64.URLEncoding.EncodeToString(st.PermissionSet))
+		fmt.Printf("      Permissions: %s\n", strings.Join(st.Permissions, ", "))
+		fmt.Printf("      URI: %s\n", st.Resource)
+	}
+	return nil
+}
 func actionPublish(c *cli.Context) error {
 	conn := getConn(c)
 	for _, filename := range c.Args() {

@@ -494,10 +494,12 @@ func (e *eAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.Ve
 		}, nil
 	}
 	proof := pb.Proof{
-		Elements: make([]*pb.Attestation, len(resp.Attestations)),
-		Paths:    make([]*pb.ProofPath, len(resp.Paths)),
-		Policy:   ToPbPolicy(resp.Policy),
-		Expiry:   resp.Expires.UnixNano(),
+		Elements:        make([]*pb.Attestation, len(resp.Attestations)),
+		Paths:           make([]*pb.ProofPath, len(resp.Paths)),
+		Policy:          ToPbPolicy(resp.Policy),
+		Expiry:          resp.Expires.UnixNano() / 1e6,
+		Subject:         resp.Subject.Multihash(),
+		SubjectLocation: ToPbLocation(resp.SubjectLocation),
 	}
 	for idx, att := range resp.Attestations {
 		proof.Elements[idx] = ConvertProofAttestation(att)
@@ -722,7 +724,7 @@ func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	proof := &pb.Proof{
 		Policy:   ToPbPolicy(sol.Policy()),
 		Elements: make([]*pb.Attestation, 0, len(sol.Set)),
-		Expiry:   expiry.UnixNano(),
+		Expiry:   expiry.UnixNano() / 1e6,
 		Paths:    make([]*pb.ProofPath, len(formalProof.Paths)),
 	}
 	for idx, path := range formalProof.Paths {

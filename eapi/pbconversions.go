@@ -56,11 +56,23 @@ func ToPbLocation(in iapi.LocationSchemeInstance) *pb.Location {
 	if !ok {
 		return nil
 	}
+	name := "unknown"
+	locs, err := iapi.SI().RegisteredLocations(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	for k, v := range locs {
+		if in.Equal(v) {
+			name = k
+			break
+		}
+	}
 	return &pb.Location{
 		LocationURI: &pb.LocationURI{
 			URI:     locuri.SerdesForm.Value,
 			Version: int32(locuri.SerdesForm.Version),
 		},
+		AgentLocation: name,
 	}
 }
 func ToPbPolicy(in iapi.PolicySchemeInstance) *pb.Policy {

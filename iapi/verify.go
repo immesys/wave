@@ -14,10 +14,12 @@ type PVerifyRTreeProof struct {
 	DER []byte
 }
 type RVerifyRTreeProof struct {
-	Policy       *RTreePolicy
-	Expires      time.Time
-	Attestations []*Attestation
-	Paths        [][]int
+	Policy          *RTreePolicy
+	Expires         time.Time
+	Attestations    []*Attestation
+	Paths           [][]int
+	Subject         HashSchemeInstance
+	SubjectLocation LocationSchemeInstance
 }
 
 func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeProof, wve.WVE) {
@@ -86,18 +88,22 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 	}
 
 	//TODO revocation checks
-
+	//todo check end to end and check all paths have same subject
+	//then fill in subject here and make it get printed by cli
 	//Now verify the paths
 	pathpolicies := []*RTreePolicy{}
+	pathEndEntities := []HashSchemeInstance{}
+	var subjectLocation LocationSchemeInstance
 	for _, path := range exp.Paths {
 		if len(path) == 0 {
 			return nil, wve.Err(wve.ProofInvalid, "path of length 0")
 		}
-		firstAtt, ok := mapping[path[0]]
+		currAtt, ok := mapping[path[0]]
 		if !ok {
 			return nil, wve.Err(wve.ProofInvalid, "proof refers to non-included attestation")
 		}
-		policy, err := PolicySchemeInstanceFor(&firstAtt.DecryptedBody.VerifierBody.Policy)
+		cursubj, cursubloc := currAtt.Subject()
+		policy, err := PolicySchemeInstanceFor(&currAtt.DecryptedBody.VerifierBody.Policy)
 		if err != nil {
 			return nil, wve.Err(wve.ProofInvalid, "unexpected policy error")
 		}
@@ -109,6 +115,13 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 			nextAtt, ok := mapping[pe]
 			if !ok {
 				return nil, wve.Err(wve.ProofInvalid, "proof refers to non-included attestation")
+			}
+			nextAttest, nextAttLoc, err := nextAtt.Attester()
+			if err != nil {
+				return nil, wve.Err(wve.ProofInvalid, "unexpected encrypted attestation")
+			}
+			if !HashSchemeInstanceEqual(cursubj, nextAttest) {
+				return nil, wve.Err(wve.ProofInvalid, "path has broken links")
 			}
 			nextPolicy, err := PolicySchemeInstanceFor(&nextAtt.DecryptedBody.VerifierBody.Policy)
 			if err != nil {
@@ -126,13 +139,22 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 				return nil, wve.Err(wve.ProofInvalid, fmt.Sprintf("bad policy intersection: %v", msg))
 			}
 			rtreePolicy = result
+			currAtt = nextAtt
+			cursubj = nextAttest
+			cursubloc = nextAttLoc
 		}
 		pathpolicies = append(pathpolicies, rtreePolicy)
+		pathEndEntities = append(pathEndEntities, cursubj)
+		subjectLocation = cursubloc
 	}
 
 	//Now combine the policies together
 	aggregatepolicy := pathpolicies[0]
-	for _, p := range pathpolicies[1:] {
+	finalsubject := pathEndEntities[0]
+	for idx, p := range pathpolicies[1:] {
+		if !HashSchemeInstanceEqual(finalsubject, pathEndEntities[idx]) {
+			return nil, wve.Err(wve.ProofInvalid, "paths don't terminate at same entity")
+		}
 		result, okay, msg, err := aggregatepolicy.Union(p)
 		if err != nil {
 			return nil, wve.Err(wve.ProofInvalid, "bad policy intersection")
@@ -141,12 +163,15 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 			return nil, wve.Err(wve.ProofInvalid, fmt.Sprintf("bad policy intersection: %v", msg))
 		}
 		aggregatepolicy = result
+
 	}
 	rv := &RVerifyRTreeProof{
-		Policy:       aggregatepolicy,
-		Expires:      expiry,
-		Attestations: make([]*Attestation, len(mapping)),
-		Paths:        exp.Paths,
+		Policy:          aggregatepolicy,
+		Expires:         expiry,
+		Attestations:    make([]*Attestation, len(mapping)),
+		Paths:           exp.Paths,
+		Subject:         finalsubject,
+		SubjectLocation: subjectLocation,
 	}
 	for idx, att := range mapping {
 		rv.Attestations[idx] = att

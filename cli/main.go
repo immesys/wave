@@ -138,6 +138,11 @@ func main() {
 			Flags:  []cli.Flag{},
 		},
 		{
+			Name:   "verify",
+			Usage:  "verify a proof",
+			Action: cli.ActionFunc(actionVerify),
+		},
+		{
 			Name:   "resolve",
 			Usage:  "print information about a hash",
 			Action: cli.ActionFunc(actionResolve),

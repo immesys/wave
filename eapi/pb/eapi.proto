@@ -242,6 +242,8 @@ message Proof {
   repeated ProofPath paths = 2;
   Policy policy = 3;
   int64 expiry = 4;
+  bytes subject = 5;
+  Location subjectLocation = 6;
 }
 message ProofPath {
   repeated int32 elements = 1;
