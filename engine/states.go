@@ -54,21 +54,29 @@ nextlocation:
 				//There is nothing more in this queue on this location yet
 				continue nextlocation
 			}
-			//The object is probably an attestation
-			attestation, err := e.st.GetAttestation(e.ctx, loc, object)
+			//Check if we already know about this attestation
+			found, err := e.ws.GetAttestationP(e.ctx, object)
 			if err != nil {
 				return 0, err
 			}
-			if attestation == nil {
-				//object was not an attestation, that is fine
-			} else {
-				//do not trigger a resync of dst, we are already syncing dst
-				err = e.insertPendingAttestationSync(attestation, false)
+			if found == nil {
+				//The object is probably an attestation
+				attestation, err := e.st.GetAttestation(e.ctx, loc, object)
 				if err != nil {
 					return 0, err
 				}
-				changes++
+				if attestation == nil {
+					//object was not an attestation, that is fine
+				} else {
+					//do not trigger a resync of dst, we are already syncing dst
+					err = e.insertPendingAttestationSync(attestation, false)
+					if err != nil {
+						return 0, err
+					}
+					changes++
+				}
 			}
+
 			err = e.ws.SetEntityQueueTokenP(sctx, loc, dest.Keccak256HI(), nextToken)
 			if err != nil {
 				panic(err)

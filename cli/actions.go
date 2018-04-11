@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/howeyc/gopass"
 	"github.com/immesys/wave/eapi"
 	"github.com/immesys/wave/eapi/pb"
@@ -145,7 +144,6 @@ func actionRTGrant(c *cli.Context) error {
 		fmt.Printf("bad expiry\n")
 		os.Exit(1)
 	}
-	fmt.Printf("expires is %s\n", expires)
 	attesterder := loadEntitySecretDER(c.String("attester"))
 	subject, err := base64.URLEncoding.DecodeString(c.String("subject"))
 	if err != nil {
@@ -225,7 +223,6 @@ func actionRTGrant(c *cli.Context) error {
 		fmt.Printf("attester file is not an entity secret\n")
 		os.Exit(1)
 	}
-	fmt.Printf("inspect hash was: %s\n", base64.URLEncoding.EncodeToString(inspectresponse.Entity.Hash))
 	//Get the attester location
 	attesterresp, err := conn.ResolveHash(context.Background(), &pb.ResolveHashParams{
 		Hash: inspectresponse.Entity.Hash,
@@ -694,7 +691,6 @@ func actionRTProve(c *cli.Context) error {
 			if err == io.EOF {
 				break
 			}
-			spew.Dump(rv)
 			fmt.Printf("Synchronized %d/%d entities\n", rv.CompletedSyncs, rv.TotalSyncRequests)
 		}
 		fmt.Printf("Perspective graph sync complete\n")

@@ -6,7 +6,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const CLIVersion = "0.1.0"
+const VersionFlag = "Prerelease 0.1.0"
 
 func main() {
 	app := cli.NewApp()
@@ -18,7 +18,7 @@ func main() {
 			Value: "/etc/wave/wave.toml",
 		},
 	}
-	app.Version = CLIVersion
+	app.Version = VersionFlag
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:   "agent",
@@ -102,6 +102,10 @@ func main() {
 					Name:   "attester",
 					Usage:  "the granting entity secrets",
 					EnvVar: "WAVE_DEFAULT_ENTITY",
+				},
+				cli.StringFlag{
+					Name:  "indirections, indir",
+					Usage: "set how many redelegations is permitted",
 				},
 				cli.StringFlag{
 					Name:  "subject",

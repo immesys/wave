@@ -13,11 +13,14 @@ import (
 	"github.com/urfave/cli"
 )
 
+const VersionFlag = "Prerelease 0.1.0"
+
 func Main(args []string) {
 	app := cli.NewApp()
 	app.Name = "waved"
 	app.Usage = "Run a WAVE daemon"
 	app.Action = action
+	app.Version = VersionFlag
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "config",
