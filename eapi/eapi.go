@@ -16,15 +16,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-type eAPI struct {
+type EAPI struct {
 	engines  map[[32]byte]*engine.Engine
 	npengine *engine.Engine
 	s        *grpc.Server
 	state    iapi.WaveState
 }
 
-func NewEAPI(state iapi.WaveState) *eAPI {
-	api := &eAPI{
+func NewEAPI(state iapi.WaveState) *EAPI {
+	api := &EAPI{
 		engines: make(map[[32]byte]*engine.Engine),
 		state:   state,
 	}
@@ -35,7 +35,7 @@ func NewEAPI(state iapi.WaveState) *eAPI {
 	api.npengine = npengine
 	return api
 }
-func (e *eAPI) StartServer(listenaddr string) {
+func (e *EAPI) StartServer(listenaddr string) {
 	grpcServer := grpc.NewServer()
 	e.s = grpcServer
 	l, err := net.Listen("tcp", listenaddr)
@@ -45,7 +45,7 @@ func (e *eAPI) StartServer(listenaddr string) {
 	pb.RegisterWAVEServer(grpcServer, e)
 	go grpcServer.Serve(l)
 }
-func (e *eAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engine, wve.WVE) {
+func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engine, wve.WVE) {
 	secret, err := ConvertEntitySecret(ctx, in.EntitySecret)
 	if err != nil {
 		return nil, err
@@ -66,10 +66,10 @@ func (e *eAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	}
 	return eng, nil
 }
-func (e *eAPI) getEngineNoPerspective() *engine.Engine {
+func (e *EAPI) getEngineNoPerspective() *engine.Engine {
 	return e.npengine
 }
-func (e *eAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectResponse, error) {
+func (e *EAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectResponse, error) {
 	eng := e.getEngineNoPerspective()
 	//Try as entitysecret
 	es, err := iapi.ParseEntitySecrets(ctx, &iapi.PParseEntitySecrets{
@@ -116,7 +116,7 @@ func (e *eAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectRes
 		Attestation: pba,
 	}, nil
 }
-func (e *eAPI) ListLocations(ctx context.Context, p *pb.ListLocationsParams) (*pb.ListLocationsResponse, error) {
+func (e *EAPI) ListLocations(ctx context.Context, p *pb.ListLocationsParams) (*pb.ListLocationsResponse, error) {
 	locs, err := iapi.SI().RegisteredLocations(ctx)
 	if err != nil {
 		return &pb.ListLocationsResponse{
@@ -131,7 +131,7 @@ func (e *eAPI) ListLocations(ctx context.Context, p *pb.ListLocationsParams) (*p
 		AgentLocations: pblocs,
 	}, nil
 }
-func (e *eAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.CreateEntityResponse, error) {
+func (e *EAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.CreateEntityResponse, error) {
 	revloc, err := LocationSchemeInstance(p.RevocationLocation)
 	if err != nil {
 		return &pb.CreateEntityResponse{
@@ -162,7 +162,7 @@ func (e *eAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.
 		Hash:      hi.Multihash(),
 	}, nil
 }
-func (e *eAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationParams) (*pb.CreateAttestationResponse, error) {
+func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationParams) (*pb.CreateAttestationResponse, error) {
 	eng, err := e.getEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.CreateAttestationResponse{
@@ -230,7 +230,7 @@ func (e *eAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		Hash:        hi.Multihash(),
 	}, nil
 }
-func (e *eAPI) PublishEntity(ctx context.Context, p *pb.PublishEntityParams) (*pb.PublishEntityResponse, error) {
+func (e *EAPI) PublishEntity(ctx context.Context, p *pb.PublishEntityParams) (*pb.PublishEntityResponse, error) {
 	loc, err := LocationSchemeInstance(p.Location)
 	if err != nil {
 		return &pb.PublishEntityResponse{
@@ -255,7 +255,7 @@ func (e *eAPI) PublishEntity(ctx context.Context, p *pb.PublishEntityParams) (*p
 		Hash: hi.Multihash(),
 	}, nil
 }
-func (e *eAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationParams) (*pb.PublishAttestationResponse, error) {
+func (e *EAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationParams) (*pb.PublishAttestationResponse, error) {
 	loc, err := LocationSchemeInstance(p.Location)
 	if err != nil {
 		return &pb.PublishAttestationResponse{
@@ -294,7 +294,7 @@ func (e *eAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationP
 		Hash: hi.Multihash(),
 	}, nil
 }
-func (e *eAPI) AddAttestation(ctx context.Context, p *pb.AddAttestationParams) (*pb.AddAttestationResponse, error) {
+func (e *EAPI) AddAttestation(ctx context.Context, p *pb.AddAttestationParams) (*pb.AddAttestationResponse, error) {
 	//TODO even if a dot is inserted with a prover key, it seems we insert it as pending and don't actually
 	//treat it as decrypted unless we also somehow decrypt it from scratch.
 	eng, err := e.getEngine(ctx, p.Perspective)
@@ -330,7 +330,7 @@ func (e *eAPI) AddAttestation(ctx context.Context, p *pb.AddAttestationParams) (
 	}
 	return &pb.AddAttestationResponse{}, nil
 }
-func (e *eAPI) LookupAttestations(ctx context.Context, p *pb.LookupAttestationsParams) (*pb.LookupAttestationsResponse, error) {
+func (e *EAPI) LookupAttestations(ctx context.Context, p *pb.LookupAttestationsParams) (*pb.LookupAttestationsResponse, error) {
 	if len(p.ToEntity) != 0 && len(p.FromEntity) != 0 {
 		return &pb.LookupAttestationsResponse{
 			Error: ToError(wve.Err(wve.InvalidParameter, "you should specify To entity or From entity, not both")),
@@ -382,7 +382,7 @@ results:
 	rv.Results = rva
 	return rv, nil
 }
-func (e *eAPI) ResyncPerspectiveGraph(ctx context.Context, p *pb.ResyncPerspectiveGraphParams) (*pb.ResyncPerspectiveGraphResponse, error) {
+func (e *EAPI) ResyncPerspectiveGraph(ctx context.Context, p *pb.ResyncPerspectiveGraphParams) (*pb.ResyncPerspectiveGraphResponse, error) {
 	eng, err := e.getEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.ResyncPerspectiveGraphResponse{
@@ -397,7 +397,7 @@ func (e *eAPI) ResyncPerspectiveGraph(ctx context.Context, p *pb.ResyncPerspecti
 	}
 	return &pb.ResyncPerspectiveGraphResponse{}, nil
 }
-func (e *eAPI) SyncStatus(ctx context.Context, p *pb.SyncParams) (*pb.SyncResponse, error) {
+func (e *EAPI) SyncStatus(ctx context.Context, p *pb.SyncParams) (*pb.SyncResponse, error) {
 	eng, werr := e.getEngine(ctx, p.Perspective)
 	if werr != nil {
 		return &pb.SyncResponse{
@@ -425,7 +425,7 @@ func (e *eAPI) SyncStatus(ctx context.Context, p *pb.SyncParams) (*pb.SyncRespon
 	}
 	return rv, nil
 }
-func (e *eAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncCompleteServer) error {
+func (e *EAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncCompleteServer) error {
 	ctx := srv.Context()
 	eng, werr := e.getEngine(ctx, p.Perspective)
 	if werr != nil {
@@ -484,7 +484,7 @@ func (e *eAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncComp
 	return nil
 }
 
-func (e *eAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.VerifyProofResponse, error) {
+func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.VerifyProofResponse, error) {
 	resp, werr := iapi.VerifyRTreeProof(ctx, &iapi.PVerifyRTreeProof{
 		DER: p.ProofDER,
 	})
@@ -516,7 +516,7 @@ func (e *eAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.Ve
 		Result: &proof,
 	}, nil
 }
-func (e *eAPI) ResolveHash(ctx context.Context, p *pb.ResolveHashParams) (*pb.ResolveHashResponse, error) {
+func (e *EAPI) ResolveHash(ctx context.Context, p *pb.ResolveHashParams) (*pb.ResolveHashResponse, error) {
 	var en *engine.Engine
 	if p.Perspective == nil {
 		en = e.getEngineNoPerspective()
@@ -592,7 +592,7 @@ func (e *eAPI) ResolveHash(ctx context.Context, p *pb.ResolveHashParams) (*pb.Re
 		Error: ToError(wve.Err(wve.LookupFailure, "no objects found")),
 	}, nil
 }
-func (e *eAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb.BuildRTreeResponse, error) {
+func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb.BuildRTreeResponse, error) {
 	eng, werr := e.getEngine(ctx, p.Perspective)
 	if werr != nil {
 		return &pb.BuildRTreeResponse{

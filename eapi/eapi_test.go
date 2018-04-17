@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var eapi *eAPI
+var eapi *EAPI
 var inmem pb.Location
 
 func init() {
