@@ -46,7 +46,7 @@ func (e *Engine) queueEntityForSync(dest []byte) error {
 	}
 	e.totalSyncRequests++
 	e.totalMutex.Unlock()
-	fmt.Printf("enqueueing %x\n", dest)
+	//fmt.Printf("enqueueing %x\n", dest)
 	e.resyncQueue <- sliceToArray(dest)
 	return nil
 }
@@ -59,7 +59,7 @@ func (e *Engine) syncLoop() {
 
 	//This reads from the queue and inserts into a map of
 	//entities to process
-	fmt.Printf("starting sync loop\n")
+	//fmt.Printf("starting sync loop\n")
 	syncup := make(chan bool, 1)
 	syncdown := make(chan bool, 1)
 	queue := make(map[[32]byte]bool)
@@ -144,12 +144,12 @@ func (e *Engine) syncLoop() {
 		if resolvedEnt == nil {
 			panic("synchronize nil entity?")
 		}
-		fmt.Printf(">syncE\n")
+		//fmt.Printf(">syncE\n")
 		err = e.synchronizeEntity(e.ctx, resolvedEnt)
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("<syncE\n")
+		//fmt.Printf("<syncE\n")
 		e.totalMutex.Lock()
 		e.totalCompletedSyncs++
 		if e.totalCompletedSyncs > e.totalSyncRequests {
@@ -176,20 +176,20 @@ func (e *Engine) synchronizeEntity(ctx context.Context, dest *iapi.Entity) (err 
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	fmt.Printf(">moveInterestingAttToPending\n")
+	//fmt.Printf(">moveInterestingAttToPending\n")
 	_, err = e.moveInterestingAttestationsToPending(dest)
 	if err != nil {
-		fmt.Printf("se Err 1\n")
+		//fmt.Printf("se Err 1\n")
 		return err
 	}
-	fmt.Printf("<moveInterestingAttToPending\n")
-	fmt.Printf(">movePendingToLabelled\n")
+	//fmt.Printf("<moveInterestingAttToPending\n")
+	//fmt.Printf(">movePendingToLabelled\n")
 	err = e.movePendingToLabelledAndActive(dest)
 	if err != nil {
-		fmt.Printf("se Err 2\n")
+		//fmt.Printf("se Err 2\n")
 		return err
 	}
-	fmt.Printf("<movePendingToLabelled\n")
+	//fmt.Printf("<movePendingToLabelled\n")
 	return nil
 }
 
@@ -207,7 +207,7 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 		if res.Err != nil {
 			return res.Err
 		}
-		fmt.Printf("found an interesting entity\n")
+		//fmt.Printf("found an interesting entity\n")
 		// ent, err := e.ws.GetEntityByHashG(subctx, res.Hash)
 		// if err != nil {
 		// 	return err
@@ -222,7 +222,7 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("finished interesting entity\n")
+	//fmt.Printf("finished interesting entity\n")
 	//Now we have to remove our fake request, but we may actually have to
 	//handle them being equal now too
 	e.totalMutex.Lock()

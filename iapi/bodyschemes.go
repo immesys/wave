@@ -84,15 +84,15 @@ func (w *WR1BodyScheme) Supported() bool {
 }
 
 func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
-	fmt.Printf("dc AA\n")
+	//fmt.Printf("dc AA\n")
 	wr1body, ok := canonicalForm.TBS.Body.Content.(serdes.WR1BodyCiphertext)
 	if !ok {
-		fmt.Printf("dc A1\n")
+		//fmt.Printf("dc A1\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 	wr1dctx, ok := dc.(WR1DecryptionContext)
 	if !ok {
-		fmt.Printf("dc failed\n")
+		//fmt.Printf("dc failed\n")
 		return nil, nil, nil
 	}
 	subjectHI := HashSchemeInstanceFor(&canonicalForm.TBS.Subject)
@@ -102,19 +102,19 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	//Step 0: if there is a symmetric key in the decrytion context we should use that
 	vbody := serdes.WR1VerifierBody{}
 	attverifierkey := wr1dctx.WR1VerifierBodyKey(ctx)
-	fmt.Printf("dc BB\n")
+	//fmt.Printf("dc BB\n")
 	if attverifierkey != nil {
-		fmt.Printf("found att verifier key %d\n", len(attverifierkey))
+		//fmt.Printf("found att verifier key %d\n", len(attverifierkey))
 		verifierBodyKey := attverifierkey[:16]
 		verifierBodyNonce := attverifierkey[16:]
 		verifierBodyDER, ok := aesGCMDecrypt(verifierBodyKey, wr1body.VerifierBodyCiphertext, verifierBodyNonce)
 		if !ok {
-			fmt.Printf("case B\n")
+			//fmt.Printf("case B\n")
 			return nil, nil, ErrDecryptBodyMalformed
 		}
 		trailing, err := asn1.Unmarshal(verifierBodyDER, &vbody)
 		if err != nil || len(trailing) != 0 {
-			fmt.Printf("case C\n")
+			//fmt.Printf("case C\n")
 			return nil, nil, ErrDecryptBodyMalformed
 		}
 		rv := &serdes.AttestationBody{
@@ -125,7 +125,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	//We did not have an attestation verifier key in the decryption context, try
 	//to decrypt in the prover role
 
-	fmt.Printf("dc A\n")
+	//fmt.Printf("dc A\n")
 
 	//Step 1: decode the label
 	//First try get the envelope key using asymmetric direct encryption
@@ -137,7 +137,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 	if envelopeKey == nil {
 		err = wr1dctx.WR1DirectDecryptionKey(ctx, subjectHI, func(k EntitySecretKeySchemeInstance) bool {
-			fmt.Printf("trying direct key %p\n", k)
+			//fmt.Printf("trying direct key %p\n", k)
 			var err error
 			envelopeKey, err = k.DecryptMessage(ctx, wr1body.EnvelopeKey_Curve25519)
 			if err == nil {
@@ -146,13 +146,13 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 			return true
 		})
 		if err != nil {
-			fmt.Printf("dc D\n")
+			//fmt.Printf("dc D\n")
 			return nil, nil, err
 		}
 	}
-	fmt.Printf("dc B\n")
+	//fmt.Printf("dc B\n")
 	if envelopeKey == nil {
-		fmt.Printf("XXXXXXX dc C\n")
+		//fmt.Printf("XXXXXXX dc C\n")
 		//Try using label secrets
 		err := wr1dctx.WR1IBEKeysForPartitionLabel(ctx, subjectHI, func(k EntitySecretKeySchemeInstance) bool {
 			var err error
@@ -167,32 +167,32 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		}
 	}
 	if envelopeKey == nil {
-		fmt.Printf("dc no label\n")
+		//fmt.Printf("dc no label\n")
 		return nil, nil, nil
 	}
 	//The key is actually 16 bytes of AES key + 12 bytes of GCM nonce
 	if len(envelopeKey) != 16+12 {
-		fmt.Printf("dc E\n")
+		//fmt.Printf("dc E\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 
 	//Lets actually decrypt the envelope DER
 	envelopeDER, ok := aesGCMDecrypt(envelopeKey[:16], wr1body.EnvelopeCiphertext, envelopeKey[16:])
 	if !ok {
-		fmt.Printf("dc F\n")
+		//fmt.Printf("dc F\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	} else {
-		fmt.Printf("envelope decrypted ok\n")
+		//fmt.Printf("envelope decrypted ok\n")
 	}
 
 	envelope := serdes.WR1Envelope{}
 	trailing, err := asn1.Unmarshal(envelopeDER, &envelope)
 	if err != nil || len(trailing) != 0 {
-		fmt.Printf("dc G\n")
+		//fmt.Printf("dc G\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 
-	fmt.Printf("dc2 1\n")
+	//fmt.Printf("dc2 1\n")
 	//We know the partition labels now
 	rvextra := &WR1Extra{Partition: envelope.Partition}
 	extra = rvextra
@@ -203,7 +203,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	if bodyKeys == nil {
 		//Try decrypt with those labels
 		err = wr1dctx.WR1OAQUEKeysForContent(ctx, subjectHI, envelope.Partition, func(k SlottedSecretKey) bool {
-			fmt.Printf("got an oq key\n")
+			//fmt.Printf("got an oq key\n")
 			var err error
 			bodyKeys, err = k.DecryptMessageAsChild(ctx, envelope.BodyKeys_OAQUE, envelope.Partition)
 			if err == nil {
@@ -217,7 +217,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		}
 	}
 	if bodyKeys == nil {
-		fmt.Printf("no body keys obtained\n")
+		//fmt.Printf("no body keys obtained\n")
 		//We could not decrypt the dot. Just return with whatever we have
 		return nil, extra, nil
 	}
@@ -259,7 +259,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 	rvextra.VerifierBodyKey = bodyKeys[28:56] //include nonce
 	rvextra.ProverBodyKey = explicitProverBodyKey
-	fmt.Printf("dc Z\n")
+	//fmt.Printf("dc Z\n")
 	return rv, rvextra, nil
 }
 

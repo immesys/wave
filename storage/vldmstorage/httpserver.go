@@ -1,12 +1,17 @@
-package memoryserver
+package main
 
 import (
+	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/google/trillian"
 	"github.com/gorilla/pat"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/storage/simplehttp"
@@ -18,7 +23,7 @@ const VersionBanner = "InMem 1.1.0"
 var globalmu sync.Mutex
 var db map[string][]byte
 
-var queues map[string][][]byte
+var queues map[string]int
 
 func GetHandler(w http.ResponseWriter, r *http.Request) {
 	globalmu.Lock()
@@ -26,15 +31,37 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	hash := r.URL.Query().Get(":hash")
 	r.Body.Close()
-	content, ok := db[hash]
-	if !ok {
-		//fmt.Printf("GET missing object\n")
+	hashbin, err := base64.URLEncoding.DecodeString(hash)
+	if err != nil {
 		w.WriteHeader(404)
 		w.Write([]byte("{}"))
 		return
 	}
+	mh, err := multihash.Decode(hashbin)
+	if err != nil {
+		w.WriteHeader(404)
+		w.Write([]byte("{}"))
+		return
+	}
+	resp2, err := vmap.GetLeaves(context.Background(), &trillian.GetMapLeavesRequest{
+		MapId: mapId,
+		Index: [][]byte{mh.Digest},
+	})
+	if err != nil {
+		panic(err)
+	}
+	inclusion, err := proto.Marshal(resp2.MapLeafInclusion[0])
+	if err != nil {
+		panic(err)
+	}
+	smr, err := proto.Marshal(resp2.MapRoot)
+	if err != nil {
+		panic(err)
+	}
 	rv := simplehttp.ObjectResponse{
-		DER: content,
+		DER:            resp2.MapLeafInclusion[0].Leaf.LeafValue,
+		V1SMR:          smr,
+		V1MapInclusion: inclusion,
 	}
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(&rv)
@@ -61,10 +88,19 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body.Close()
 	hash := iapi.KECCAK256.Instance(params.DER)
-	hashstring := hash.MultihashString()
-	db[hashstring] = params.DER
+	smr, mli := addToMap(hash, params.DER)
+	inclusionb, err := proto.Marshal(mli)
+	if err != nil {
+		panic(err)
+	}
+	smrb, err := proto.Marshal(smr)
+	if err != nil {
+		panic(err)
+	}
 	resp := simplehttp.PutObjectResponse{
-		Hash: hash.Multihash(),
+		Hash:           hash.Multihash(),
+		V1MapInclusion: inclusionb,
+		V1SMR:          smrb,
 	}
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(&resp)
@@ -129,6 +165,20 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	globalmu.Lock()
+	qlen := queues[id]
+	result := make([]byte, 32)
+	binary.LittleEndian.PutUint64(result[0:8], result)
+	copy(result[8:], base[8:])
+	smr, mli := addToMap(result, req.EntryHash)
+	inclusionb, err := proto.Marshal(mli)
+	if err != nil {
+		panic(err)
+	}
+	smrb, err := proto.Marshal(smr)
+	if err != nil {
+		panic(err)
+	}
+
 	queues[id] = append(queues[id], req.EntryHash)
 	globalmu.Unlock()
 	w.WriteHeader(201)

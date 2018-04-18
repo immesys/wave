@@ -88,7 +88,7 @@ func (kr *AESKeyring) DecryptKeyring(ctx context.Context, params interface{}) (d
 		return nil, fmt.Errorf("params must be a passphrase string")
 	}
 	passphrase := *ppassphrase
-	fmt.Printf("decrypt key %x\n", passphrase)
+	//fmt.Printf("decrypt key %x\n", passphrase)
 	aesk := pbkdf2.Key([]byte(passphrase), kr.ciphertext.Salt, kr.ciphertext.Iterations, 32, sha3.New512)
 
 	block, err := aes.NewCipher(aesk)
@@ -121,7 +121,7 @@ func (kr *AESKeyring) EncryptKeyring(ctx context.Context, plaintext *serdes.Enti
 	if !ok {
 		return nil, fmt.Errorf("requires a *string passphrase")
 	}
-	fmt.Printf("encrypt key %x\n", passphrase)
+	//fmt.Printf("encrypt key %x\n", passphrase)
 	salt := make([]byte, 16)
 	rand.Read(salt)
 	iterations := 100000

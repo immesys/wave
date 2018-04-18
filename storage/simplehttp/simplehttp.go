@@ -17,22 +17,30 @@ type PutObjectRequest struct {
 	DER []byte `json:"der"`
 }
 type PutObjectResponse struct {
-	Hash []byte `json:"hash"`
+	Hash           []byte `json:"hash"`
+	V1SMR          []byte `json:"v1smr"`
+	V1MapInclusion []byte `json:"v1inclusion"`
 }
 type InfoResponse struct {
 	HashScheme string `json:"hashScheme"`
 	Version    string `json:"version"`
 }
 type ObjectResponse struct {
-	DER []byte `json:"der"`
+	DER            []byte `json:"der"`
+	V1SMR          []byte `json:"v1smr"`
+	V1MapInclusion []byte `json:"v1inclusion"`
 }
 type NoSuchObjectResponse struct {
 }
 type IterateQueueResponse struct {
-	Hash      []byte `json:"hash"`
-	NextToken string `json:"nextToken"`
+	Hash           []byte `json:"hash"`
+	NextToken      string `json:"nextToken"`
+	V1SMR          []byte `json:"v1smr"`
+	V1MapInclusion []byte `json:"v1inclusion"`
 }
 type EnqueueResponse struct {
+	V1SMR          []byte `json:"v1smr"`
+	V1MapInclusion []byte `json:"v1inclusion"`
 }
 type NoSuchQueueEntryResponse struct {
 }

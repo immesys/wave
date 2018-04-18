@@ -414,7 +414,7 @@ func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance,
 	}
 
 	val, err := e.CheckEntity(ctx, ent)
-	fmt.Printf("validity in lookup: %v\n", val)
+	//fmt.Printf("validity in lookup: %v\n", val)
 	return ent, val, err
 }
 

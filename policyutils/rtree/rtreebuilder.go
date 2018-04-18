@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
 )
@@ -93,7 +92,7 @@ func (tb *RTreeBuilder) build() {
 		if len(graphborder) == 0 {
 			break
 		}
-		fmt.Printf("beginning BFS depth %d (<%d)\n", bfsdepth, maxbfsdepth)
+		//.Printf("beginning BFS depth %d (<%d)\n", bfsdepth, maxbfsdepth)
 		nextgraphborder := map[string]*Node{}
 		for _, src := range graphborder {
 			edges := src.Out()
@@ -108,7 +107,7 @@ func (tb *RTreeBuilder) build() {
 		}
 		if recheck {
 			sols := end.BestSolutionsFor(tb.ref.Bits)
-			fmt.Printf("rechecking for final solution (%d sols)\n", len(sols))
+			//fmt.Printf("rechecking for final solution (%d sols)\n", len(sols))
 			weight := -1
 			for _, s := range sols {
 				if weight == -1 || s.Weight() < weight {
@@ -121,10 +120,10 @@ func (tb *RTreeBuilder) build() {
 			}
 			recheck = false
 		}
-		fmt.Printf("finished BFS depth %d, new border is %d elements\n", bfsdepth, len(nextgraphborder))
+		//fmt.Printf("finished BFS depth %d, new border is %d elements\n", bfsdepth, len(nextgraphborder))
 		graphborder = nextgraphborder
 	}
-	fmt.Printf("done: %v\n", tb.finalSolution)
+	//fmt.Printf("done: %v\n", tb.finalSolution)
 }
 
 type BitsetReference struct {
@@ -181,14 +180,14 @@ func (n *Node) BestSolutionsFor(v uint64) []*Solution {
 			}
 		}
 	}
-	fmt.Printf("Node %s BestSolutionsFor %x, prereduction:\n", n.Ref(), v)
-	for _, el := range rv {
-		fmt.Printf(" - %s\n", el.String())
+	//fmt.Printf("Node %s BestSolutionsFor %x, prereduction:\n", n.Ref(), v)
+	for _, _ = range rv {
+		//fmt.Printf(" - %s\n", el.String())
 	}
 	reduced := reduceSolutionList(rv)
-	fmt.Printf("Post reduction:\n")
-	for _, el := range reduced {
-		fmt.Printf(" - %s\n", el.String())
+	//fmt.Printf("Post reduction:\n")
+	for _, _ = range reduced {
+		//fmt.Printf(" - %s\n", el.String())
 	}
 	return reduced
 }
@@ -219,12 +218,12 @@ func (s *Solution) Policy() *iapi.RTreePolicy {
 		pol := &lpol
 		for _, el := range path[1:] {
 			rhs := iapi.RTreePolicy(*el.Policy)
-			result, okay, msg, err := pol.Intersect(&rhs)
+			result, okay, _, err := pol.Intersect(&rhs)
 			if err != nil {
 				panic(err)
 			}
 			if !okay {
-				fmt.Printf("msg: %v %v\n", msg, err)
+				//fmt.Printf("msg: %v %v\n", msg, err)
 				panic("we should not be here")
 			}
 			pol = result
@@ -261,11 +260,11 @@ func (n *Node) Out() []*Edge {
 nextAttestation:
 	for lres := range lr {
 		if !lres.Validity.Valid {
-			n.tb.wout("skipping %s : invalid", lres.Attestation.Keccak256HI().MultihashString())
+			//n.tb.wout("skipping %s : invalid", lres.Attestation.Keccak256HI().MultihashString())
 			continue nextAttestation
 		}
 		if lres.Attestation.DecryptedBody == nil {
-			n.tb.wout("skipping %s : not decrypted", lres.Attestation.Keccak256HI().MultihashString())
+			//n.tb.wout("skipping %s : not decrypted", lres.Attestation.Keccak256HI().MultihashString())
 			continue nextAttestation
 		}
 		edge := Edge{
@@ -278,12 +277,12 @@ nextAttestation:
 		}
 		rtpol, ok := pol.(*iapi.RTreePolicy)
 		if !ok {
-			n.tb.wout("skipping %s : not RTree", lres.Attestation.Keccak256HI().MultihashString())
+			//n.tb.wout("skipping %s : not RTree", lres.Attestation.Keccak256HI().MultihashString())
 			continue nextAttestation
 		}
 		err = rtpol.CheckValid()
 		if err != nil {
-			n.tb.wout("skipping %s : policy invalid", lres.Attestation.Keccak256HI().MultihashString())
+			//n.tb.wout("skipping %s : policy invalid", lres.Attestation.Keccak256HI().MultihashString())
 			continue nextAttestation
 		}
 
@@ -291,7 +290,7 @@ nextAttestation:
 		edge.Policy = &wtr
 		bits, err := edge.Policy.Bitset(n.tb.ref)
 		if bits == 0 || err != nil {
-			n.tb.wout("skipping %s : permissions don't apply", lres.Attestation.Keccak256HI().MultihashString())
+			//n.tb.wout("skipping %s : permissions don't apply", lres.Attestation.Keccak256HI().MultihashString())
 			continue nextAttestation
 		}
 		edge.Bits = bits
@@ -436,32 +435,32 @@ func (s *Solution) Combine(rhs *Solution) *Solution {
 	return rv
 }
 func (n *Node) UpdateSolutions(src *Node, edge *Edge) {
-	fmt.Printf("updating solutions at node %s, src is %s\n", n.Ref(), src.Ref())
+	//fmt.Printf("updating solutions at node %s, src is %s\n", n.Ref(), src.Ref())
 	askfor := make(map[uint64]bool)
 	for _, sol := range src.Solutions {
 		if sol.Bits&edge.Bits == 0 {
 			//This solution doesn't go through the edge
-			fmt.Printf("source solution doesn't pass thorugh edge\n")
+			//fmt.Printf("source solution doesn't pass thorugh edge\n")
 			continue
 		}
 		askfor[sol.Bits&edge.Bits] = true
 	}
 	for _, sol := range n.Solutions {
 		if sol.Bits&edge.Bits == 0 {
-			fmt.Printf("dst solution doesn't pass thorugh edge\n")
+			//fmt.Printf("dst solution doesn't pass thorugh edge\n")
 			//This solution doesn't go through the edge
 			continue
 		}
 		askfor[sol.Bits&edge.Bits] = true
 	}
-	fmt.Printf("updatesol will ask for:\n")
-	spew.Dump(askfor)
+	//fmt.Printf("updatesol will ask for:\n")
+	//spew.Dump(askfor)
 	newsolutions := []*Solution{}
 	for bits := range askfor {
 		sols := src.BestSolutionsFor(bits)
 		for _, sol := range sols {
 			if sol.TTL == 0 {
-				fmt.Printf("Skipping TTL 0 solution\n")
+				//fmt.Printf("Skipping TTL 0 solution\n")
 				continue
 			}
 			nsol := sol.Extend(edge)
@@ -470,18 +469,18 @@ func (n *Node) UpdateSolutions(src *Node, edge *Edge) {
 			}
 			newsolutions = append(newsolutions, nsol)
 		}
-		fmt.Printf("got back %d sols for ask of %x\n", len(sols), bits)
+		//fmt.Printf("got back %d sols for ask of %x\n", len(sols), bits)
 	}
 	allsolutions := append(n.Solutions, newsolutions...)
-	fmt.Printf("node %s updatesol, preprune:\n", n.Ref())
-	for _, el := range allsolutions {
-		fmt.Printf(" - %s\n", el.String())
+	//	fmt.Printf("node %s updatesol, preprune:\n", n.Ref())
+	for _, _ = range allsolutions {
+		//fmt.Printf(" - %s\n", el.String())
 	}
 	pruned_solutions := reduceSolutionList(allsolutions)
 	n.Solutions = pruned_solutions
-	fmt.Printf("node %s setting solutions to:\n", n.Ref())
-	for _, el := range pruned_solutions {
-		fmt.Printf(" - %s\n", el.String())
+	//fmt.Printf("node %s setting solutions to:\n", n.Ref())
+	for _, _ = range pruned_solutions {
+		//fmt.Printf(" - %s\n", el.String())
 	}
 }
 
