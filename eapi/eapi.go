@@ -35,7 +35,7 @@ func NewEAPI(state iapi.WaveState) *EAPI {
 	api.npengine = npengine
 	return api
 }
-func (e *EAPI) StartServer(listenaddr string) {
+func (e *EAPI) StartServer(listenaddr string, httplistenaddr string) {
 	grpcServer := grpc.NewServer()
 	e.s = grpcServer
 	l, err := net.Listen("tcp", listenaddr)
@@ -44,6 +44,7 @@ func (e *EAPI) StartServer(listenaddr string) {
 	}
 	pb.RegisterWAVEServer(grpcServer, e)
 	go grpcServer.Serve(l)
+	go runHTTPserver(listenaddr, httplistenaddr)
 }
 func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engine, wve.WVE) {
 	secret, err := ConvertEntitySecret(ctx, in.EntitySecret)
