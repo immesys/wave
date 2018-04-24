@@ -1,28 +1,94 @@
 syntax = "proto3";
 //Version 1.0
 package pb;
+import "google/api/annotations.proto";
 
 service WAVE {
   //Create a new WAVE entity, but do not publish it
-  rpc CreateEntity(CreateEntityParams) returns (CreateEntityResponse);
+  rpc CreateEntity(CreateEntityParams) returns (CreateEntityResponse) {
+    option (google.api.http) = {
+      post: "/v1/CreateEntity"
+      body: "*"
+    };
+  }
   //Create a WAVE attestation, both the source and destination entities must
   //be published
-  rpc CreateAttestation(CreateAttestationParams) returns (CreateAttestationResponse);
+  rpc CreateAttestation(CreateAttestationParams) returns (CreateAttestationResponse) {
+    option (google.api.http) = {
+      post: "/v1/CreateAttestation"
+      body: "*"
+    };
+  }
   //Publish the given entity
-  rpc PublishEntity(PublishEntityParams) returns (PublishEntityResponse);
+  rpc PublishEntity(PublishEntityParams) returns (PublishEntityResponse)  {
+    option (google.api.http) = {
+      post: "/v1/PublishEntity"
+      body: "*"
+    };
+  }
   //Publish an attestation
-  rpc PublishAttestation(PublishAttestationParams) returns (PublishAttestationResponse);
+  rpc PublishAttestation(PublishAttestationParams) returns (PublishAttestationResponse)  {
+    option (google.api.http) = {
+      post: "/v1/PublishAttestation"
+      body: "*"
+    };
+  }
   //Add an attestation to the given perspective graph
-  rpc AddAttestation(AddAttestationParams) returns (AddAttestationResponse);
-  rpc LookupAttestations(LookupAttestationsParams) returns (LookupAttestationsResponse);
-  rpc ResyncPerspectiveGraph(ResyncPerspectiveGraphParams) returns (ResyncPerspectiveGraphResponse);
-  rpc SyncStatus(SyncParams) returns (SyncResponse);
+  rpc AddAttestation(AddAttestationParams) returns (AddAttestationResponse)  {
+    option (google.api.http) = {
+      post: "/v1/AddAttestation"
+      body: "*"
+    };
+  }
+  rpc LookupAttestations(LookupAttestationsParams) returns (LookupAttestationsResponse)  {
+    option (google.api.http) = {
+      post: "/v1/LookupAttestation"
+      body: "*"
+    };
+  }
+  rpc ResyncPerspectiveGraph(ResyncPerspectiveGraphParams) returns (ResyncPerspectiveGraphResponse)  {
+    option (google.api.http) = {
+      post: "/v1/ResyncPerspectiveGraph"
+      body: "*"
+    };
+  }
+  rpc SyncStatus(SyncParams) returns (SyncResponse)  {
+    option (google.api.http) = {
+      post: "/v1/SyncStatus"
+      body: "*"
+    };
+  }
   rpc WaitForSyncComplete(SyncParams) returns (stream SyncResponse);
-  rpc BuildRTreeProof(BuildRTreeParams) returns (BuildRTreeResponse);
-  rpc VerifyProof(VerifyProofParams) returns (VerifyProofResponse);
-  rpc ListLocations(ListLocationsParams) returns (ListLocationsResponse);
-  rpc Inspect(InspectParams) returns (InspectResponse);
-  rpc ResolveHash(ResolveHashParams) returns (ResolveHashResponse);
+  rpc BuildRTreeProof(BuildRTreeParams) returns (BuildRTreeResponse) {
+    option (google.api.http) = {
+      post: "/v1/BuildRTreeProof"
+      body: "*"
+    };
+  }
+  rpc VerifyProof(VerifyProofParams) returns (VerifyProofResponse) {
+    option (google.api.http) = {
+      post: "/v1/VerifyProof"
+      body: "*"
+    };
+  }
+  rpc ListLocations(ListLocationsParams) returns (ListLocationsResponse) {
+    option (google.api.http) = {
+      post: "/v1/ListLocations"
+      body: "*"
+    };
+  }
+  rpc Inspect(InspectParams) returns (InspectResponse) {
+    option (google.api.http) = {
+      post: "/v1/Inspect"
+      body: "*"
+    };
+  }
+  rpc ResolveHash(ResolveHashParams) returns (ResolveHashResponse) {
+    option (google.api.http) = {
+      post: "/v1/ResolveHash"
+      body: "*"
+    };
+  }
 }
 
 message ResolveHashParams {
