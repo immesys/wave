@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-const mapServer = "localhost:8090"
+const logServer = "localhost:8092"
 
 func mustMarshalAny(pb proto.Message) *any.Any {
 	value, err := ptypes.MarshalAny(pb)
@@ -52,7 +52,7 @@ func initlog() {
 	}
 	var err error
 	ctx := context.Background()
-	logconn, err = grpc.Dial(mapServer, grpc.WithInsecure())
+	logconn, err = grpc.Dial(logServer, grpc.WithInsecure())
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -89,10 +89,4 @@ func addToLog(value []byte) int64 {
 		panic(err)
 	}
 	return resp.QueuedLeaf.Leaf.LeafIndex
-}
-
-func main() {
-	initlog()
-	fmt.Printf("index 1: %d\n", addToLog([]byte("hellop1")))
-	fmt.Printf("index 2: %d\n", addToLog([]byte("hellop12")))
 }

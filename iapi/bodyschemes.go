@@ -84,7 +84,11 @@ func (w *WR1BodyScheme) Supported() bool {
 }
 
 func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
-	//fmt.Printf("dc AA\n")
+	//fmt.Printf("dc AA %x\n", canonicalForm.OuterSignature.Content.(serdes.Ed25519OuterSignature).Signature[0:4])
+	// bf := make([]byte, 8000)
+	// count := runtime.Stack(bf, false)
+	// bf = bf[:count]
+	//fmt.Printf("stack: %s\n", string(bf))
 	wr1body, ok := canonicalForm.TBS.Body.Content.(serdes.WR1BodyCiphertext)
 	if !ok {
 		//fmt.Printf("dc A1\n")
@@ -279,8 +283,9 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	visibilityEntity := policy.WR1DomainEntity()
 	var visibilityID string = "$GLOBAL"
 	if visibilityEntity != nil {
-		visibilityID = fmt.Sprintf("%s:%x", visibilityEntity.OID().String(), visibilityEntity.Value())
+		visibilityID = visibilityEntity.MultihashString()
 	}
+	//fmt.Printf("visibilityID became: %q\n", visibilityID)
 	bodySlots := policy.WR1Partition()
 	visibilityParams, err := subject.WR1_DomainVisiblityParams()
 	if err != nil {

@@ -209,6 +209,8 @@ func (e *Engine) WaitForEmptySyncQueue() chan struct{} {
 
 func (e *Engine) ResyncEntireGraph(ctx context.Context) error {
 	ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
+	//fmt.Printf("TOP LEVEL RESYNC: %q\n", e.perspective.Entity.Keccak256HI().MultihashString())
+	//fmt.Printf("TOP LEVEL RESYNC2: %q\n", e.ctx.Value(consts.PerspectiveKey).(*iapi.EntitySecrets).Entity.Keccak256HI().MultihashString())
 	return e.updateAllInterestingEntities(ctx)
 }
 

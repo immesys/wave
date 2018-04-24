@@ -4,10 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/google/trillian"
+	"github.com/google/trillian/client"
+	"github.com/google/trillian/crypto/keyspb"
+	spb "github.com/google/trillian/crypto/sigpb"
+	_ "github.com/google/trillian/merkle/coniks"
 	"github.com/immesys/wave/iapi"
 )
 
@@ -106,6 +115,12 @@ func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashS
 	if !hi.Supported() {
 		return nil, fmt.Errorf("remote sent invalid hash")
 	}
+	if rv.V1SMR != nil {
+		err := verifyV1(rv.V1SMR, rv.V1MapInclusion)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return hi, nil
 }
 
@@ -131,6 +146,12 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 	if err != nil {
 		return nil, err
 	}
+	if rv.V1SMR != nil {
+		err := verifyV1(rv.V1SMR, rv.V1MapInclusion)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return rv.DER, nil
 }
 
@@ -153,6 +174,17 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 		return err
 	}
 	resp.Body.Close()
+	enqueueResp := &EnqueueResponse{}
+	err = json.Unmarshal(body, enqueueResp)
+	if err != nil {
+		return fmt.Errorf("Remote sent invalid response")
+	}
+	if enqueueResp.V1SMR != nil {
+		err := verifyV1(enqueueResp.V1SMR, enqueueResp.V1MapInclusion)
+		if err != nil {
+			return err
+		}
+	}
 	if resp.StatusCode != 201 {
 		return fmt.Errorf("Remote error: %d (%s)\n", resp.StatusCode, body)
 	}
@@ -182,5 +214,61 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 		return nil, "", fmt.Errorf("Remote sent invalid response")
 	}
 	hi := iapi.HashSchemeInstanceFromMultihash(iterR.Hash)
+	if iterR.V1SMR != nil {
+		err := verifyV1(iterR.V1SMR, iterR.V1MapInclusion)
+		if err != nil {
+			return nil, "", err
+		}
+	}
 	return hi, iterR.NextToken, nil
+}
+
+const PublicKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmTz0jNtdPnob3U8uylM5PORUJPw2
+9VEU8V68V8FtlxFxuuU6MFHzN5/3XnWCeJ0xJ1Uabk1r/eS0H7aWOksMNA==
+-----END PUBLIC KEY-----`
+
+var MapTree *trillian.Tree
+var MapVerifier *client.MapVerifier
+
+func verifyV1(smr []byte, inclusion []byte) error {
+	pbinc := trillian.MapLeafInclusion{}
+	err := proto.Unmarshal(inclusion, &pbinc)
+	if err != nil {
+		return fmt.Errorf("malformed proof")
+	}
+	pbsmr := trillian.SignedMapRoot{}
+	err = proto.Unmarshal(smr, &pbsmr)
+	if err != nil {
+		return fmt.Errorf("malformed proof")
+	}
+	err = MapVerifier.VerifyMapLeafInclusion(&pbsmr, &pbinc)
+	if err != nil {
+		return fmt.Errorf("proof is invalid: %s", err)
+	}
+	return nil
+}
+
+func init() {
+	pubk, _ := pem.Decode([]byte(PublicKey))
+	MapTree = &trillian.Tree{
+		TreeId:             185576743479727882,
+		TreeState:          trillian.TreeState_ACTIVE,
+		TreeType:           trillian.TreeType_MAP,
+		HashStrategy:       trillian.HashStrategy_CONIKS_SHA512_256,
+		HashAlgorithm:      spb.DigitallySigned_SHA256,
+		SignatureAlgorithm: spb.DigitallySigned_ECDSA,
+		DisplayName:        "WAVE Storage map",
+		Description:        "Storage of attestations and entities for WAVE",
+		PublicKey: &keyspb.PublicKey{
+			Der: pubk.Bytes,
+		},
+		MaxRootDuration: ptypes.DurationProto(0 * time.Millisecond),
+	}
+	var err error
+	MapVerifier, err = client.NewMapVerifierFromTree(MapTree)
+	if err != nil {
+		panic(err)
+	}
+
 }

@@ -57,7 +57,7 @@ func MainWithConfig(c *Configuration) {
 
 	ws := poc.NewPOC(llsdb)
 	api := eapi.NewEAPI(ws)
-	api.StartServer(c.ListenIP)
+	api.StartServer(c.ListenIP, c.HTTPListenIP)
 	fmt.Printf("server started on %s\n", c.ListenIP)
 	for {
 		time.Sleep(10 * time.Second)

@@ -93,21 +93,8 @@ func (t *TestGraph) BuildCompare(tst *testing.T, dst string, perms string, edges
 	_, err := eapi.VerifyProof(context.Background(), &pb.VerifyProofParams{
 		ProofDER: rv.ProofDER,
 	})
-	fmt.Printf("TIMING proof verify took %s\n", time.Now().Sub(then))
+	fmt.Printf("%d\n", time.Now().Sub(then)/time.Microsecond)
 	require.NoError(tst, err)
-	// require.Nil(tst, resp.Error)
-	// for idx, _ := range resp.Result.Elements {
-	// 	resp.Result.Elements[idx].Body.DecodedBodyDER = nil
-	// 	rv.Result.Elements[idx].Body.DecodedBodyDER = nil
-	// 	require.EqualValues(tst, resp.Result.Elements[idx].DER, rv.Result.Elements[idx].DER)
-	// 	require.EqualValues(tst, resp.Result.Elements[idx].Body, rv.Result.Elements[idx].Body)
-	// }
-	// require.EqualValues(tst, resp.Result.Policy, rv.Result.Policy)
-	// require.EqualValues(tst, resp.Result.Expiry, rv.Result.Expiry)
-	//require.EqualValues(tst, rv.Result, resp.Result)
-	// if diff := deep.Equal(rv.Result, resp.Result); diff != nil {
-	// 	tst.Error(diff)
-	// }
 }
 
 func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTreeResponse {
@@ -118,6 +105,8 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 		},
 		Location: &inmem,
 	}
+	time.Sleep(1 * time.Second)
+	//fmt.Printf("== starting build==\n")
 	then := time.Now()
 	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
 		Perspective: perspective,
@@ -128,8 +117,9 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 	eapi.WaitForSyncCompleteHack(&pb.SyncParams{
 		Perspective: perspective,
 	})
-	fmt.Printf("Sync complete: %s\n", time.Now().Sub(then))
-	fmt.Printf("==================== STARTING BUILD IN DESTINATION GRAPH ========================\n")
+	fmt.Printf("%d,", time.Now().Sub(then)/time.Microsecond)
+	//fmt.Printf("== ending build==\n")
+
 	permarr := []string{}
 	pbits, err := strconv.ParseInt(perms, 2, 64)
 	require.NoError(tst, err)
@@ -151,7 +141,7 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 			},
 		},
 	})
-	fmt.Printf("TIMING Build complete: %s\n", time.Now().Sub(then))
+	fmt.Printf("%d,", time.Now().Sub(then)/time.Microsecond)
 	require.NoError(tst, err)
 	return resp
 }

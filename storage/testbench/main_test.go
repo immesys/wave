@@ -3,6 +3,7 @@ package testbench
 import (
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"testing"
 
 	"github.com/immesys/wave/iapi"
@@ -73,5 +74,55 @@ func TestEnqueDequeue(t *testing.T) {
 	rb4, _, err := in.IterateQueue(ctx, hi, nxt)
 	require.Equal(t, iapi.ErrNoMore, err)
 	require.Nil(t, rb4)
+}
 
+func BenchmarkPut2KB(b *testing.B) {
+	body := make([]byte, 2000)
+	in := getInstance(nil)
+	rand.Read(body)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		binary.LittleEndian.PutUint64(body[0:8], uint64(i))
+		in.Put(context.Background(), body)
+	}
+}
+
+func BenchmarkGet2KB(b *testing.B) {
+	body := make([]byte, 2000)
+	in := getInstance(nil)
+	rand.Read(body)
+	b.ResetTimer()
+	resp, _ := in.Put(context.Background(), body)
+	for i := 0; i < b.N; i++ {
+		in.Get(context.Background(), resp)
+	}
+}
+
+func BenchmarkEnqueue(b *testing.B) {
+	qid := make([]byte, 53)
+	rand.Read(qid)
+	hash := iapi.KECCAK256.Instance(qid)
+	other := make([]byte, 32)
+	rand.Read(other)
+	valhash := iapi.KECCAK256.Instance(other)
+	in := getInstance(nil)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		in.Enqueue(context.Background(), hash, valhash)
+	}
+}
+
+func BenchmarkDequeue(b *testing.B) {
+	qid := make([]byte, 53)
+	rand.Read(qid)
+	hash := iapi.KECCAK256.Instance(qid)
+	other := make([]byte, 32)
+	rand.Read(other)
+	valhash := iapi.KECCAK256.Instance(other)
+	in := getInstance(nil)
+	in.Enqueue(context.Background(), hash, valhash)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		in.IterateQueue(context.Background(), hash, "")
+	}
 }

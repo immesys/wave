@@ -3,9 +3,20 @@ package engine
 import (
 	"bytes"
 	"context"
+	"runtime"
+	"strconv"
 
 	"github.com/immesys/wave/iapi"
 )
+
+func getGID() uint64 {
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, _ := strconv.ParseUint(string(b), 10, 64)
+	return n
+}
 
 // Raw state change functions
 // NONE OF THESE WILL EXECUTE SUBSEQUENT STATE CHANGES
@@ -19,6 +30,11 @@ func (e *Engine) moveInterestingAttestationsToPending(dest *iapi.Entity) (change
 	//clean up cleanly
 	sctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
+	//fmt.Printf("XX MOVE INTERESTING [[%q]]\n", sctx.Value(consts.PerspectiveKey).(*iapi.EntitySecrets).Entity.Keccak256HI().MultihashString())
+	// bf := make([]byte, 8000)
+	// count := runtime.Stack(bf, false)
+	// bf = bf[:count]
+	// fmt.Printf("stack: %s\n", string(bf))
 	changes := 0
 	locs, err := e.ws.LocationsForEntity(sctx, dest)
 	if err != nil {
@@ -36,6 +52,7 @@ nextlocation:
 			if err != nil {
 				return 0, err
 			}
+			//fmt.Printf("got token %q for entity %s, %v\n", token, dest.Keccak256HI().MultihashString(), getGID())
 			if !okay {
 				panic("interestingToPending unknown entity")
 			}
@@ -53,12 +70,14 @@ nextlocation:
 				//There is nothing more in this queue on this location yet
 				continue nextlocation
 			}
+			//fmt.Printf("got object for token %q\n", token)
 			//Check if we already know about this attestation
 			found, err := e.ws.GetAttestationP(e.ctx, object)
 			if err != nil {
 				return 0, err
 			}
 			if found == nil {
+				//fmt.Printf("found was nil\n")
 				//The object is probably an attestation
 				attestation, err := e.st.GetAttestation(e.ctx, loc, object)
 				if err != nil {
@@ -75,7 +94,7 @@ nextlocation:
 					changes++
 				}
 			}
-
+			//fmt.Printf("setting entity queue token to %q in ws %s\n", nextToken, dest.Keccak256HI().MultihashString())
 			err = e.ws.SetEntityQueueTokenP(sctx, loc, dest.Keccak256HI(), nextToken)
 			if err != nil {
 				panic(err)

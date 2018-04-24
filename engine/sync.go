@@ -207,7 +207,7 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 		if res.Err != nil {
 			return res.Err
 		}
-		//fmt.Printf("found an interesting entity\n")
+		//fmt.Printf("found an interesting entity [[[[%q]]]]\n", ctx.Value(consts.PerspectiveKey).(*iapi.EntitySecrets).Entity.Keccak256HI().MultihashString())
 		// ent, err := e.ws.GetEntityByHashG(subctx, res.Hash)
 		// if err != nil {
 		// 	return err

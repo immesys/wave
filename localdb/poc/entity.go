@@ -101,6 +101,7 @@ func (p *poc) MoveEntityInterestingP(ctx context.Context, ent *iapi.Entity, loc 
 	if loc != nil {
 		es.KnownLocations = []iapi.LocationSchemeInstance{loc}
 	}
+	//fmt.Printf("SAVE BLANK ENTITY %s\n", ent.Keccak256HI().MultihashString())
 	return p.saveEntityState(ctx, es)
 }
 func (p *poc) GetInterestingEntitiesP(pctx context.Context) chan iapi.InterestingEntityResult {
