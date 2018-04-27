@@ -74,9 +74,9 @@ type WaveExplicitProof struct {
 
 type AttestationReference struct {
 	Hash             asn1.External
-	Content          []byte          `asn1:"tag:0,optional"`
-	Locations        []asn1.External `asn1:"tag:1"`
-	Keys             []asn1.External `asn1:"tag:2"`
-	RevocationChecks []asn1.External `asn1:"tag:3"`
-	Extensions       []Extension     `asn1:"tag:4"`
+	Content          []byte          `asn1:"tag:0,optional,explicit"`
+	Locations        []asn1.External `asn1:"tag:1,explicit"`
+	Keys             []asn1.External `asn1:"tag:2,explicit"`
+	RevocationChecks []asn1.External `asn1:"tag:3,explicit"`
+	Extensions       []Extension     `asn1:"tag:4,explicit"`
 }
