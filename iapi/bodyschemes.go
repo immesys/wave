@@ -97,6 +97,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 	subjectHI := HashSchemeInstanceFor(&canonicalForm.TBS.Subject)
 	if !subjectHI.Supported() {
+		fmt.Printf("wrong HI\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 	//Step 0: if there is a symmetric key in the decrytion context we should use that
@@ -222,6 +223,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		return nil, extra, nil
 	}
 	if len(bodyKeys) != 16+12+16+12 {
+		fmt.Printf("lbk\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 	proverBodyKey := bodyKeys[0:16]
@@ -233,18 +235,24 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 
 	proverBodyDER, ok := aesGCMDecrypt(proverBodyKey, wr1body.ProverBodyCiphertext, proverBodyNonce)
 	if !ok {
+		fmt.Printf("keyfail 1\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 	verifierBodyDER, ok := aesGCMDecrypt(verifierBodyKey, wr1body.VerifierBodyCiphertext, verifierBodyNonce)
 	if !ok {
+		fmt.Printf("keyfail 2\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 	trailing, err = asn1.Unmarshal(proverBodyDER, &pbody)
 	if err != nil || len(trailing) != 0 {
+		fmt.Printf("keyfail 3\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 	trailing, err = asn1.Unmarshal(verifierBodyDER, &vbody)
 	if err != nil || len(trailing) != 0 {
+		fmt.Printf("keyfail 4\n")
+		fmt.Printf("trailing: %x\n", trailing)
+		fmt.Printf("err: %v\n", err)
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 	rv := &serdes.AttestationBody{

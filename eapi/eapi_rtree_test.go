@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-test/deep"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/stretchr/testify/require"
 )
@@ -48,8 +49,11 @@ func (t *TestGraph) BuildCompare(tst *testing.T, dst string, perms string, edges
 		require.EqualValues(tst, resp.Result.Elements[idx].DER, rv.Result.Elements[idx].DER)
 		require.EqualValues(tst, resp.Result.Elements[idx].Body, rv.Result.Elements[idx].Body)
 	}
-	require.EqualValues(tst, resp.Result.Policy, rv.Result.Policy)
+	//require.EqualValues(tst, resp.Result.Policy, rv.Result.Policy)
 	require.EqualValues(tst, resp.Result.Expiry, rv.Result.Expiry)
+	if diff := deep.Equal(resp.Result.Policy, rv.Result.Policy); diff != nil {
+		tst.Error(diff)
+	}
 	//require.EqualValues(tst, rv.Result, resp.Result)
 	// if diff := deep.Equal(rv.Result, resp.Result); diff != nil {
 	// 	tst.Error(diff)

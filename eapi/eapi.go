@@ -223,6 +223,11 @@ func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		ValidUntil:       TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
 	}
 	resp, err := iapi.CreateAttestation(ctx, params)
+	if err != nil {
+		return &pb.CreateAttestationResponse{
+			Error: ToError(err),
+		}, nil
+	}
 	hi := iapi.KECCAK256.Instance(resp.DER)
 	return &pb.CreateAttestationResponse{
 		DER:         resp.DER,
@@ -374,10 +379,12 @@ results:
 				break results
 			}
 			rva = append(rva, ConvertLookupResult(lr))
-		case err := <-cherr:
-			return &pb.LookupAttestationsResponse{
-				Error: ToError(wve.ErrW(wve.LookupFailure, "could not complete lookup", err)),
-			}, nil
+		case err, ok := <-cherr:
+			if ok {
+				return &pb.LookupAttestationsResponse{
+					Error: ToError(wve.ErrW(wve.LookupFailure, "could not complete lookup", err)),
+				}, nil
+			}
 		}
 	}
 	rv.Results = rva
