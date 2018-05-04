@@ -11,10 +11,10 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/trillian"
+	"github.com/google/trillian/types"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/storage/simplehttp"
 	"google.golang.org/grpc"
@@ -101,6 +101,91 @@ type GetMapKeyResponse struct {
 	Value         []byte
 }
 
+func GetMapKeyAtRev(key []byte, rev int64) *GetMapKeyResponse {
+	resp2, err := vmap.GetLeavesByRevision(context.Background(), &trillian.GetMapLeavesByRevisionRequest{
+		MapId:    TreeID_Map,
+		Index:    [][]byte{key},
+		Revision: rev,
+	})
+	if err != nil {
+		panic(err)
+	}
+	if resp2.MapLeafInclusion[0].Leaf.LeafValue == nil {
+		//check for promise rather
+		promisemu.Lock()
+		pv, ok := promises[string(key)]
+		promisemu.Unlock()
+		if ok {
+			return &GetMapKeyResponse{
+				Unmerged:     true,
+				MergePromise: pv.Promise,
+				Value:        pv.Value,
+			}
+		}
+	}
+
+	smrbytes, err := proto.Marshal(resp2.MapRoot)
+	if err != nil {
+		panic(err)
+	}
+	h := sha256.New()
+	h.Write([]byte{0})
+	h.Write(smrbytes)
+	r := h.Sum(nil)
+	var rootloginclusion *trillian.GetInclusionProofByHashResponse
+
+	llr, err := logclient.GetLatestSignedLogRoot(context.Background(), &trillian.GetLatestSignedLogRootRequest{
+		LogId: TreeID_Root,
+	})
+	if err != nil {
+		panic(err)
+	}
+	rootloginclusion, err = logclient.GetInclusionProofByHash(context.Background(), &trillian.GetInclusionProofByHashRequest{
+		LogId:    TreeID_Root,
+		LeafHash: r,
+		TreeSize: llr.SignedLogRoot.TreeSize,
+	})
+	if err != nil {
+		panic(err)
+	}
+	slrbytes, err := proto.Marshal(rootloginclusion.SignedLogRoot)
+	if err != nil {
+		panic(err)
+	}
+	slrinc, err := proto.Marshal(rootloginclusion.Proof[0])
+	if err != nil {
+		panic(err)
+	}
+	inclusion, err := proto.Marshal(resp2.MapLeafInclusion[0])
+	if err != nil {
+		panic(err)
+	}
+	smr, err := proto.Marshal(resp2.MapRoot)
+	if err != nil {
+		panic(err)
+	}
+
+	if resp2.MapLeafInclusion[0].Leaf.LeafValue == nil {
+		return &GetMapKeyResponse{
+			SignedMapRoot: smr,
+			MapInclusion:  inclusion,
+			SignedLogRoot: slrbytes,
+			LogInclusion:  slrinc,
+		}
+	} else {
+		// pv := &PromiseObject{}
+		// fmt.Printf("leaf value is: %q", resp2.MapLeafInclusion[0].Leaf.LeafValue)
+		// err := json.Unmarshal(resp2.MapLeafInclusion[0].Leaf.LeafValue, pv)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		return &GetMapKeyResponse{
+			SignedMapRoot: smr,
+			MapInclusion:  inclusion,
+			Value:         resp2.MapLeafInclusion[0].Leaf.LeafValue,
+		}
+	}
+}
 func GetMapKeyValue(key []byte) *GetMapKeyResponse {
 	resp2, err := vmap.GetLeaves(context.Background(), &trillian.GetMapLeavesRequest{
 		MapId: TreeID_Map,
@@ -132,30 +217,32 @@ func GetMapKeyValue(key []byte) *GetMapKeyResponse {
 	h.Write(smrbytes)
 	r := h.Sum(nil)
 	var rootloginclusion *trillian.GetInclusionProofByHashResponse
-	for {
-		var err error
-		llr, err := logclient.GetLatestSignedLogRoot(context.Background(), &trillian.GetLatestSignedLogRootRequest{
-			LogId: TreeID_Root,
-		})
-		if err != nil {
-			panic(err)
-		}
-		rootloginclusion, err = logclient.GetInclusionProofByHash(context.Background(), &trillian.GetInclusionProofByHashRequest{
-			LogId:    TreeID_Root,
-			LeafHash: r,
-			TreeSize: llr.SignedLogRoot.TreeSize,
-		})
-		if err != nil {
-			if grpc.Code(err) == codes.NotFound {
-				fmt.Printf("stalling get request: map smr is not in log yet\n")
-				time.Sleep(10 * time.Millisecond)
-			} else {
+
+	llr, err := logclient.GetLatestSignedLogRoot(context.Background(), &trillian.GetLatestSignedLogRootRequest{
+		LogId: TreeID_Root,
+	})
+	if err != nil {
+		panic(err)
+	}
+	rootloginclusion, err = logclient.GetInclusionProofByHash(context.Background(), &trillian.GetInclusionProofByHashRequest{
+		LogId:    TreeID_Root,
+		LeafHash: r,
+		TreeSize: llr.SignedLogRoot.TreeSize,
+	})
+	if err != nil {
+		if grpc.Code(err) == codes.NotFound {
+			fmt.Printf("using previous map: map smr is not in log yet\n")
+			var mr types.MapRootV1
+			err := mr.UnmarshalBinary(resp2.MapRoot.MapRoot)
+			if err != nil {
 				panic(err)
 			}
+			return GetMapKeyAtRev(key, int64(mr.Revision-1))
 		} else {
-			break
+			panic(err)
 		}
 	}
+
 	slrbytes, err := proto.Marshal(rootloginclusion.SignedLogRoot)
 	if err != nil {
 		panic(err)

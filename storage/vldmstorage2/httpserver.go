@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -8,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/google/trillian"
 	"github.com/gorilla/pat"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/storage/simplehttp"
@@ -218,7 +221,116 @@ func main() {
 	r.Get("/v1/obj/{hash}", GetHandler)
 	r.Get("/v1/queue/{id}", IterateHandler)
 	r.Post("/v1/queue/{id}", EnqueueHandler)
+	r.Get("/v1/audit/oplog/consistency", OplogConsistencyHandler)
+	r.Get("/v1/audit/rootlog/consistency", RootlogConsistencyHandler)
+	r.Get("/v1/audit/oplog/sth", OplogSTHHandler)
+	r.Get("/v1/audit/rootlog/sth", RootlogSTHHandler)
+	r.Get("/v1/audit/oplog/item", OplogItemHandler)
+	r.Get("/v1/audit/rootlog/item", RootlogItemHandler)
+	//get("/audit/" + log + "/sth")
+	// get(fmt.Sprintf("/audit/"+log+"/consistency?from=%d&to=%d", from.TreeSize, to.TreeSize))
+	// ba := get(fmt.Sprintf("/audit/rootlog/item?index=%d", maprootindex))
+	// ba := get(fmt.Sprintf("/audit/oplog/item?index=%d&size=%d", i, oplogSTH.TreeSize))
+
 	http.Handle("/", r)
 	err := http.ListenAndServe(":8080", nil)
 	panic(err)
+}
+
+func OplogSTHHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("got Oplog STH handler\n")
+	logSTH(TreeID_Op, w, r)
+}
+func RootlogSTHHandler(w http.ResponseWriter, r *http.Request) {
+	logSTH(TreeID_Root, w, r)
+}
+func logSTH(logid int64, w http.ResponseWriter, r *http.Request) {
+	resp, err := logclient.GetLatestSignedLogRoot(context.Background(), &trillian.GetLatestSignedLogRootRequest{
+		LogId: logid,
+	})
+	if err != nil {
+		panic(err)
+	}
+	ba, err := proto.Marshal(resp.SignedLogRoot)
+	if err != nil {
+		panic(err)
+	}
+	w.WriteHeader(200)
+	w.Write(ba)
+}
+func OplogConsistencyHandler(w http.ResponseWriter, r *http.Request) {
+	logConsistencyHandler(TreeID_Op, w, r)
+}
+func RootlogConsistencyHandler(w http.ResponseWriter, r *http.Request) {
+	logConsistencyHandler(TreeID_Root, w, r)
+}
+func OplogItemHandler(w http.ResponseWriter, r *http.Request) {
+	logItemHandler(TreeID_Op, w, r)
+}
+func RootlogItemHandler(w http.ResponseWriter, r *http.Request) {
+	logItemHandler(TreeID_Root, w, r)
+}
+func logConsistencyHandler(logid int64, w http.ResponseWriter, r *http.Request) {
+	from := r.URL.Query().Get("from")
+	to := r.URL.Query().Get("to")
+	fromi, err := strconv.ParseInt(from, 10, 64)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("bad 'from' parameter"))
+		return
+	}
+	toi, err := strconv.ParseInt(to, 10, 64)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("bad 'to' parameter"))
+		return
+	}
+	resp, err := logclient.GetConsistencyProof(context.Background(), &trillian.GetConsistencyProofRequest{
+		LogId:          logid,
+		FirstTreeSize:  fromi,
+		SecondTreeSize: toi,
+	})
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.WriteHeader(200)
+	ba, err := proto.Marshal(resp.Proof)
+	if err != nil {
+		panic(err)
+	}
+	w.Write(ba)
+	return
+}
+func logItemHandler(logid int64, w http.ResponseWriter, r *http.Request) {
+	index := r.URL.Query().Get("index")
+	indexi, err := strconv.ParseInt(index, 10, 64)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("bad index parameter"))
+		return
+	}
+	size := r.URL.Query().Get("size")
+	sizei, err := strconv.ParseInt(size, 10, 64)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("bad size parameter"))
+		return
+	}
+	resp, err := logclient.GetEntryAndProof(context.Background(), &trillian.GetEntryAndProofRequest{
+		LogId:     logid,
+		LeafIndex: indexi,
+		TreeSize:  sizei,
+	})
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	ba, err := proto.Marshal(resp)
+	if err != nil {
+		panic(err)
+	}
+	w.Write(ba)
 }

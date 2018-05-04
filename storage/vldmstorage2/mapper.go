@@ -88,6 +88,7 @@ func PerformOneMap() (bool, error) {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("smrbytes: %x\n", smrbytes)
 	ctx := context.Background()
 	llf := &trillian.LogLeaf{
 		LeafValue: smrbytes,
