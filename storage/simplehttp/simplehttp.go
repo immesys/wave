@@ -205,11 +205,13 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 	}
 	if s.requireproof {
 		if rv.V1MergePromise != nil {
+			fmt.Printf("promise\n")
 			err := s.verifyV1Promise(rv.V1MergePromise, hash.Value(), hash.Value())
 			if err != nil {
 				return nil, err
 			}
 		} else {
+			fmt.Printf("inclusion\n")
 			err := s.verifyV1smr(rv.V1SMR, rv.V1MapInclusion, hash.Value(), rv.DER)
 			if err != nil {
 				return nil, err
@@ -335,6 +337,9 @@ func (s *SimpleHTTPStorage) verifyV1smr(smr []byte, inclusion []byte, key []byte
 
 func (s *SimpleHTTPStorage) initmap() {
 	pubk, _ := pem.Decode([]byte(s.publickey))
+	if pubk == nil {
+		panic(fmt.Sprintf("bad public key %q", s.publickey))
+	}
 	s.mapTree = &trillian.Tree{
 		TreeState:          trillian.TreeState_ACTIVE,
 		TreeType:           trillian.TreeType_MAP,

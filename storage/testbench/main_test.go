@@ -22,8 +22,8 @@ func getSimpleHTTPStorageInstance(t *testing.T) iapi.StorageDriverInterface {
 	cfg := make(map[string]string)
 	cfg["url"] = "http://localhost:8080/v1"
 	cfg["v1key"] = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEh9u/rhyK7FrH/ECf16v0HnNazyiX
-QyRgwCwJDzNmmJ05vVUhb5QeGJlSY3UoV9rhlXM6btZQVFcvU7zxy2FheA==
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWs0VFmqFr27SeEw4DttPmglDhqMj
+KNzHzySfKQi6/IE4AlBvPlJOqEawPXVr3gJlk8SWlt3Ts9MEWFaLKc4lAQ==
 -----END PUBLIC KEY-----`
 	require.NoError(t, sh.Initialize(context.Background(), "simplehttp", cfg))
 	return sh

@@ -4,5 +4,7 @@ openssl genpkey -algorithm EC \
   openssl pkcs8 -topk8 -nocrypt -outform pem > vldm_private.pem
 
 openssl pkey -pubout -inform pem -outform pem \
-    -in vldm_private.pem \
+    -in vldm_private_nonstandard.pem \
     -out vldm_public.pem
+
+openssl ec --in vldm_private_nonstandard.pem  -out vldm_private.pem

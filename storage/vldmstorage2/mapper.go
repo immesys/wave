@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+"github.com/davecgh/go-spew/spew"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/trillian"
 	"github.com/google/trillian/types"
@@ -29,11 +30,18 @@ func PerformOneMap() (bool, error) {
 	}
 
 	mapperMetadata := &pb.MapperMetadata{}
-	if err := proto.Unmarshal(mapRoot.Metadata, mapperMetadata); err != nil {
-		return false, fmt.Errorf("failed to unmarshal MapRoot.Metadata: %v", err)
-	}
+	startEntry := int64(0)
 
-	startEntry := mapperMetadata.HighestFullyCompletedSeq + 1
+	if len(mapRoot.Metadata) != 0 {
+
+		if err := proto.Unmarshal(mapRoot.Metadata, mapperMetadata); err != nil {
+			return false, fmt.Errorf("failed to unmarshal MapRoot.Metadata: %v", err)
+		}
+
+		startEntry = mapperMetadata.HighestFullyCompletedSeq + 1
+	} else {
+		fmt.Printf("bootstrapping first run\n")
+	}
 	fmt.Printf("Fetching entries [%d+] from log\n", startEntry)
 
 	// Get the entries from the log:
@@ -79,7 +87,7 @@ func PerformOneMap() (bool, error) {
 	}
 
 	setReq.Metadata = mapperBytes
-
+	spew.Dump(setReq)
 	setResp, err := vmap.SetLeaves(context.Background(), setReq)
 	if err != nil {
 		return false, err
@@ -88,7 +96,7 @@ func PerformOneMap() (bool, error) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("smrbytes: %x\n", smrbytes)
+	//fmt.Printf("smrbytes: %x\n", smrbytes)
 	ctx := context.Background()
 	llf := &trillian.LogLeaf{
 		LeafValue: smrbytes,
@@ -114,7 +122,7 @@ func startMappingLoops() {
 			panic(err)
 		}
 		if !found {
-			time.Sleep(3 * time.Second)
+		  	time.Sleep(3 * time.Second)
 		}
 	}
 }

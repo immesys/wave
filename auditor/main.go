@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -32,8 +33,8 @@ import (
 
 const location = "http://127.0.0.1:8080/v1"
 const PublicKey = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEh9u/rhyK7FrH/ECf16v0HnNazyiX
-QyRgwCwJDzNmmJ05vVUhb5QeGJlSY3UoV9rhlXM6btZQVFcvU7zxy2FheA==
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWs0VFmqFr27SeEw4DttPmglDhqMj
+KNzHzySfKQi6/IE4AlBvPlJOqEawPXVr3gJlk8SWlt3Ts9MEWFaLKc4lAQ==
 -----END PUBLIC KEY-----`
 
 var logverifier *client.LogVerifier
@@ -107,6 +108,8 @@ func initmap() {
 	if err != nil {
 		panic(err)
 	}
+	currentMapOpLogIndex = 0
+	maprootindex = 0
 }
 
 var maprootindex int64
@@ -138,6 +141,8 @@ func main() {
 		auditLog("oplog", oplogSTH, newOpLogSTH)
 		auditLog("rootlog", maplogSTH, newMapLogSTH)
 		verifyMap()
+		oplogSTH = newOpLogSTH
+		maplogSTH = newMapLogSTH
 	}
 }
 
@@ -153,7 +158,7 @@ func get(suffix string) []byte {
 		panic(err)
 	}
 	if response.StatusCode != 200 {
-		fmt.Printf("got non 200: %v\n", contents)
+		fmt.Printf("got non 200: %v\n", string(contents))
 		panic("abort")
 	}
 	return contents
@@ -195,79 +200,86 @@ type PromiseObject struct {
 
 func verifyMap() {
 	//get the map root
-	ba := get(fmt.Sprintf("/audit/rootlog/item?index=%d&size=%d", maprootindex, maplogSTH.TreeSize))
-	if ba == nil {
-		//This entry does not exist yet
-		return
-	}
-	ger := &trillian.GetEntryAndProofResponse{}
-	err := proto.Unmarshal(ba, ger)
-	//TODO check proof
-	if err != nil {
-		panic(err)
-	}
-	smr := &trillian.SignedMapRoot{}
-	err = proto.Unmarshal(ger.Leaf.LeafValue, smr)
-	if err != nil {
-		panic(err)
-	}
-	spew.Dump(smr)
-	mrv1 := &types.MapRootV1{}
-	err = mrv1.UnmarshalBinary(smr.MapRoot)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("target map of size %d has hash %x\n", mrv1.Revision, mrv1.RootHash)
-	mapperMetadata := &pb.MapperMetadata{}
-	if err := proto.Unmarshal(mrv1.Metadata, mapperMetadata); err != nil {
-		panic(err)
-	}
-	ops := []*trillian.MapLeaf{}
-	for i := currentMapOpLogIndex; i <= mapperMetadata.HighestFullyCompletedSeq; i++ {
-		ba := get(fmt.Sprintf("/audit/oplog/item?index=%d&size=%d", i, oplogSTH.TreeSize))
-		rsp := &trillian.GetEntryAndProofResponse{}
-		err := proto.Unmarshal(ba, rsp)
+	for {
+		if maprootindex >= maplogSTH.TreeSize {
+			return
+		}
+		ba := get(fmt.Sprintf("/audit/rootlog/item?index=%d&size=%d", maprootindex, maplogSTH.TreeSize))
+		ger := &trillian.GetEntryAndProofResponse{}
+		err := proto.Unmarshal(ba, ger)
+		//TODO check proof
 		if err != nil {
 			panic(err)
 		}
-		lrv1 := &types.LogRootV1{}
-		err = lrv1.UnmarshalBinary(oplogSTH.LogRoot)
+		smr := &trillian.SignedMapRoot{}
+		err = proto.Unmarshal(ger.Leaf.LeafValue, smr)
 		if err != nil {
 			panic(err)
 		}
+		spew.Dump(smr)
+		mrv1 := &types.MapRootV1{}
+		err = mrv1.UnmarshalBinary(smr.MapRoot)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("target map of size %d has hash %x\n", mrv1.Revision, mrv1.RootHash)
+		mapperMetadata := &pb.MapperMetadata{}
+		if err := proto.Unmarshal(mrv1.Metadata, mapperMetadata); err != nil {
+			panic(err)
+		}
+		ops := []*trillian.MapLeaf{}
+		for i := currentMapOpLogIndex; i <= mapperMetadata.HighestFullyCompletedSeq; i++ {
+			fmt.Printf("getting index %d\n", i)
+			ba := get(fmt.Sprintf("/audit/oplog/item?index=%d&size=%d", i, oplogSTH.TreeSize))
+			rsp := &trillian.GetEntryAndProofResponse{}
+			err := proto.Unmarshal(ba, rsp)
+			if err != nil {
+				panic(err)
+			}
+			lrv1 := &types.LogRootV1{}
+			err = lrv1.UnmarshalBinary(oplogSTH.LogRoot)
+			if err != nil {
+				panic(err)
+			}
 
-		err = logverifier.VerifyInclusionAtIndex(lrv1, rsp.Leaf.LeafValue, rsp.Leaf.LeafIndex, rsp.Proof.Hashes)
+			err = logverifier.VerifyInclusionAtIndex(lrv1, rsp.Leaf.LeafValue, rsp.Leaf.LeafIndex, rsp.Proof.Hashes)
+			if err != nil {
+				panic(err)
+			}
+			mp := &PromiseObject{}
+			err = json.Unmarshal(rsp.Leaf.LeafValue, &mp)
+			if err != nil {
+				panic(err)
+			}
+			ops = append(ops, &trillian.MapLeaf{
+				Index:     mp.Key,
+				LeafValue: mp.Value,
+			})
+		}
+		currentMapOpLogIndex = mapperMetadata.HighestFullyCompletedSeq + 1
+		fmt.Printf("appling %d operations\n", len(ops))
+		req := &trillian.SetMapLeavesRequest{
+			MapId:    mapId,
+			Leaves:   ops,
+			Metadata: mrv1.Metadata,
+		}
+		spew.Dump(req)
+		resp, err := vmap.SetLeaves(context.Background(), req)
 		if err != nil {
 			panic(err)
 		}
-		mp := &PromiseObject{}
-		err = json.Unmarshal(rsp.Leaf.LeafValue, &mp)
+		replicamaproot := &types.MapRootV1{}
+		err = replicamaproot.UnmarshalBinary(resp.MapRoot.MapRoot)
 		if err != nil {
 			panic(err)
 		}
-		ops = append(ops, &trillian.MapLeaf{
-			Index:     mp.Key,
-			LeafValue: mp.Value,
-		})
-	}
-	fmt.Printf("appling %d operations\n", len(ops))
-	resp, err := vmap.SetLeaves(context.Background(), &trillian.SetMapLeavesRequest{
-		MapId:    mapId,
-		Leaves:   ops,
-		Metadata: mrv1.Metadata,
-	})
-	if err != nil {
-		panic(err)
-	}
-	replicamaproot := &types.MapRootV1{}
-	err = replicamaproot.UnmarshalBinary(resp.MapRoot.MapRoot)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("our map of size %d has hash %x\n", replicamaproot.Revision, replicamaproot.RootHash)
-	if bytes.Equal(replicamaproot.RootHash, mrv1.RootHash) {
-		fmt.Printf("MAP ROOT VALIDATED SUCCESSFULLY\n")
-	} else {
-		fmt.Printf("MAP ROOT FAILED TO VALIDATE\n")
+		fmt.Printf("our map of size %d has hash %x\n", replicamaproot.Revision, replicamaproot.RootHash)
+		if bytes.Equal(replicamaproot.RootHash, mrv1.RootHash) {
+			fmt.Printf("MAP ROOT VALIDATED SUCCESSFULLY\n")
+			maprootindex++
+		} else {
+			fmt.Printf("MAP ROOT FAILED TO VALIDATE\n")
+			os.Exit(1)
+		}
 	}
 }
