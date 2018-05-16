@@ -88,8 +88,16 @@ func (e *EAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectRes
 		}, nil
 	}
 	//Try as attestation
+	kpdctx := iapi.NewKeyPoolDecryptionContext()
+	if p.ProverKey != nil {
+		kpdctx.SetWR1ProverBodyKey(p.ProverKey)
+	}
+	if p.VerifierKey != nil {
+		kpdctx.SetWR1VerifierBodyKey(p.VerifierKey)
+	}
 	att, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
-		DER: p.Content,
+		DER:               p.Content,
+		DecryptionContext: kpdctx,
 	})
 	if err != nil || att.IsMalformed {
 		return &pb.InspectResponse{
