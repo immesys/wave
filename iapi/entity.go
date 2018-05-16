@@ -42,7 +42,7 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 	kr := serdes.EntityKeyring{}
 
 	//Ed25519 attest/certify
-	ed25519KE, err := NewEntityKeySchemeInstance(serdes.EntityEd25519OID, CapAttestation, CapCertification)
+	ed25519KE, err := NewEntityKeySchemeInstance(serdes.EntityEd25519OID, CapCertification, CapAttestation)
 	if err != nil {
 		panic(err)
 	}
