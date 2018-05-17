@@ -223,6 +223,11 @@ func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		ValidUntil:       TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
 	}
 	resp, err := iapi.CreateAttestation(ctx, params)
+	if err != nil {
+		return &pb.CreateAttestationResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create attestation", err)),
+		}, nil
+	}
 	hi := iapi.KECCAK256.Instance(resp.DER)
 	return &pb.CreateAttestationResponse{
 		DER:         resp.DER,
@@ -613,10 +618,20 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	}
 	spol := serdes.RTreePolicy{}
 	ehash := iapi.HashSchemeInstanceFromMultihash(p.RtreeNamespace)
+	if !ehash.Supported() {
+		return &pb.BuildRTreeResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "bad namespace", werr)),
+		}, nil
+	}
 	ext := ehash.CanonicalForm()
 	spol.Namespace = *ext
 	for _, st := range p.Statements {
 		pset := iapi.HashSchemeInstanceFromMultihash(st.PermissionSet)
+		if !pset.Supported() {
+			return &pb.BuildRTreeResponse{
+				Error: ToError(wve.ErrW(wve.InvalidParameter, "bad permissionset", werr)),
+			}, nil
+		}
 		ext := pset.CanonicalForm()
 		spol.Statements = append(spol.Statements, serdes.RTreeStatement{
 			Permissions:   st.Permissions,
