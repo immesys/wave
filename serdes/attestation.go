@@ -48,8 +48,8 @@ type RTreePolicy struct {
 
 type RTreeStatement struct {
 	PermissionSet asn1.External
-	Permissions   []string `asn1:"utf8"`
-	Resource      string   `asn1:"utf8"`
+	Permissions   []string
+	Resource      string `asn1:"utf8"`
 }
 
 type SignedOuterKey struct {

@@ -103,6 +103,8 @@ message ResolveHashResponse {
 }
 message InspectParams {
   bytes content = 1;
+  bytes proverKey = 2;
+  bytes verifierKey = 3;
 }
 message InspectResponse {
   Error error = 1;

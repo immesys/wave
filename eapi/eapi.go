@@ -88,8 +88,16 @@ func (e *EAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectRes
 		}, nil
 	}
 	//Try as attestation
+	kpdctx := iapi.NewKeyPoolDecryptionContext()
+	if p.ProverKey != nil {
+		kpdctx.SetWR1ProverBodyKey(p.ProverKey)
+	}
+	if p.VerifierKey != nil {
+		kpdctx.SetWR1VerifierBodyKey(p.VerifierKey)
+	}
 	att, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
-		DER: p.Content,
+		DER:               p.Content,
+		DecryptionContext: kpdctx,
 	})
 	if err != nil || att.IsMalformed {
 		return &pb.InspectResponse{
@@ -225,7 +233,7 @@ func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 	resp, err := iapi.CreateAttestation(ctx, params)
 	if err != nil {
 		return &pb.CreateAttestationResponse{
-			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create attestation", err)),
+			Error: ToError(err),
 		}, nil
 	}
 	hi := iapi.KECCAK256.Instance(resp.DER)
@@ -379,10 +387,12 @@ results:
 				break results
 			}
 			rva = append(rva, ConvertLookupResult(lr))
-		case err := <-cherr:
-			return &pb.LookupAttestationsResponse{
-				Error: ToError(wve.ErrW(wve.LookupFailure, "could not complete lookup", err)),
-			}, nil
+		case err, ok := <-cherr:
+			if ok {
+				return &pb.LookupAttestationsResponse{
+					Error: ToError(wve.ErrW(wve.LookupFailure, "could not complete lookup", err)),
+				}, nil
+			}
 		}
 	}
 	rv.Results = rva
