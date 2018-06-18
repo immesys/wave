@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"time"
 
-"github.com/davecgh/go-spew/spew"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/trillian"
 	"github.com/google/trillian/types"
 	"github.com/immesys/wave/storage/vldmstorage2/pb"
 )
 
-const LogBatchSize = 1024
+const LogBatchSize = 280
 
 func PerformOneMap() (bool, error) {
 	start := time.Now()
@@ -87,7 +86,7 @@ func PerformOneMap() (bool, error) {
 	}
 
 	setReq.Metadata = mapperBytes
-	spew.Dump(setReq)
+	//spew.Dump(setReq)
 	setResp, err := vmap.SetLeaves(context.Background(), setReq)
 	if err != nil {
 		return false, err
@@ -122,7 +121,7 @@ func startMappingLoops() {
 			panic(err)
 		}
 		if !found {
-		  	time.Sleep(3 * time.Second)
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 }

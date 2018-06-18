@@ -271,7 +271,7 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 	if resp.StatusCode == 404 {
 		return nil, "", iapi.ErrNoMore
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		return nil, "", fmt.Errorf("Remote error: %d (%s)\n", resp.StatusCode, body)
 	}
 	iterR := &IterateQueueResponse{}

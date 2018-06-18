@@ -150,8 +150,20 @@ func BenchmarkGet2KB(b *testing.B) {
 	body := make([]byte, 2000)
 	in := getInstance(nil)
 	rand.Read(body)
-	b.ResetTimer()
 	resp, _ := in.Put(context.Background(), body)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		in.Get(context.Background(), resp)
+	}
+}
+
+func BenchmarkGet2KBDelay(b *testing.B) {
+	body := make([]byte, 2000)
+	in := getInstance(nil)
+	rand.Read(body)
+	resp, _ := in.Put(context.Background(), body)
+	time.Sleep(5 * time.Second)
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		in.Get(context.Background(), resp)
 	}

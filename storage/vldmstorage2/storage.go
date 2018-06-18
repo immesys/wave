@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/trillian"
@@ -101,7 +102,7 @@ type GetMapKeyResponse struct {
 	Value         []byte
 }
 
-func GetMapKeyAtRev(key []byte, rev int64) *GetMapKeyResponse {
+func GetMapKeyAtRev(key []byte, rev int64) (bool, *GetMapKeyResponse) {
 	resp2, err := vmap.GetLeavesByRevision(context.Background(), &trillian.GetMapLeavesByRevisionRequest{
 		MapId:    TreeID_Map,
 		Index:    [][]byte{key},
@@ -116,7 +117,7 @@ func GetMapKeyAtRev(key []byte, rev int64) *GetMapKeyResponse {
 		pv, ok := promises[string(key)]
 		promisemu.Unlock()
 		if ok {
-			return &GetMapKeyResponse{
+			return true, &GetMapKeyResponse{
 				Unmerged:     true,
 				MergePromise: pv.Promise,
 				Value:        pv.Value,
@@ -146,7 +147,12 @@ func GetMapKeyAtRev(key []byte, rev int64) *GetMapKeyResponse {
 		TreeSize: llr.SignedLogRoot.TreeSize,
 	})
 	if err != nil {
-		panic(err)
+		return false, nil
+		/*
+			if grpc.Code(err) == codes.NotFound {
+				return false, nil
+			}
+			panic(err)*/
 	}
 	slrbytes, err := proto.Marshal(rootloginclusion.SignedLogRoot)
 	if err != nil {
@@ -166,7 +172,7 @@ func GetMapKeyAtRev(key []byte, rev int64) *GetMapKeyResponse {
 	}
 
 	if resp2.MapLeafInclusion[0].Leaf.LeafValue == nil {
-		return &GetMapKeyResponse{
+		return true, &GetMapKeyResponse{
 			SignedMapRoot: smr,
 			MapInclusion:  inclusion,
 			SignedLogRoot: slrbytes,
@@ -179,13 +185,16 @@ func GetMapKeyAtRev(key []byte, rev int64) *GetMapKeyResponse {
 		// if err != nil {
 		// 	panic(err)
 		// }
-		return &GetMapKeyResponse{
+		return true, &GetMapKeyResponse{
 			SignedMapRoot: smr,
 			MapInclusion:  inclusion,
 			Value:         resp2.MapLeafInclusion[0].Leaf.LeafValue,
 		}
 	}
 }
+
+var goodrev int64
+
 func GetMapKeyValue(key []byte) *GetMapKeyResponse {
 	resp2, err := vmap.GetLeaves(context.Background(), &trillian.GetMapLeavesRequest{
 		MapId: TreeID_Map,
@@ -230,17 +239,34 @@ func GetMapKeyValue(key []byte) *GetMapKeyResponse {
 		TreeSize: llr.SignedLogRoot.TreeSize,
 	})
 	if err != nil {
-		if grpc.Code(err) == codes.NotFound {
-			fmt.Printf("using previous map: map smr is not in log yet\n")
+		if grpc.Code(err) == codes.NotFound || grpc.Code(err) == codes.InvalidArgument {
+			//fmt.Printf("finding previous map: map smr is not in log yet\n")
 			var mr types.MapRootV1
 			err := mr.UnmarshalBinary(resp2.MapRoot.MapRoot)
 			if err != nil {
 				panic(err)
 			}
-			return GetMapKeyAtRev(key, int64(mr.Revision-1))
+			rev := atomic.LoadInt64(&goodrev)
+			for {
+				rootok, resp := GetMapKeyAtRev(key, int64(rev))
+				if rootok {
+					return resp
+				}
+				rev--
+				if rev < 0 {
+					panic("could not find good log\n")
+				}
+			}
 		} else {
 			panic(err)
 		}
+	} else {
+		var mr types.MapRootV1
+		err := mr.UnmarshalBinary(resp2.MapRoot.MapRoot)
+		if err != nil {
+			panic(err)
+		}
+		atomic.StoreInt64(&goodrev, int64(mr.Revision))
 	}
 
 	slrbytes, err := proto.Marshal(rootloginclusion.SignedLogRoot)
@@ -296,7 +322,9 @@ func InsertKeyValue(key []byte, value []byte) *simplehttp.MergePromise {
 		Key:     key,
 		Value:   value,
 	}
+	promisemu.Lock()
 	promises[string(key)] = po
+	promisemu.Unlock()
 	poj, err := json.Marshal(po)
 	if err != nil {
 		fmt.Printf("failed to marshal promise object: %v\n", err)
