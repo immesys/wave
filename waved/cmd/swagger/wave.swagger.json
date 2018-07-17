@@ -1,0 +1,1064 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Version 1.0",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/AddAttestation": {
+      "post": {
+        "summary": "Add an attestation to the given perspective graph",
+        "operationId": "AddAttestation",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbAddAttestationResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbAddAttestationParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/BuildRTreeProof": {
+      "post": {
+        "operationId": "BuildRTreeProof",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbBuildRTreeResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbBuildRTreeParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/CreateAttestation": {
+      "post": {
+        "summary": "Create a WAVE attestation, both the source and destination entities must\nbe published",
+        "operationId": "CreateAttestation",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbCreateAttestationResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbCreateAttestationParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/CreateEntity": {
+      "post": {
+        "summary": "Create a new WAVE entity, but do not publish it",
+        "operationId": "CreateEntity",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbCreateEntityResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbCreateEntityParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/Inspect": {
+      "post": {
+        "operationId": "Inspect",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbInspectResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbInspectParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/ListLocations": {
+      "post": {
+        "operationId": "ListLocations",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbListLocationsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbListLocationsParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/LookupAttestation": {
+      "post": {
+        "operationId": "LookupAttestations",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbLookupAttestationsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbLookupAttestationsParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/PublishAttestation": {
+      "post": {
+        "summary": "Publish an attestation",
+        "operationId": "PublishAttestation",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbPublishAttestationResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbPublishAttestationParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/PublishEntity": {
+      "post": {
+        "summary": "Publish the given entity",
+        "operationId": "PublishEntity",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbPublishEntityResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbPublishEntityParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/ResolveHash": {
+      "post": {
+        "operationId": "ResolveHash",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbResolveHashResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbResolveHashParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/ResyncPerspectiveGraph": {
+      "post": {
+        "operationId": "ResyncPerspectiveGraph",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbResyncPerspectiveGraphResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbResyncPerspectiveGraphParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/SyncStatus": {
+      "post": {
+        "operationId": "SyncStatus",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbSyncResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbSyncParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/VerifyProof": {
+      "post": {
+        "operationId": "VerifyProof",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbVerifyProofResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbVerifyProofParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "pbAddAttestationParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "DER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "proverKey": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbAddAttestationResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        }
+      }
+    },
+    "pbAttestation": {
+      "type": "object",
+      "properties": {
+        "DER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "body": {
+          "$ref": "#/definitions/pbAttestationBody"
+        },
+        "verifierKey": {
+          "type": "string",
+          "format": "byte"
+        },
+        "proverKey": {
+          "type": "string",
+          "format": "byte"
+        },
+        "subjectHash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "subjectLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "validity": {
+          "$ref": "#/definitions/pbAttestationValidity"
+        },
+        "partition": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "byte"
+          }
+        }
+      }
+    },
+    "pbAttestationBody": {
+      "type": "object",
+      "properties": {
+        "DecodedBodyDER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "attesterHash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "attesterLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "policy": {
+          "$ref": "#/definitions/pbPolicy"
+        },
+        "validFrom": {
+          "type": "string",
+          "format": "int64"
+        },
+        "validUntil": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "pbAttestationValidity": {
+      "type": "object",
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "revoked": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "expired": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "malformed": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "notDecrypted": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "srcInvalid": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "dstInvalid": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "pbBuildRTreeParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "subjectHash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "rtreeNamespace": {
+          "type": "string",
+          "format": "byte"
+        },
+        "statements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbRTreePolicyStatement"
+          }
+        }
+      }
+    },
+    "pbBuildRTreeResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "result": {
+          "$ref": "#/definitions/pbProof"
+        },
+        "proofDER": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbCreateAttestationParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "bodyScheme": {
+          "type": "string"
+        },
+        "subjectHash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "subjectLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "validFrom": {
+          "type": "string",
+          "format": "int64",
+          "title": "If 0, will be set to time.Now"
+        },
+        "validUntil": {
+          "type": "string",
+          "format": "int64",
+          "title": "If 0, will be set to some arbitrary default"
+        },
+        "policy": {
+          "$ref": "#/definitions/pbPolicy"
+        }
+      }
+    },
+    "pbCreateAttestationResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "DER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "verifierKey": {
+          "type": "string",
+          "format": "byte"
+        },
+        "proverKey": {
+          "type": "string",
+          "format": "byte"
+        },
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbCreateEntityParams": {
+      "type": "object",
+      "properties": {
+        "validFrom": {
+          "type": "string",
+          "format": "int64",
+          "title": "Milliseconds since the epoch"
+        },
+        "validUntil": {
+          "type": "string",
+          "format": "int64"
+        },
+        "revocationLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "SecretPassphrase": {
+          "type": "string"
+        }
+      }
+    },
+    "pbCreateEntityResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "PublicDER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "SecretDER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbEntity": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "validFrom": {
+          "type": "string",
+          "format": "int64"
+        },
+        "validUntil": {
+          "type": "string",
+          "format": "int64"
+        },
+        "validity": {
+          "$ref": "#/definitions/pbEntityValidity"
+        }
+      }
+    },
+    "pbEntitySecret": {
+      "type": "object",
+      "properties": {
+        "DER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "passphrase": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbEntityValidity": {
+      "type": "object",
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "revoked": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "expired": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "malformed": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "pbError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "pbInspectParams": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbInspectResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "entity": {
+          "$ref": "#/definitions/pbEntity"
+        },
+        "attestation": {
+          "$ref": "#/definitions/pbAttestation"
+        }
+      }
+    },
+    "pbListLocationsParams": {
+      "type": "object"
+    },
+    "pbListLocationsResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "agentLocations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/pbLocation"
+          }
+        }
+      }
+    },
+    "pbLocation": {
+      "type": "object",
+      "properties": {
+        "locationURI": {
+          "$ref": "#/definitions/pbLocationURI",
+          "title": "One of the following"
+        },
+        "agentLocation": {
+          "type": "string",
+          "title": "The name of a location in the agent config"
+        }
+      }
+    },
+    "pbLocationURI": {
+      "type": "object",
+      "properties": {
+        "URI": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "pbLookupAttestationsParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "fromEntity": {
+          "type": "string",
+          "format": "byte"
+        },
+        "toEntity": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbLookupAttestationsResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbAttestation"
+          }
+        }
+      }
+    },
+    "pbPerspective": {
+      "type": "object",
+      "properties": {
+        "entitySecret": {
+          "$ref": "#/definitions/pbEntitySecret"
+        },
+        "location": {
+          "$ref": "#/definitions/pbLocation"
+        }
+      }
+    },
+    "pbPolicy": {
+      "type": "object",
+      "properties": {
+        "trustLevelPolicy": {
+          "$ref": "#/definitions/pbTrustLevelPolicy"
+        },
+        "rTreePolicy": {
+          "$ref": "#/definitions/pbRTreePolicy"
+        }
+      }
+    },
+    "pbProof": {
+      "type": "object",
+      "properties": {
+        "elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbAttestation"
+          }
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbProofPath"
+          }
+        },
+        "policy": {
+          "$ref": "#/definitions/pbPolicy"
+        },
+        "expiry": {
+          "type": "string",
+          "format": "int64"
+        },
+        "subject": {
+          "type": "string",
+          "format": "byte"
+        },
+        "subjectLocation": {
+          "$ref": "#/definitions/pbLocation"
+        }
+      }
+    },
+    "pbProofPath": {
+      "type": "object",
+      "properties": {
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      }
+    },
+    "pbPublishAttestationParams": {
+      "type": "object",
+      "properties": {
+        "DER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "location": {
+          "$ref": "#/definitions/pbLocation"
+        }
+      }
+    },
+    "pbPublishAttestationResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbPublishEntityParams": {
+      "type": "object",
+      "properties": {
+        "DER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "location": {
+          "$ref": "#/definitions/pbLocation"
+        }
+      }
+    },
+    "pbPublishEntityResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbRTreePolicy": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "format": "byte"
+        },
+        "indirections": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "statements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbRTreePolicyStatement"
+          }
+        },
+        "visibilityURI": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "byte"
+          }
+        }
+      }
+    },
+    "pbRTreePolicyStatement": {
+      "type": "object",
+      "properties": {
+        "permissionSet": {
+          "type": "string",
+          "format": "byte"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resource": {
+          "type": "string"
+        }
+      }
+    },
+    "pbResolveHashParams": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        }
+      }
+    },
+    "pbResolveHashResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "location": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "entity": {
+          "$ref": "#/definitions/pbEntity"
+        },
+        "attestation": {
+          "$ref": "#/definitions/pbAttestation"
+        }
+      }
+    },
+    "pbResyncPerspectiveGraphParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        }
+      }
+    },
+    "pbResyncPerspectiveGraphResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        }
+      }
+    },
+    "pbStorageDriverStatus": {
+      "type": "object",
+      "properties": {
+        "operational": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "info": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pbSyncParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        }
+      }
+    },
+    "pbSyncResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "storageStatus": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/pbStorageDriverStatus"
+          }
+        },
+        "totalSyncRequests": {
+          "type": "string",
+          "format": "int64"
+        },
+        "completedSyncs": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "pbTrustLevelPolicy": {
+      "type": "object",
+      "properties": {
+        "trust": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "pbVerifyProofParams": {
+      "type": "object",
+      "properties": {
+        "proofDER": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbVerifyProofResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "result": {
+          "$ref": "#/definitions/pbProof"
+        }
+      }
+    }
+  }
+}
