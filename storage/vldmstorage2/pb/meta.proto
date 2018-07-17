@@ -1,0 +1,8 @@
+
+syntax = "proto3";
+
+package pb;
+
+message MapperMetadata {
+  int64 highest_fully_completed_seq = 1;
+}

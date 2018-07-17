@@ -190,6 +190,7 @@ func action(c *cli.Context) error {
 	r.Get("/v1/queue/{id}", IterateHandler)
 	r.Post("/v1/queue/{id}", EnqueueHandler)
 	http.Handle("/", r)
-	err = http.ListenAndServeTLS(fmt.Sprintf(":%d", c.Int("port")), c.String("certpublic"), c.String("certprivate"), nil)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", c.Int("port")), nil)
+	//err = http.ListenAndServeTLS(fmt.Sprintf(":%d", c.Int("port")), c.String("certpublic"), c.String("certprivate"), nil)
 	panic(err)
 }

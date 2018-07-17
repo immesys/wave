@@ -116,11 +116,13 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 			if !ok {
 				return nil, wve.Err(wve.ProofInvalid, "proof refers to non-included attestation")
 			}
-			nextAttest, nextAttLoc, err := nextAtt.Attester()
+			nextAttest, _, err := nextAtt.Attester()
 			if err != nil {
 				return nil, wve.Err(wve.ProofInvalid, "unexpected encrypted attestation")
 			}
+			fmt.Printf("pe %d current subject: \n%x\nnext attester: %x\n", pe, cursubj.Value(), nextAttest.Value())
 			if !HashSchemeInstanceEqual(cursubj, nextAttest) {
+
 				return nil, wve.Err(wve.ProofInvalid, "path has broken links")
 			}
 			nextPolicy, err := PolicySchemeInstanceFor(&nextAtt.DecryptedBody.VerifierBody.Policy)
@@ -140,8 +142,7 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 			}
 			rtreePolicy = result
 			currAtt = nextAtt
-			cursubj = nextAttest
-			cursubloc = nextAttLoc
+			cursubj, cursubloc = nextAtt.Subject()
 		}
 		pathpolicies = append(pathpolicies, rtreePolicy)
 		pathEndEntities = append(pathEndEntities, cursubj)

@@ -441,6 +441,17 @@ func (e *EAPI) SyncStatus(ctx context.Context, p *pb.SyncParams) (*pb.SyncRespon
 	}
 	return rv, nil
 }
+func (e *EAPI) WaitForSyncCompleteHack(p *pb.SyncParams) error {
+	ctx := context.Background()
+	eng, werr := e.getEngine(ctx, p.Perspective)
+	if werr != nil {
+		return werr
+	}
+	waitchan := eng.WaitForEmptySyncQueue()
+	<-waitchan
+	return nil
+}
+
 func (e *EAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncCompleteServer) error {
 	ctx := srv.Context()
 	eng, werr := e.getEngine(ctx, p.Perspective)
@@ -615,13 +626,22 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
 		}, nil
 	}
-
 	spol := serdes.RTreePolicy{}
 	ehash := iapi.HashSchemeInstanceFromMultihash(p.RtreeNamespace)
+	if !ehash.Supported() {
+		return &pb.BuildRTreeResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "bad namespace", werr)),
+		}, nil
+	}
 	ext := ehash.CanonicalForm()
 	spol.Namespace = *ext
 	for _, st := range p.Statements {
 		pset := iapi.HashSchemeInstanceFromMultihash(st.PermissionSet)
+		if !pset.Supported() {
+			return &pb.BuildRTreeResponse{
+				Error: ToError(wve.ErrW(wve.InvalidParameter, "bad permissionset", werr)),
+			}, nil
+		}
 		ext := pset.CanonicalForm()
 		spol.Statements = append(spol.Statements, serdes.RTreeStatement{
 			Permissions:   st.Permissions,

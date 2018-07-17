@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 
 	"github.com/immesys/wave/serdes"
@@ -78,8 +77,6 @@ func (e *Entity) ArrayKeccak256() [32]byte {
 	return rv
 }
 func (e *Entity) Expired() bool {
-	fmt.Printf("validity:\n")
-	spew.Dump(e.CanonicalForm.TBS.Validity)
 	return time.Now().After(e.CanonicalForm.TBS.Validity.NotAfter)
 }
 func ToArr32(b []byte) [32]byte {
@@ -208,9 +205,9 @@ func (e *Attestation) Expired() (bool, error) {
 	}
 	v := e.DecryptedBody.VerifierBody.Validity
 	n := time.Now()
-	fmt.Printf("now is %v\n", n)
+	//fmt.Printf("now is %v\n", n)
 	rv := n.After(v.NotAfter)
-	fmt.Printf("returning att expired %v\n", rv)
+	//fmt.Printf("returning att expired %v\n", rv)
 	return rv, nil
 	//return time.Now().After(v.NotAfter), nil
 }

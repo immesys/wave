@@ -95,11 +95,11 @@ func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterfa
 	// 	return nil, err
 	// }
 	//This will process all the old interesting entities
-	err = rv.updateAllInterestingEntities(subctx)
-	if err != nil {
-		rv.ctxcancel()
-		return nil, err
-	}
+	// err = rv.updateAllInterestingEntities(subctx)
+	// if err != nil {
+	// 	rv.ctxcancel()
+	// 	return nil, err
+	// }
 	//The engine is now running and ready for use
 	return &rv, nil
 }

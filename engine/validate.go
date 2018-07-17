@@ -8,7 +8,7 @@ import (
 
 //
 // func (e *Engine) getEntityFromHashLoc(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, error) {
-// 	fmt.Printf("getEntityFromHashLoc: %x %v\n", hash, loc)
+// 	//fmt.Printf("getEntityFromHashLoc: %x %v\n", hash, loc)
 // 	ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
 // 	ent, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
 // 	if err != nil {

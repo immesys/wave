@@ -28,7 +28,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	r.Body.Close()
 	content, ok := db[hash]
 	if !ok {
-		fmt.Printf("GET missing object\n")
+		//fmt.Printf("GET missing object\n")
 		w.WriteHeader(404)
 		w.Write([]byte("{}"))
 		return
@@ -79,7 +79,7 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		index64, err = strconv.ParseInt(token, 10, 64)
 		if err != nil {
-			fmt.Printf("ITER with unparseable token\n")
+			//fmt.Printf("ITER with unparseable token\n")
 			w.WriteHeader(404)
 			w.Write([]byte("{}"))
 			return
@@ -90,7 +90,7 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 	defer globalmu.Unlock()
 	q, ok := queues[id]
 	if !ok {
-		fmt.Printf("ITER with nonexistant queue\n")
+		//fmt.Printf("ITER with nonexistant queue\n")
 		w.WriteHeader(404)
 		w.Write([]byte("{}"))
 		return
@@ -107,7 +107,7 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(&resp)
 		return
 	}
-	fmt.Printf("ITER with out of bounds in queue\n")
+	//fmt.Printf("ITER with out of bounds in queue\n")
 	w.WriteHeader(404)
 	w.Write([]byte("{}"))
 	return
