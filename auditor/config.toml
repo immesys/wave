@@ -1,0 +1,13 @@
+# Which server we are auditing
+target = "http://127.0.0.1:8080/v1/"
+publickey = """
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEh9u/rhyK7FrH/ECf16v0HnNazyiX
+QyRgwCwJDzNmmJ05vVUhb5QeGJlSY3UoV9rhlXM6btZQVFcvU7zxy2FheA==
+-----END PUBLIC KEY-----"""
+output = "audit.log"
+
+# Who our peers are for gossiping
+peerlistenport = 5001
+peers = [
+]
