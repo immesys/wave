@@ -82,6 +82,8 @@ func TestAttestationOneHop(t *testing.T) {
 
 	eng, uerr := NewEngine(ctx, ws, iapi.SI(), dst.EntitySecrets, inmem)
 	require.NoError(t, uerr)
+	uerr = eng.ResyncEntireGraph(ctx)
+	require.NoError(t, uerr)
 	select {
 	case <-eng.WaitForEmptySyncQueue():
 	case <-time.After(10 * time.Second):
@@ -174,6 +176,8 @@ func TestAttestationTwoHop(t *testing.T) {
 
 	eng, err := NewEngine(ctx, ws, iapi.SI(), C.EntitySecrets, inmem)
 	require.NoError(t, err)
+	uerr = eng.ResyncEntireGraph(ctx)
+	require.NoError(t, uerr)
 	select {
 	case <-eng.WaitForEmptySyncQueue():
 	case <-time.After(10 * time.Second):
@@ -298,6 +302,8 @@ func TestAttestationTwoHopRTree(t *testing.T) {
 
 	eng, err := NewEngine(ctx, ws, iapi.SI(), C.EntitySecrets, inmem)
 	require.NoError(t, err)
+	uerr := eng.ResyncEntireGraph(ctx)
+	require.NoError(t, uerr)
 	select {
 	case <-eng.WaitForEmptySyncQueue():
 	case <-time.After(10 * time.Second):
@@ -422,6 +428,8 @@ func TestAttestationTwoHopRTreeNoVis(t *testing.T) {
 
 	eng, err := NewEngine(ctx, ws, iapi.SI(), C.EntitySecrets, inmem)
 	require.NoError(t, err)
+	uerr := eng.ResyncEntireGraph(ctx)
+	require.NoError(t, uerr)
 	select {
 	case <-eng.WaitForEmptySyncQueue():
 	case <-time.After(10 * time.Second):
