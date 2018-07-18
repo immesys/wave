@@ -164,3 +164,4 @@ const LookupFailure = 909
 const UnsupportedLocationScheme = 910
 const NoProofFound = 911
 const ProofInvalid = 912
+const MessageDecryptFailed = 913

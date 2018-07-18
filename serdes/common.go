@@ -13,12 +13,13 @@ var (
 	EntityOID                             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 2}
 	ExplicitProofOID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 3}
 	EntitySecretOID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 4}
+	WaveEncryptedMessageOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 5}
 	AttestationBodySchemeOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3}
 	UnencryptedBodyOID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 1}
 	WR1BodyOID                            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 2}
 	PSKBodySchemeOID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 3}
 	AttestationVerifierKeySchemeOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4}
-	VerifierKeyAES128                     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4, 1}
+	VerifierKeyAES128OID                  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4, 1}
 	OuterSignatureSchemeOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5}
 	EphemeralEd25519OID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5, 1}
 	OuterSignatureBindingSchemeOID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 6}
@@ -55,6 +56,9 @@ var (
 	EntityKeyringSchemeOID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15}
 	PlaintextKeyringOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 1}
 	KeyringAES128_GCM_PBKDF2OID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 2}
+	E2EEMessageKeySchemesOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16}
+	MessageKeyCurve25519ECDHOID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 1}
+	MessageKeyWR1OID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 2}
 )
 
 const CapCertification = 1
@@ -75,6 +79,7 @@ func init() {
 		I interface{}
 	}{
 		{EntityOID, WaveEntity{}},
+		{WaveEncryptedMessageOID, WaveEncryptedMessage{}},
 		{CommitmentRevocationOID, CommitmentRevocation{}},
 		{Sha3_256OID, Sha3_256{}},
 		{Keccak_256OID, Keccak_256{}},
@@ -115,7 +120,9 @@ func init() {
 		{PSKBodySchemeOID, PSKBodyCiphertext{}},
 		{WR1BodyOID, WR1BodyCiphertext{}},
 		{ExplicitProofOID, WaveExplicitProof{}},
-		{VerifierKeyAES128, AVKeyAES128GCM{}},
+		{VerifierKeyAES128OID, AVKeyAES128GCM{}},
+		{MessageKeyCurve25519ECDHOID, MessageKeyCurve25519ECDH{}},
+		{MessageKeyWR1OID, MessageKeyWR1{}},
 	}
 	for _, t := range tpz {
 		asn1.RegisterExternalType(t.O, t.I)

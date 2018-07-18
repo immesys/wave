@@ -35,6 +35,26 @@ BEGIN
     outerSignature INSTANCE OF TYPE-IDENTIFIER ({OuterSignatureSchemes})
   }
 
+
+  -- An arbitrary message encrypted using WAVE
+  WaveEncryptedMessage ::= SEQUENCE {
+    -- content: arbitrary message contents
+    -- encryption algorithm: AES128
+    -- key: contentsKey
+    contents OCTET STRING,
+
+    -- encrypted forms of contentsKey
+    keys SEQUENCE OF E2EEMessageKey,
+
+    -- Additional extension fields
+    extensions SEQUENCE OF Extension
+  }
+
+  E2EEMessageKey ::= INSTANCE OF TYPE-IDENTIFIER ({E2EEMessageKeySchemes})
+
+  WaveNameDeclaration ::= SEQUENCE {
+    subject EntityHash
+  }
   -- Irrespective of the algorithm used to encrypt the body, this
   -- is the object it contains
   AttestationBody ::= SEQUENCE {
@@ -382,6 +402,33 @@ BEGIN
     iterations INTEGER
   }
 
+  MessageKeyCurve25519ECDH ::= SEQUENCE {
+    ciphertext OCTET STRING
+  }
+
+  MessageKeyWR1 ::= SEQUENCE {
+    -- content: MessageKeyWR1Envelope DER encoded
+    -- encryption algorithm: AES128
+    -- encryption key: envelopeKey
+    envelope OCTET STRING,
+
+    -- content envelopeKey
+    -- encryption algorithm: IBE-bn256 in message namespace system
+    -- id: envelopeID (namespace)
+    envelopeKey-ibe-bn256 OCTET STRING,
+
+    -- the system for the keys
+    namespace EntityHash,
+    namespaceLocation Location
+  }
+
+  MessageKeyWR1Envelope ::= SEQUENCE {
+    partition SEQUENCE OF OCTET STRING,
+    -- content: contentsKey
+    -- encryption algorithm: oaque-bn256
+    -- encryption id: partition,
+    contentsKey OCTET STRING
+  }
 --------------------------------------------------------------------------------
 -- Universal OIDs
 --------------------------------------------------------------------------------
@@ -394,11 +441,13 @@ attestation-id OBJECT IDENTIFIER ::= { wave-object 1 }
 entity-id OBJECT IDENTIFIER ::= { wave-object 2 }
 explicit-proof-id OBJECT IDENTIFIER ::= { wave-object 3 }
 entity-secret-id OBJECT IDENTIFIER ::= { wave-object 4 }
+wave-encrypted-message-id OBJECT IDENTIFIER ::= { wave-object 5 }
 WaveObjects TYPE-IDENTIFIER ::= {
   {WaveAttestation IDENTIFIED BY attestation-id} |
   {WaveEntity IDENTIFIED BY entity-id} |
   {WaveExplicitProof IDENTIFIED BY explicit-proof-id} |
-  {WaveEntitySecret IDENTIFIED BY entity-secret-id},
+  {WaveEntitySecret IDENTIFIED BY entity-secret-id} |
+  {WaveEncryptedMessage IDENTIFIED BY wave-encrypted-message-id},
 ...
 }
 
@@ -568,6 +617,17 @@ EntityKeyringSchemes TYPE-IDENTIFIER ::= {
   {EntityKeyring IDENTIFIED BY plaintext-keyring-id} |
   {KeyringAESCiphertext IDENTIFIED BY aes128-gcm-pbkdf2},
   ...
+}
+
+-- End to end encrpytion key schemes
+--------------------------------------------------------------------------------
+e2ee-message-key-scheme OBJECT IDENTIFIER ::= { wave-id 16 }
+e2ee-curve25519-ecdh OBJECT IDENTIFIER ::= { e2ee-message-key-scheme 1 }
+e2ee-wr1 OBJECT IDENTIFIER ::= { e2ee-message-key-scheme 2 }
+E2EEMessageKeySchemes TYPE-IDENTIFIER ::= {
+ {MessageKeyCurve25519ECDH IDENTIFIED BY e2ee-curve25519-ecdh} |
+ {MessageKeyWR1 IDENTIFIED BY e2ee-wr1},
+ ...
 }
 
 END

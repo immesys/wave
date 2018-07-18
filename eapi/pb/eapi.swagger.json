@@ -122,6 +122,58 @@
         ]
       }
     },
+    "/v1/DecryptMessage": {
+      "post": {
+        "operationId": "DecryptMessage",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbDecryptMessageResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbDecryptMessageParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/EncryptMessage": {
+      "post": {
+        "operationId": "EncryptMessage",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbEncryptMessageResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbEncryptMessageParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
     "/v1/Inspect": {
       "post": {
         "operationId": "Inspect",
@@ -615,6 +667,78 @@
           "format": "byte"
         },
         "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbDecryptMessageParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "ciphertext": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbDecryptMessageResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "content": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbEncryptMessageParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "content": {
+          "type": "string",
+          "format": "byte",
+          "title": "The payload of the message"
+        },
+        "subjectHash": {
+          "type": "string",
+          "format": "byte",
+          "title": "If present, a direct decryption key will be generated"
+        },
+        "subjectLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "namespace": {
+          "type": "string",
+          "format": "byte",
+          "title": "If present, an OAQUE decryption key will be generated"
+        },
+        "namespaceLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "partition": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "byte"
+          }
+        }
+      }
+    },
+    "pbEncryptMessageResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "ciphertext": {
           "type": "string",
           "format": "byte"
         }

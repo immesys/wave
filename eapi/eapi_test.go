@@ -2,6 +2,7 @@ package eapi
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"testing"
@@ -226,6 +227,222 @@ func TestWrongPassphrase(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, att.Error)
+}
+
+func TestE2EEDirectEncryption(t *testing.T) {
+	ctx := context.Background()
+	srcPublic, srcSecret := createEntity(t)
+	dstPublic, dstSecret := createEntity(t)
+	_ = dstSecret
+	srcpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      srcPublic,
+		Location: &inmem,
+	})
+	_ = srcpub
+	dstpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      dstPublic,
+		Location: &inmem,
+	})
+	_ = dstpub
+	require.NoError(t, err)
+	// srcdec, uerr := multihash.Decode(srcpub.Hash)
+	// require.NoError(t, uerr)
+	// dstdec, uerr := multihash.Decode(dstpub.Hash)
+	// require.NoError(t, uerr)
+	srcperspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        srcSecret,
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+	dstperspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        dstSecret,
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+	msg := make([]byte, 512)
+	rand.Read(msg)
+	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
+		Perspective:     srcperspective,
+		Content:         msg,
+		SubjectHash:     dstpub.Hash,
+		SubjectLocation: &inmem,
+	})
+	require.NoError(t, err)
+	require.Nil(t, encrv.Error)
+
+	decrv, err := eapi.DecryptMessage(ctx, &pb.DecryptMessageParams{
+		Perspective: dstperspective,
+		Ciphertext:  encrv.Ciphertext,
+	})
+	require.NoError(t, err)
+	require.Nil(t, decrv.Error)
+	require.Equal(t, decrv.Content, msg)
+}
+
+func TestE2EEOAQUEEncryptionNS(t *testing.T) {
+	ctx := context.Background()
+	srcPublic, srcSecret := createEntity(t)
+	dstPublic, dstSecret := createEntity(t)
+	_ = dstSecret
+	srcpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      srcPublic,
+		Location: &inmem,
+	})
+	_ = srcpub
+	dstpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      dstPublic,
+		Location: &inmem,
+	})
+	_ = dstpub
+	require.NoError(t, err)
+	// srcdec, uerr := multihash.Decode(srcpub.Hash)
+	// require.NoError(t, uerr)
+	// dstdec, uerr := multihash.Decode(dstpub.Hash)
+	// require.NoError(t, uerr)
+	srcperspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        srcSecret,
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+	dstperspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        dstSecret,
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+	msg := make([]byte, 512)
+	rand.Read(msg)
+	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
+		Perspective:       dstperspective,
+		Content:           msg,
+		Namespace:         srcpub.Hash,
+		NamespaceLocation: &inmem,
+		Partition:         [][]byte{[]byte("foo"), []byte("bar")},
+	})
+	require.NoError(t, err)
+	require.Nil(t, encrv.Error)
+
+	decrv, err := eapi.DecryptMessage(ctx, &pb.DecryptMessageParams{
+		Perspective: srcperspective,
+		Ciphertext:  encrv.Ciphertext,
+	})
+	require.NoError(t, err)
+	require.Nil(t, decrv.Error)
+	require.Equal(t, decrv.Content, msg)
+}
+
+func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
+	ctx := context.Background()
+	srcPublic, srcSecret := createEntity(t)
+	dstPublic, dstSecret := createEntity(t)
+	_ = dstSecret
+	srcpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      srcPublic,
+		Location: &inmem,
+	})
+	_ = srcpub
+	dstpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      dstPublic,
+		Location: &inmem,
+	})
+	_ = dstpub
+	require.NoError(t, err)
+	// srcdec, uerr := multihash.Decode(srcpub.Hash)
+	// require.NoError(t, uerr)
+	// dstdec, uerr := multihash.Decode(dstpub.Hash)
+	// require.NoError(t, uerr)
+	srcperspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        srcSecret,
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+	dstperspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        dstSecret,
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+	msg := make([]byte, 512)
+	rand.Read(msg)
+	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
+		Perspective:       srcperspective,
+		Content:           msg,
+		Namespace:         srcpub.Hash,
+		NamespaceLocation: &inmem,
+		Partition:         [][]byte{[]byte("foo"), []byte("bar")},
+	})
+	require.NoError(t, err)
+	require.Nil(t, encrv.Error)
+
+	//---------
+	policy := pb.RTreePolicy{
+		Namespace:    srcpub.Hash,
+		Indirections: 5,
+		Statements: []*pb.RTreePolicyStatement{
+			&pb.RTreePolicyStatement{
+				PermissionSet: srcpub.Hash,
+				Permissions:   []string{"foo"},
+				Resource:      "foo/bar",
+			},
+		},
+	}
+	policy.VisibilityURI = [][]byte{[]byte("foo"), []byte("bar")}
+
+	att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		Perspective:     srcperspective,
+		BodyScheme:      BodySchemeWaveRef1,
+		SubjectHash:     dstpub.Hash,
+		SubjectLocation: &inmem,
+		Policy: &pb.Policy{
+			RTreePolicy: &policy,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, att.Error)
+	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
+		DER:      att.DER,
+		Location: &inmem,
+	})
+	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
+	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+		Perspective: dstperspective,
+	})
+	require.NoError(t, err)
+	require.Nil(t, rv.Error)
+	//Spin until sync complete (but don't use wait because its hard to use)
+	for {
+		ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+			Perspective: dstperspective,
+		})
+		require.NoError(t, err)
+		require.Nil(t, ss.Error)
+		fmt.Printf("syncs %d/%d\n", ss.TotalSyncRequests, ss.CompletedSyncs)
+		if ss.CompletedSyncs == ss.TotalSyncRequests {
+			fmt.Printf("Syncs complete\n")
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	//---------------------
+
+	decrv, err := eapi.DecryptMessage(ctx, &pb.DecryptMessageParams{
+		Perspective: dstperspective,
+		Ciphertext:  encrv.Ciphertext,
+	})
+	require.NoError(t, err)
+	require.Nil(t, decrv.Error)
+	require.Equal(t, decrv.Content, msg)
 }
 
 func TestCreateAttestationWithLookup(t *testing.T) {

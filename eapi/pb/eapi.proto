@@ -89,6 +89,18 @@ service WAVE {
       body: "*"
     };
   }
+  rpc EncryptMessage(EncryptMessageParams) returns (EncryptMessageResponse) {
+    option (google.api.http) = {
+      post: "/v1/EncryptMessage"
+      body: "*"
+    };
+  }
+  rpc DecryptMessage(DecryptMessageParams) returns (DecryptMessageResponse) {
+    option (google.api.http) = {
+      post: "/v1/DecryptMessage"
+      body: "*"
+    };
+  }
 }
 
 message ResolveHashParams {
@@ -157,6 +169,33 @@ message ResyncPerspectiveGraphResponse {
 }
 message SyncParams {
   Perspective perspective = 1;
+}
+message EncryptMessageParams {
+  Perspective perspective = 1;
+
+  //The payload of the message
+  bytes content = 2;
+
+  //If present, a direct decryption key will be generated
+  bytes subjectHash = 3;
+  Location subjectLocation = 4;
+
+  //If present, an OAQUE decryption key will be generated
+  bytes namespace = 5;
+  Location namespaceLocation = 6;
+  repeated bytes partition = 7;
+}
+message EncryptMessageResponse {
+  Error error = 1;
+  bytes ciphertext = 2;
+}
+message DecryptMessageParams {
+  Perspective perspective = 1;
+  bytes ciphertext = 2;
+}
+message DecryptMessageResponse {
+  Error error = 1;
+  bytes content = 2;
 }
 message SyncResponse {
   Error error = 1;

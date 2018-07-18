@@ -776,3 +776,107 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	resp.ProofDER = der
 	return resp, nil
 }
+
+func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (*pb.EncryptMessageResponse, error) {
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.EncryptMessageResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
+	secret, err := ConvertEntitySecret(ctx, p.Perspective.EntitySecret)
+	if err != nil {
+		return &pb.EncryptMessageResponse{
+			Error: ToError(err),
+		}, nil
+	}
+	params := iapi.PEncryptMessage{
+		Encryptor: secret,
+	}
+	if len(p.SubjectHash) != 0 {
+		subHash := iapi.HashSchemeInstanceFromMultihash(p.SubjectHash)
+		subLoc, err := LocationSchemeInstance(p.SubjectLocation)
+		if err != nil {
+			return &pb.EncryptMessageResponse{
+				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not load subject location", err)),
+			}, nil
+		}
+		sub, val, uerr := eng.LookupEntity(ctx, subHash, subLoc)
+		if uerr != nil {
+			return &pb.EncryptMessageResponse{
+				Error: ToError(wve.ErrW(wve.LookupFailure, "could not resolve subject", uerr)),
+			}, nil
+		}
+		if !val.Valid {
+			return &pb.EncryptMessageResponse{
+				Error: ToError(wve.Err(wve.LookupFailure, "subject entity is no longer valid")),
+			}, nil
+		}
+		params.Subject = sub
+	}
+	if len(p.Namespace) != 0 {
+		nsHash := iapi.HashSchemeInstanceFromMultihash(p.Namespace)
+		nsLoc, err := LocationSchemeInstance(p.NamespaceLocation)
+		if err != nil {
+			return &pb.EncryptMessageResponse{
+				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not parse namespace location", err)),
+			}, nil
+		}
+		ns, val, uerr := eng.LookupEntity(ctx, nsHash, nsLoc)
+		if uerr != nil {
+			return &pb.EncryptMessageResponse{
+				Error: ToError(wve.ErrW(wve.LookupFailure, "could not resolve namespace", uerr)),
+			}, nil
+		}
+		if !val.Valid {
+			return &pb.EncryptMessageResponse{
+				Error: ToError(wve.Err(wve.LookupFailure, "namespace entity is no longer valid")),
+			}, nil
+		}
+		params.Namespace = ns
+		params.NamespaceLocation = nsLoc
+		params.Partition = p.Partition
+	}
+	params.Content = p.Content
+	rv, err := iapi.EncryptMessage(ctx, &params)
+	if err != nil {
+		return &pb.EncryptMessageResponse{
+			Error: ToError(err),
+		}, nil
+	}
+	return &pb.EncryptMessageResponse{
+		Ciphertext: rv.Ciphertext,
+	}, nil
+}
+
+func (e *EAPI) DecryptMessage(ctx context.Context, p *pb.DecryptMessageParams) (*pb.DecryptMessageResponse, error) {
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.DecryptMessageResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
+	secret, err := ConvertEntitySecret(ctx, p.Perspective.EntitySecret)
+	if err != nil {
+		return &pb.DecryptMessageResponse{
+			Error: ToError(err),
+		}, nil
+	}
+	dctx := engine.NewEngineDecryptionContext(eng)
+	dctx.AutoLoadPartitionSecrets(true)
+	params := iapi.PDecryptMessage{
+		Decryptor:  secret,
+		Ciphertext: p.Ciphertext,
+		Dctx:       dctx,
+	}
+	rv, err := iapi.DecryptMessage(ctx, &params)
+	if err != nil {
+		return &pb.DecryptMessageResponse{
+			Error: ToError(err),
+		}, nil
+	}
+	return &pb.DecryptMessageResponse{
+		Content: rv.Content,
+	}, nil
+
+}
