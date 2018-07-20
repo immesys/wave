@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"sync"
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
@@ -333,16 +334,30 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	if err != nil {
 		return nil, nil, err
 	}
-	for idx, part := range partitions {
-		//Fill in the key in the bundle
-		k, err := attester.WR1BodyKey(ctx, part)
-		if err != nil {
-			return nil, nil, err
-		}
-		//This is a keyring entry, we need to extract just the oaque private key
-		cf := k.SecretCanonicalForm()
-		delegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BN256_s20)
+	//Generating these delegated keys is a bit of a pain. Sequentially its about 1.5s on my machine.
+	//If we split it over multiple cores it goes down to about 250 ms
+	const workers = 32
+	togenerate := make([][]int, workers)
+	for i := 0; i < len(partitions); i++ {
+		togenerate[i%workers] = append(togenerate[i%workers], i)
 	}
+	wg := sync.WaitGroup{}
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func(i int) {
+			for _, idx := range togenerate[i] {
+				k, err := attester.WR1BodyKey(ctx, partitions[idx])
+				if err != nil {
+					panic(err)
+				}
+				//This is a keyring entry, we need to extract just the oaque private key
+				cf := k.SecretCanonicalForm()
+				delegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BN256_s20)
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
 	params := bodyParams.(*EntityKey_OAQUE_BN256_S20_Params).Params.Marshal()
 	bundleCF := serdes.EntityKeyringBundle{
 		Params:  params,

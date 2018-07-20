@@ -155,9 +155,9 @@ message CreateAttestationParams {
   string bodyScheme = 2;
   bytes subjectHash = 3;
   Location subjectLocation = 4;
-  //If 0, will be set to time.Now
+  //If 0, will be set to time.Now. Ms since epoch
   int64 validFrom = 5;
-  //If 0, will be set to some arbitrary default
+  //If 0, will be set to some arbitrary default. Ms since epoch
   int64 validUntil = 6;
   Policy policy = 7;
 }

@@ -544,6 +544,162 @@ func TestCreateAttestationWithLookup(t *testing.T) {
 	require.EqualValues(t, false, res.Validity.NotDecrypted)
 }
 
+func TestCreateAttestationExpiryNonIntersect(t *testing.T) {
+	//This is a little wierd. We want to have
+	// A->B->C.
+	// BC is granted in present time
+	// AB is granted in the future
+	// graph is synced to learn BC
+	// time is set to future
+	// graph sync
+	// see if AB is decrypted
+	tPresent := time.Now().Add(-24 * time.Hour)
+	tFuture := time.Now().Add(180 * 24 * time.Hour)
+	ctx := context.Background()
+	srcPublic, srcSecret := createEntity(t)
+	dstPublic, dstSecret := createEntity(t)
+	dst2Public, dst2Secret := createEntity(t)
+	_ = dstSecret
+	srcpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      srcPublic,
+		Location: &inmem,
+	})
+	_ = srcpub
+	dstpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      dstPublic,
+		Location: &inmem,
+	})
+	_ = dstpub
+	dst2pub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      dst2Public,
+		Location: &inmem,
+	})
+	_ = dst2pub
+	require.NoError(t, err)
+	srcdec, uerr := multihash.Decode(srcpub.Hash)
+	require.NoError(t, uerr)
+	fmt.Printf("SRC hash is: %x\n", srcdec.Digest)
+	dstdec, uerr := multihash.Decode(dstpub.Hash)
+	require.NoError(t, uerr)
+	fmt.Printf("DST hash is: %x\n", dstdec.Digest)
+	dst2perspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        dst2Secret,
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+
+	att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		Perspective: &pb.Perspective{
+			EntitySecret: &pb.EntitySecret{
+				DER:        dstSecret,
+				Passphrase: []byte("password"),
+			},
+			Location: &inmem,
+		},
+		BodyScheme:      BodySchemeWaveRef1,
+		SubjectHash:     dst2pub.Hash,
+		SubjectLocation: &inmem,
+		Policy: &pb.Policy{
+			TrustLevelPolicy: &pb.TrustLevelPolicy{
+				Trust: 3,
+			},
+		},
+		ValidFrom:  tPresent.UnixNano() / 1e6,
+		ValidUntil: tPresent.Add(30*24*time.Hour).UnixNano() / 1e6,
+	})
+	require.NoError(t, err)
+	require.Nil(t, att.Error)
+	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
+		DER:      att.DER,
+		Location: &inmem,
+	})
+	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
+	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+		Perspective: dst2perspective,
+	})
+	require.NoError(t, err)
+	require.Nil(t, rv.Error)
+	//Spin until sync complete (but don't use wait because its hard to use)
+	for {
+		ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+			Perspective: dst2perspective,
+		})
+		require.NoError(t, err)
+		require.Nil(t, ss.Error)
+		fmt.Printf("syncs %d/%d\n", ss.TotalSyncRequests, ss.CompletedSyncs)
+		if ss.CompletedSyncs == ss.TotalSyncRequests {
+			fmt.Printf("Syncs complete")
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	//Now publish AB
+
+	att, err = eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		Perspective: &pb.Perspective{
+			EntitySecret: &pb.EntitySecret{
+				DER:        srcSecret,
+				Passphrase: []byte("password"),
+			},
+			Location: &inmem,
+		},
+		BodyScheme:      BodySchemeWaveRef1,
+		SubjectHash:     dstpub.Hash,
+		SubjectLocation: &inmem,
+		Policy: &pb.Policy{
+			TrustLevelPolicy: &pb.TrustLevelPolicy{
+				Trust: 3,
+			},
+		},
+		ValidFrom:  tFuture.UnixNano() / 1e6,
+		ValidUntil: tFuture.Add(30*24*time.Hour).UnixNano() / 1e6,
+	})
+	require.NoError(t, err)
+	require.Nil(t, att.Error)
+	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
+		DER:      att.DER,
+		Location: &inmem,
+	})
+
+	//Shift time
+	patch := monkey.Patch(time.Now, func() time.Time { return tFuture })
+	defer patch.Unpatch()
+
+	//Resync
+	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
+	rv, err = eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+		Perspective: dst2perspective,
+	})
+	require.NoError(t, err)
+	require.Nil(t, rv.Error)
+	//Spin until sync complete (but don't use wait because its hard to use)
+	for {
+		ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+			Perspective: dst2perspective,
+		})
+		require.NoError(t, err)
+		require.Nil(t, ss.Error)
+		fmt.Printf("syncs %d/%d\n", ss.TotalSyncRequests, ss.CompletedSyncs)
+		if ss.CompletedSyncs == ss.TotalSyncRequests {
+			fmt.Printf("Syncs complete")
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	fmt.Printf("==== STARTING LOOKUP IN DESTINATION GRAPH ====\n")
+	lookupresponse, err := eapi.LookupAttestations(ctx, &pb.LookupAttestationsParams{
+		Perspective: dst2perspective,
+		ToEntity:    dstpub.Hash,
+	})
+	require.NoError(t, err)
+	require.Nil(t, lookupresponse.Error)
+	require.EqualValues(t, 0, len(lookupresponse.Results))
+}
+
 func TestCreateAttestationWithExpiredLookup(t *testing.T) {
 	ctx := context.Background()
 	srcPublic, srcSecret := createEntity(t)
