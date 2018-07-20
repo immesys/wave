@@ -167,6 +167,17 @@ BEGIN
     secret EntityPrivateKey
   }
 
+  EntityKeyringBundle ::= SEQUENCE {
+    Entries SEQUENCE OF KeyringBundleEntry
+  }
+  KeyringBundleEntry ::= SEQUENCE {
+    PartitionChange SEQUENCE OF SEQUENCE {
+      Index INTEGER,
+      Content OCTET STRING
+    },
+    Key Private-BN256-OAQUE
+  }
+
   EntityPrivateKey ::= INSTANCE OF TYPE-IDENTIFIER ({EntitySecretKeySchemes})
 
   EntityPublicKey ::= SEQUENCE {
@@ -637,10 +648,15 @@ wr1-partition-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 2 }
 -- this key permits decrypting messages encrypted using OAQUE where the
 -- attributeset is more qualified than the given key
 wr1-oaque-encryption-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 3 }
+-- this key permits decrypting messages encrypted using OAQUE range
+-- keys (like expiry). It is a family of multiple keys
+wr1-oaque-bundle-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 4 }
+
 PolicyAddendumSchemes TYPE-IDENTIFIER ::= {
   {EntityKeyringEntry IDENTIFIED BY wr1-domain-visibility-key} |
   {EntityKeyringEntry IDENTIFIED BY wr1-partition-key} |
-  {EntityKeyringEntry IDENTIFIED BY wr1-oaque-encryption-key},
+  {EntityKeyringEntry IDENTIFIED BY wr1-oaque-encryption-key} |
+  {EntityKeyringBundle IDENTIFIED BY wr1-oaque-bundle-key},
   ...
 }
 
