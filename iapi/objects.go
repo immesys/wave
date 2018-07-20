@@ -8,7 +8,62 @@ import (
 	"github.com/immesys/asn1"
 
 	"github.com/immesys/wave/serdes"
+	"github.com/immesys/wave/wve"
 )
+
+type NameDeclaration struct {
+	CanonicalForm    *serdes.WaveNameDeclaration
+	DecryptedBody    *serdes.NameDeclarationBody
+	Partition        [][]byte
+	Attester         HashSchemeInstance
+	AttesterLocation LocationSchemeInstance
+	Subject          HashSchemeInstance
+	SubjectLocation  LocationSchemeInstance
+	Name             string
+	Revocations      []RevocationScheme
+}
+
+func (nd *NameDeclaration) SetCanonicalForm(cf *serdes.WaveNameDeclaration) wve.WVE {
+	att := HashSchemeInstanceFor(&cf.TBS.Attester)
+	if !att.Supported() {
+		return wve.Err(wve.MalformedObject, "unsupported attester hash scheme")
+	}
+	attloc := LocationSchemeInstanceFor(&cf.TBS.AttesterLocation)
+	if !attloc.Supported() {
+		return wve.Err(wve.MalformedObject, "unsupported attester location scheme")
+	}
+	nd.Attester = att
+	nd.AttesterLocation = attloc
+	//TODO
+	nd.Revocations = []RevocationScheme{}
+	nd.CanonicalForm = cf
+	return nil
+}
+func (nd *NameDeclaration) SetDecryptedBody(db *serdes.NameDeclarationBody) wve.WVE {
+	sub := HashSchemeInstanceFor(&db.Subject)
+	if !sub.Supported() {
+		return wve.Err(wve.MalformedObject, "unsupported subject hash scheme")
+	}
+	subloc := LocationSchemeInstanceFor(&db.SubjectLocation)
+	if !subloc.Supported() {
+		return wve.Err(wve.MalformedObject, "unsupported subject location scheme")
+
+	}
+	nd.Name = db.Name
+	nd.DecryptedBody = db
+	nd.Subject = sub
+	nd.SubjectLocation = subloc
+	if !nd.IsNameValid() {
+		return wve.Err(wve.MalformedObject, "name is invalid")
+	}
+	return nil
+}
+func (nd *NameDeclaration) Decoded() bool {
+	return nd.DecryptedBody != nil
+}
+func (nd *NameDeclaration) IsNameValid() bool {
+	return IsNameDeclarationValid(nd.Name)
+}
 
 type Entity struct {
 	CanonicalForm *serdes.WaveEntity

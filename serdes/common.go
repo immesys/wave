@@ -14,6 +14,7 @@ var (
 	ExplicitProofOID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 3}
 	EntitySecretOID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 4}
 	WaveEncryptedMessageOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 5}
+	WaveNameDeclarationOID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 6}
 	AttestationBodySchemeOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3}
 	UnencryptedBodyOID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 1}
 	WR1BodyOID                            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 2}
@@ -59,6 +60,9 @@ var (
 	E2EEMessageKeySchemesOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16}
 	MessageKeyCurve25519ECDHOID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 1}
 	MessageKeyWR1OID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 2}
+	NameDeclarationKeySchemesOID          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17}
+	NameDeclarationKeyWR1OID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 1}
+	NameDeclarationKeyNoneOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 2}
 )
 
 const CapCertification = 1
@@ -123,6 +127,9 @@ func init() {
 		{VerifierKeyAES128OID, AVKeyAES128GCM{}},
 		{MessageKeyCurve25519ECDHOID, MessageKeyCurve25519ECDH{}},
 		{MessageKeyWR1OID, MessageKeyWR1{}},
+		{WaveNameDeclarationOID, WaveNameDeclaration{}},
+		{NameDeclarationKeyWR1OID, NameDeclarationKeyWR1{}},
+		{NameDeclarationKeyNoneOID, NameDeclarationKeyNone{}},
 	}
 	for _, t := range tpz {
 		asn1.RegisterExternalType(t.O, t.I)

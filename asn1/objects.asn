@@ -52,9 +52,6 @@ BEGIN
 
   E2EEMessageKey ::= INSTANCE OF TYPE-IDENTIFIER ({E2EEMessageKeySchemes})
 
-  WaveNameDeclaration ::= SEQUENCE {
-    subject EntityHash
-  }
   -- Irrespective of the algorithm used to encrypt the body, this
   -- is the object it contains
   AttestationBody ::= SEQUENCE {
@@ -297,6 +294,62 @@ BEGIN
     encryptedUnder  EntityPublicKey
   }
 
+  WaveNameDeclaration ::= SEQUENCE {
+    tbs SEQUENCE {
+      attester EntityHash,
+      attesterLocation Location,
+      revocations SEQUENCE OF RevocationOption,
+      publicExtensions SEQUENCE OF Extension,
+      -- content: NameDeclarationBody
+      -- encryption algorithm: AES128
+      -- encryption key: bodyKey
+      body OCTET STRING,
+      keys SEQUENCE OF NameDeclarationKey
+    },
+    signature OCTET STRING
+  }
+
+  NameDeclarationKey ::= INSTANCE OF TYPE-IDENTIFIER ({NameDeclarationKeySchemes})
+
+  NameDeclarationBody ::= SEQUENCE {
+    name UTF8String,
+    subject EntityHash,
+    subjectLocation Location,
+    validity SEQUENCE {
+      notBefore UTCTime,
+      notAfter UTCTime
+    },
+    privateExtensions SEQUENCE OF Extension
+  }
+
+  -- empty sequence, the body is then just DER encoded
+  NameDeclarationKeyNone ::= SEQUENCE {
+
+  }
+
+  NameDeclarationKeyWR1 ::= SEQUENCE {
+    -- content: MessageKeyWR1Envelope DER encoded
+    -- encryption algorithm: AES128
+    -- encryption key: envelopeKey
+    envelope OCTET STRING,
+
+    -- content envelopeKey
+    -- encryption algorithm: IBE-bn256 in declaration namespace system
+    -- id: envelopeID (namespace)
+    envelopeKey-ibe-bn256 OCTET STRING,
+
+    namespace EntityHash,
+    namespaceLocation Location
+  }
+
+  NameDeclarationWR1Envelope ::= SEQUENCE {
+    partition SEQUENCE OF OCTET STRING,
+    -- content: bodyKey
+    -- encryption algorithm: oaque-bn256
+    -- encryption id: partition
+    bodyKey OCTET STRING
+  }
+
   -- A body ciphertext for the wave reference 1 scheme
   WR1BodyCiphertext ::= SEQUENCE {
     -- content: WR1VerifierBody DER encoded
@@ -442,12 +495,14 @@ entity-id OBJECT IDENTIFIER ::= { wave-object 2 }
 explicit-proof-id OBJECT IDENTIFIER ::= { wave-object 3 }
 entity-secret-id OBJECT IDENTIFIER ::= { wave-object 4 }
 wave-encrypted-message-id OBJECT IDENTIFIER ::= { wave-object 5 }
+wave-name-declaration-id OBJECT IDENTIFIER ::= { wave-object 6 }
 WaveObjects TYPE-IDENTIFIER ::= {
   {WaveAttestation IDENTIFIED BY attestation-id} |
   {WaveEntity IDENTIFIED BY entity-id} |
   {WaveExplicitProof IDENTIFIED BY explicit-proof-id} |
   {WaveEntitySecret IDENTIFIED BY entity-secret-id} |
-  {WaveEncryptedMessage IDENTIFIED BY wave-encrypted-message-id},
+  {WaveEncryptedMessage IDENTIFIED BY wave-encrypted-message-id} |
+  {WaveNameDeclaration IDENTIFIED BY wave-name-declaration-id},
 ...
 }
 
@@ -629,5 +684,17 @@ E2EEMessageKeySchemes TYPE-IDENTIFIER ::= {
  {MessageKeyWR1 IDENTIFIED BY e2ee-wr1},
  ...
 }
+
+-- Name declaration key schemes
+--------------------------------------------------------------------------------
+name-declaration-key-scheme OBJECT IDENTIFIER ::= { wave-id 17 }
+name-key-wr1 OBJECT IDENTIFIER ::= { name-declaration-key-scheme 1 }
+name-key-none OBJECT IDENTIFIER ::= { name-declaration-key-scheme 2 }
+NameDeclarationKeySchemes TYPE-IDENTIFIER ::= {
+ {NameDeclarationKeyWR1 IDENTIFIED BY name-key-wr1}|
+ {NameDeclarationKeyNone IDENTIFIED BY name-key-none},
+ ...
+}
+
 
 END

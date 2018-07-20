@@ -1,0 +1,349 @@
+package iapi
+
+import (
+	"context"
+	"crypto/rand"
+	"regexp"
+	"time"
+
+	"github.com/immesys/asn1"
+	"github.com/immesys/wave/serdes"
+	"github.com/immesys/wave/wve"
+)
+
+func IsNameDeclarationValid(s string) bool {
+	ok, err := regexp.MatchString("^[a-z0-9_-]{1,63}$", s)
+	if err != nil {
+		panic(err)
+	}
+	return ok
+}
+
+type PCreateNameDeclaration struct {
+	Attester         *EntitySecrets
+	AttesterLocation LocationSchemeInstance
+	Subject          *Entity
+	SubjectLocation  LocationSchemeInstance
+	Name             string
+
+	//If not specified, defaults to Now
+	ValidFrom *time.Time
+	//If not specified defaults to Now+5 years
+	ValidUntil *time.Time
+
+	//If present, an encrypted declaration will be made
+	Namespace         *Entity
+	NamespaceLocation LocationSchemeInstance
+	Partition         [][]byte
+
+	//TODO
+	//revocationlocation
+}
+type RCreateNameDeclaration struct {
+	NameDeclaration *NameDeclaration
+	DER             []byte
+}
+
+func CreateNameDeclaration(ctx context.Context, p *PCreateNameDeclaration) (*RCreateNameDeclaration, wve.WVE) {
+	if p.Namespace != nil {
+		if p.NamespaceLocation == nil || p.Partition == nil {
+			return nil, wve.Err(wve.InvalidParameter, "namespace, nsloc and partition must be specified together")
+		}
+		if len(p.Partition) > 20 {
+			return nil, wve.Err(wve.InvalidParameter, "partition must be <=20 elements")
+		}
+	}
+	if !IsNameDeclarationValid(p.Name) {
+		return nil, wve.Err(wve.InvalidParameter, "names must match [a-z0-9_-]{1,63}")
+	}
+	subcf := p.Subject.Keccak256HI().CanonicalForm()
+	subloc := p.SubjectLocation.CanonicalForm()
+	body := serdes.NameDeclarationBody{}
+	body.Name = p.Name
+	body.Subject = *subcf
+	body.SubjectLocation = *subloc
+
+	if p.ValidFrom != nil {
+		body.Validity.NotBefore = *p.ValidFrom
+	} else {
+		body.Validity.NotBefore = time.Now()
+	}
+	if p.ValidUntil != nil {
+		body.Validity.NotAfter = *p.ValidUntil
+	} else {
+		body.Validity.NotAfter = time.Now().Add(5 * 365 * 24 * time.Hour)
+	}
+	//Body is complete. Now encode and encrypt it
+	bodyDER, err := asn1.Marshal(body)
+	if err != nil {
+		panic(err)
+	}
+	attcf := p.Attester.Entity.Keccak256HI().CanonicalForm()
+	attlocf := p.AttesterLocation.CanonicalForm()
+	outer := serdes.WaveNameDeclaration{}
+	outer.TBS.Attester = *attcf
+	outer.TBS.AttesterLocation = *attlocf
+	if p.Namespace == nil {
+		outer.TBS.Body = bodyDER
+		outer.TBS.Keys = append(outer.TBS.Keys, asn1.NewExternal(serdes.NameDeclarationKeyNone{}))
+
+	} else {
+		expandedPartition := make([][]byte, 20)
+		for i, e := range p.Partition {
+			expandedPartition[i] = e
+		}
+		nscf := p.Namespace.Keccak256HI().CanonicalForm()
+		nsloc := p.NamespaceLocation.CanonicalForm()
+		wr1key := serdes.NameDeclarationKeyWR1{}
+		wr1key.Namespace = *nscf
+		wr1key.NamespaceLocation = *nsloc
+
+		aesk := make([]byte, 16+12)
+		rand.Read(aesk)
+		bodyciphertext := aesGCMEncrypt(aesk[:16], bodyDER, aesk[16:])
+		outer.TBS.Body = bodyciphertext
+		//Now create the OAQUE key
+
+		oaqueparams, err := p.Namespace.WR1_BodyParams()
+		if err != nil {
+			return nil, wve.ErrW(wve.InvalidParameter, "namespace entity has invalid WR1 params", err)
+		}
+		ck, err := oaqueparams.GenerateChildKey(ctx, expandedPartition)
+		if err != nil {
+			return nil, wve.ErrW(wve.InvalidParameter, "namespace entity has invalid WR1 params", err)
+		}
+		bodykeyciphertext, err := ck.EncryptMessage(ctx, aesk)
+		if err != nil {
+			return nil, wve.ErrW(wve.InvalidParameter, "namespace entity has invalid WR1 params", err)
+		}
+		// ^^ oaque encrypted aesk
+
+		ndwr1keyenv := serdes.NameDeclarationWR1Envelope{
+			Partition: expandedPartition,
+			BodyKey:   bodykeyciphertext,
+		}
+		serenv, err := asn1.Marshal(ndwr1keyenv)
+		if err != nil {
+			panic(err)
+		}
+
+		envelopeAESK := make([]byte, 16+12)
+		rand.Read(envelopeAESK)
+		serenvCiphertext := aesGCMEncrypt(envelopeAESK[:16], serenv, envelopeAESK[16:])
+		wr1key.Envelope = serenvCiphertext
+
+		//Encrypt envelope key with IBE
+		ibeparams, err := p.Namespace.WR1_DomainVisiblityParams()
+		if err != nil {
+			return nil, wve.ErrW(wve.InvalidParameter, "namespace entity missing WR1 params", err)
+		}
+		ibek, err := ibeparams.GenerateChildKey(ctx, []byte(p.Namespace.Keccak256HI().MultihashString()))
+		if err != nil {
+			return nil, wve.ErrW(wve.InvalidParameter, "namespace entity has invalid WR1 params", err)
+		}
+		envkeyciphertext, err := ibek.EncryptMessage(ctx, envelopeAESK)
+		if err != nil {
+			return nil, wve.ErrW(wve.InvalidParameter, "namespace entity has invalid WR1 params", err)
+		}
+		wr1key.EnvelopeKey = envkeyciphertext
+		outer.TBS.Keys = append(outer.TBS.Keys, asn1.NewExternal(wr1key))
+	}
+	tbsDER, err := asn1.Marshal(outer.TBS)
+	if err != nil {
+		panic(err)
+	}
+	sig, err := p.Attester.PrimarySigningKey().SignAttestation(ctx, tbsDER)
+	if err != nil {
+		panic(err)
+	}
+	outer.Signature = sig
+	wo := serdes.WaveWireObject{
+		Content: asn1.NewExternal(outer),
+	}
+	outerDER, err := asn1.Marshal(wo.Content)
+	if err != nil {
+		panic(err)
+	}
+	nd := NameDeclaration{}
+	nd.SetCanonicalForm(&outer)
+	nd.SetDecryptedBody(&body)
+	return &RCreateNameDeclaration{
+		NameDeclaration: &nd,
+		DER:             outerDER,
+	}, nil
+}
+
+type WR1NameDeclarationDecryptionContext interface {
+	EntityByHashLoc(ctx context.Context, h HashSchemeInstance, loc LocationSchemeInstance) (*Entity, wve.WVE)
+	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
+	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
+	WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
+}
+
+type PParseNameDeclaration struct {
+	DER             []byte
+	NameDeclaration *NameDeclaration
+	Dctx            WR1NameDeclarationDecryptionContext
+}
+type RParseNameDeclaration struct {
+	Result      *NameDeclaration
+	IsMalformed bool
+}
+
+func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RParseNameDeclaration, wve.WVE) {
+	nd := p.NameDeclaration
+	if nd == nil {
+		wo := serdes.WaveWireObject{}
+		rest, err := asn1.Unmarshal(p.DER, &wo.Content)
+		if err != nil || len(rest) != 0 {
+			return &RParseNameDeclaration{IsMalformed: true}, wve.Err(wve.MalformedDER, "DER did not parse")
+		}
+		ndcf, ok := wo.Content.Content.(serdes.WaveNameDeclaration)
+		if !ok {
+			return &RParseNameDeclaration{
+				IsMalformed: true,
+			}, wve.Err(wve.UnexpectedObject, "DER is not a wave name declaration")
+		}
+		nd = &NameDeclaration{}
+		werr := nd.SetCanonicalForm(&ndcf)
+		if werr != nil {
+			return &RParseNameDeclaration{
+				IsMalformed: true,
+			}, werr
+		}
+	}
+
+	//Get attesting entity
+	attester, err := p.Dctx.EntityByHashLoc(ctx, nd.Attester, nd.AttesterLocation)
+	if err != nil {
+		return &RParseNameDeclaration{
+			IsMalformed: true,
+		}, wve.Err(wve.LookupFailure, "could not resolve attesting entity")
+	}
+	if attester == nil {
+		return &RParseNameDeclaration{
+			IsMalformed: true,
+		}, wve.Err(wve.LookupFailure, "could not resolve attesting entity")
+	}
+
+	//Verify signature
+	tbs, uerr := asn1.Marshal(nd.CanonicalForm.TBS)
+	if uerr != nil {
+		panic(uerr)
+	}
+	uerr = attester.VerifyingKey.VerifyAttestation(ctx, tbs, nd.CanonicalForm.Signature)
+	if uerr != nil {
+		return &RParseNameDeclaration{IsMalformed: true}, wve.Err(wve.InvalidSignature, "Name Declaration signature failed check")
+	}
+
+	//Try decode with keys
+	var bodyDER []byte
+	for _, k := range nd.CanonicalForm.TBS.Keys {
+		_, ok := k.Content.(serdes.NameDeclarationKeyNone)
+		if ok {
+			//The body is not encrypted
+			bodyDER = nd.CanonicalForm.TBS.Body
+			break
+		}
+		wr1k, ok := k.Content.(serdes.NameDeclarationKeyWR1)
+		if !ok {
+			continue
+		}
+		ns := HashSchemeInstanceFor(&wr1k.Namespace)
+		if !ns.Supported() {
+			return &RParseNameDeclaration{
+				IsMalformed: true,
+			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
+		}
+		nsloc := LocationSchemeInstanceFor(&wr1k.NamespaceLocation)
+		if !nsloc.Supported() {
+			return &RParseNameDeclaration{
+				IsMalformed: true,
+			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
+		}
+		var envkey []byte
+		uerr := p.Dctx.WR1IBEKeysForPartitionLabel(ctx, ns, func(k EntitySecretKeySchemeInstance) bool {
+			var err error
+			envkey, err = k.DecryptMessage(ctx, wr1k.EnvelopeKey)
+			if err == nil {
+				return false
+			}
+			return true
+		})
+		if uerr != nil {
+			continue
+		}
+		if len(envkey) == 0 {
+			continue
+		}
+		if len(envkey) != 16+12 {
+			return &RParseNameDeclaration{
+				IsMalformed: true,
+			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
+		}
+		envelopeDER, ok := aesGCMDecrypt(envkey[:16], wr1k.Envelope, envkey[16:])
+		if !ok {
+			return &RParseNameDeclaration{
+				IsMalformed: true,
+			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
+		}
+		envelope := serdes.NameDeclarationWR1Envelope{}
+		rest, err := asn1.Unmarshal(envelopeDER, &envelope)
+		if len(rest) != 0 || err != nil {
+			return &RParseNameDeclaration{
+				IsMalformed: true,
+			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
+		}
+
+		//We are at the very least labelled
+		nd.Partition = envelope.Partition
+
+		//Try for full decryption
+		var bodykey []byte
+		uerr = p.Dctx.WR1OAQUEKeysForContent(ctx, ns, envelope.Partition, func(k SlottedSecretKey) bool {
+			var err error
+			bodykey, err = k.DecryptMessage(ctx, envelope.BodyKey)
+			if err == nil {
+				return false
+			}
+			return true
+		})
+		if uerr != nil {
+			continue
+		}
+		if len(bodykey) == 0 {
+			continue
+		}
+		if len(bodykey) != 16+12 {
+			return &RParseNameDeclaration{
+				IsMalformed: true,
+			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
+		}
+
+		//Now decode the main body
+		bodyDER, ok = aesGCMDecrypt(bodykey[:16], nd.CanonicalForm.TBS.Body, bodykey[16:])
+		if !ok {
+			return &RParseNameDeclaration{
+				IsMalformed: true,
+			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
+		}
+		break
+
+	}
+
+	body := serdes.NameDeclarationBody{}
+	rest, uerr := asn1.Unmarshal(bodyDER, &body)
+	if len(rest) != 0 || uerr != nil {
+		return &RParseNameDeclaration{
+			IsMalformed: true,
+		}, wve.Err(wve.MalformedObject, "bad decrypted body DER")
+	}
+	nd.SetDecryptedBody(&body)
+	return &RParseNameDeclaration{
+		Result: nd,
+	}, nil
+	//We failed to decrypt using any of the keys
+	return &RParseNameDeclaration{
+		Result: nd,
+	}, nil
+}
