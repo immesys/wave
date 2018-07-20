@@ -230,10 +230,9 @@ func (s *Solution) Policy() *iapi.RTreePolicy {
 		}
 		indep_policies = append(indep_policies, pol)
 	}
-
 	combined_policy := indep_policies[0]
 	for _, pol := range indep_policies[1:] {
-		result, okay, _, err := combined_policy.Intersect(pol)
+		result, okay, _, err := combined_policy.Union(pol)
 		if err != nil {
 			panic(err)
 		}

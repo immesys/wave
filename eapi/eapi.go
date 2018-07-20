@@ -707,6 +707,7 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 		formalProof.Attestations = append(formalProof.Attestations, attref)
 		if !expiryset || edge.LRes.Attestation.DecryptedBody.VerifierBody.Validity.NotAfter.Before(expiry) {
 			expiry = edge.LRes.Attestation.DecryptedBody.VerifierBody.Validity.NotAfter
+			expiryset = true
 		}
 		attesterhi, attesterloc, err := edge.LRes.Attestation.Attester()
 		if err != nil {
@@ -756,7 +757,6 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	if err != nil {
 		panic(err)
 	}
-
 	proof := &pb.Proof{
 		Policy:   ToPbPolicy(sol.Policy()),
 		Elements: make([]*pb.Attestation, 0, len(sol.Set)),

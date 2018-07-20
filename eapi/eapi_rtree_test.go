@@ -1,7 +1,9 @@
 package eapi
 
 import (
+	"bytes"
 	"context"
+	"sort"
 
 	"fmt"
 	"strconv"
@@ -26,6 +28,29 @@ func TG() *TestGraph {
 		pubs:    make(map[string]*pb.PublishEntityResponse),
 	}
 }
+
+type bcel struct {
+	DER  []byte
+	Body *pb.AttestationBody
+}
+type lbcel []*bcel
+
+// Len is the number of elements in the collection.
+func (b lbcel) Len() int {
+	return len(b)
+}
+
+// Less reports whether the element with
+// index i should sort before the element with index j.
+func (b lbcel) Less(i, j int) bool {
+	return bytes.Compare(b[i].DER, b[j].DER) < 0
+}
+
+// Swap swaps the elements with indexes i and j.
+func (b lbcel) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
 func (t *TestGraph) BuildCompare(tst *testing.T, dst string, perms string, edges int, ttl int) {
 	rv := t.Build(tst, dst, perms)
 	if edges == -1 {
@@ -43,12 +68,38 @@ func (t *TestGraph) BuildCompare(tst *testing.T, dst string, perms string, edges
 	})
 	require.NoError(tst, err)
 	require.Nil(tst, resp.Error)
-	for idx, _ := range resp.Result.Elements {
-		resp.Result.Elements[idx].Body.DecodedBodyDER = nil
-		rv.Result.Elements[idx].Body.DecodedBodyDER = nil
-		require.EqualValues(tst, resp.Result.Elements[idx].DER, rv.Result.Elements[idx].DER)
-		require.EqualValues(tst, resp.Result.Elements[idx].Body, rv.Result.Elements[idx].Body)
+	//We want to be sure the same attestations are included in both, but for
+	//multipath proofs, the order of the actual elements can differ
+	//so make two lists and sort them
+
+	buildList := []*bcel{}
+	proofList := []*bcel{}
+	for _, el := range rv.Result.Elements {
+		el.Body.DecodedBodyDER = nil
+		buildList = append(buildList, &bcel{
+			DER:  el.DER,
+			Body: el.Body,
+		})
 	}
+	for _, el := range resp.Result.Elements {
+		el.Body.DecodedBodyDER = nil
+		proofList = append(proofList, &bcel{
+			DER:  el.DER,
+			Body: el.Body,
+		})
+	}
+	sort.Sort(lbcel(buildList))
+	sort.Sort(lbcel(proofList))
+	require.EqualValues(tst, buildList, proofList)
+	//
+	// for idx, _ := range resp.Result.Elements {
+	// 	resp.Result.Elements[idx].Body.DecodedBodyDER = nil
+	// 	rv.Result.Elements[idx].Body.DecodedBodyDER = nil
+	// 	require.EqualValues(tst, resp.Result.Elements[idx].DER, rv.Result.Elements[idx].DER)
+	// 	require.EqualValues(tst, resp.Result.Elements[idx].Body, rv.Result.Elements[idx].Body)
+	// 	//fmt.Printf("expiry RESP %3d %d\n", idx, resp.Result.Elements[idx].Body.ValidUntil)
+	// 	//fmt.Printf("expiry   RV %3d %d\n", idx, rv.Result.Elements[idx].Body.ValidUntil)
+	// }
 	//require.EqualValues(tst, resp.Result.Policy, rv.Result.Policy)
 	require.EqualValues(tst, resp.Result.Expiry, rv.Result.Expiry)
 	if diff := deep.Equal(resp.Result.Policy, rv.Result.Policy); diff != nil {
@@ -207,7 +258,7 @@ func TestRTreeSimpleDual(t *testing.T) {
 	tg.Edge(t, "ns", "b", "01", 5)
 	tg.Edge(t, "b", "c", "11", 5)
 	tg.Edge(t, "a", "c", "11", 5)
-	tg.BuildCompare(t, "c", "11", 4, 3)
+	tg.BuildCompare(t, "c", "11", 4, 4)
 }
 func TestRTreeSubPerm(t *testing.T) {
 	tg := TG()
