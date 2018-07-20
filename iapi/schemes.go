@@ -40,7 +40,8 @@ type PolicySchemeInstance interface {
 	CanonicalForm() *asn1.External
 	//These are required for WR1 support
 	WR1DomainEntity() HashSchemeInstance
-	WR1Partition() [][]byte
+	//The first 12 elements used in the final partition
+	WR1PartitionPrefix() [][]byte
 }
 type PolicyAddendumSchemeInstance interface {
 	Scheme

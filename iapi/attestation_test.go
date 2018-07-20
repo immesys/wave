@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
 
@@ -92,13 +91,14 @@ func oneHopAttestation(t *testing.T, delegatedOnly bool) {
 	require.NoError(t, err)
 
 	kpdc := NewKeyPoolDecryptionContext()
+	kpdc.AddEntity(source.Entity)
 	kpdc.AddEntitySecret(dst.EntitySecrets, delegatedOnly)
 	readback, err := ParseAttestation(context.Background(), &PParseAttestation{
 		DER:               rv.DER,
 		DecryptionContext: kpdc,
 	})
+	_ = readback
 	require.NoError(t, err)
-	spew.Dump(readback)
 }
 func TestWR1DirectAttestation(t *testing.T) {
 	oneHopAttestation(t, false)

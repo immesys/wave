@@ -1566,15 +1566,19 @@ func (k *EntitySecretKey_OAQUE_BN256_S20) SignAttestation(ctx context.Context, c
 	return nil, fmt.Errorf("this key cannot sign")
 }
 func (ek *EntitySecretKey_OAQUE_BN256_S20) GobEncode() ([]byte, error) {
-	pubkey := ek.Params.Marshal()
-	privkey := ek.PrivateKey.Marshal()
+
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
-	err := enc.Encode(ek.SerdesForm)
-	if err != nil {
-		return nil, err
+	if ek.SerdesForm != nil {
+		err := enc.Encode(ek.SerdesForm)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		enc.Encode(&serdes.EntityKeyringEntry{})
 	}
-	err = enc.Encode(pubkey)
+	pubkey := ek.Params.Marshal()
+	err := enc.Encode(pubkey)
 	if err != nil {
 		return nil, err
 	}
@@ -1582,6 +1586,7 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20) GobEncode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	privkey := ek.PrivateKey.Marshal()
 	err = enc.Encode(privkey)
 	if err != nil {
 		return nil, err
@@ -1610,10 +1615,12 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20) GobDecode(ba []byte) error {
 	if err != nil {
 		return err
 	}
-	ek.Params = &oaque.Params{}
-	ok := ek.Params.Unmarshal(marshald)
-	if !ok {
-		return fmt.Errorf("failed to unmarshal")
+	if len(marshald) > 0 {
+		ek.Params = &oaque.Params{}
+		ok := ek.Params.Unmarshal(marshald)
+		if !ok {
+			return fmt.Errorf("failed to unmarshal")
+		}
 	}
 	ek.PrivateKey = &oaque.PrivateKey{}
 	ek.PrivateKey.Unmarshal(marshaldpriv)

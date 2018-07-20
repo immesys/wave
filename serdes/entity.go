@@ -39,3 +39,18 @@ type EntityKeyringEntry struct {
 	Public  EntityPublicKey
 	Private asn1.External
 }
+
+type EntityKeyringBundle struct {
+	Params  EntityParamsOQAUE_BN256_s20
+	Entries []KeyringBundleEntry
+}
+
+type KeyringBundleEntry struct {
+	PartitionChange []PartitionChange
+	Key             EntitySecretOQAUE_BN256_s20
+}
+
+type PartitionChange struct {
+	Index   int
+	Content []byte
+}

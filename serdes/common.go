@@ -46,23 +46,24 @@ var (
 	PolicyAddendumOID                     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13}
 	WR1DomainVisibilityKey_IBE_BN256OID   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 1}
 	WR1PartitionKey_OAQUE_BN256_s20OID    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 2}
-	WR1EncryptionKey_OAQUE_BN256_s20OID   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 3}
-	EntitySecretKeySchemeOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14}
-	EntitySecretEd25519OID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 1}
-	EntitySecretCurve25519OID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 2}
-	EntitySecretOAQUE_BN256_S20OID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 3}
-	EntitySecretOAQUE_BN256_S20_MasterOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 4}
-	EntitySecretIBE_BN256_MasterOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 5}
-	EntitySecretIBE_BN256OID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 6}
-	EntityKeyringSchemeOID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15}
-	PlaintextKeyringOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 1}
-	KeyringAES128_GCM_PBKDF2OID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 2}
-	E2EEMessageKeySchemesOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16}
-	MessageKeyCurve25519ECDHOID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 1}
-	MessageKeyWR1OID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 2}
-	NameDeclarationKeySchemesOID          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17}
-	NameDeclarationKeyWR1OID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 1}
-	NameDeclarationKeyNoneOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 2}
+	//WR1EncryptionKey_OAQUE_BN256_s20OID    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 3}
+	WR1EncryptionBundle_OAQUE_BN256_s20OID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 4}
+	EntitySecretKeySchemeOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14}
+	EntitySecretEd25519OID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 1}
+	EntitySecretCurve25519OID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 2}
+	EntitySecretOAQUE_BN256_S20OID         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 3}
+	EntitySecretOAQUE_BN256_S20_MasterOID  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 4}
+	EntitySecretIBE_BN256_MasterOID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 5}
+	EntitySecretIBE_BN256OID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 6}
+	EntityKeyringSchemeOID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15}
+	PlaintextKeyringOID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 1}
+	KeyringAES128_GCM_PBKDF2OID            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 2}
+	E2EEMessageKeySchemesOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16}
+	MessageKeyCurve25519ECDHOID            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 1}
+	MessageKeyWR1OID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 2}
+	NameDeclarationKeySchemesOID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17}
+	NameDeclarationKeyWR1OID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 1}
+	NameDeclarationKeyNoneOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 2}
 )
 
 const CapCertification = 1
@@ -117,7 +118,8 @@ func init() {
 
 		{WR1DomainVisibilityKey_IBE_BN256OID, WR1DomainVisibilityKey_IBE_BN256{}},
 		{WR1PartitionKey_OAQUE_BN256_s20OID, WR1PartitionKey_OAQUE_BN256_s20{}},
-		{WR1EncryptionKey_OAQUE_BN256_s20OID, WR1EncryptionKey_OAQUE_BN256_s20{}},
+
+		{WR1EncryptionBundle_OAQUE_BN256_s20OID, EntityKeyringBundle{}},
 		{PlaintextKeyringOID, EntityKeyring{}},
 		{EntitySecretOID, WaveEntitySecret{}},
 		{KeyringAES128_GCM_PBKDF2OID, KeyringAESCiphertext{}},

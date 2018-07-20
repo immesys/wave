@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/immesys/asn1"
+	"github.com/starwave/crypto/oaque"
 
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
@@ -220,19 +221,45 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 		k, ok := ex.Content.(serdes.WR1PartitionKey_OAQUE_BN256_s20)
 		if ok {
 			kre = serdes.EntityKeyringEntry(k)
-		} else {
-			k, ok := ex.Content.(serdes.WR1EncryptionKey_OAQUE_BN256_s20)
-			if ok {
-				kre = serdes.EntityKeyringEntry(k)
-			} else {
+			realk, err := EntitySecretKeySchemeInstanceFor(&kre)
+			if err != nil {
+				panic(err)
+			}
+			rv = append(rv, realk.(SlottedSecretKey))
+			continue
+		}
+		kb, ok := ex.Content.(serdes.EntityKeyringBundle)
+		if ok {
+			parts, err := DecodeKeyBundleEntries(kb.Entries)
+			if err != nil {
+				fmt.Printf("COULD NOT UNMARSHAL KEY BUNDLE\n")
 				continue
 			}
+			//TODO we are not populating the public key nor the canonical form
+			// this might come back to bite us later as this is the exact object
+			// that gets persisted in WS
+			pub := oaque.Params{}
+			ok := pub.Unmarshal(kb.Params)
+			if !ok {
+				fmt.Printf("Bad oaque params\n")
+				continue
+			}
+			for i := 0; i < len(parts); i++ {
+				priv := oaque.PrivateKey{}
+				ok = priv.Unmarshal(kb.Entries[i].Key)
+				if !ok {
+					fmt.Printf("COULD NOT UNMARSHAL KEY\n")
+					continue
+				}
+
+				esk := EntitySecretKey_OAQUE_BN256_S20{
+					Params:       &pub,
+					PrivateKey:   &priv,
+					AttributeSet: parts[i],
+				}
+				rv = append(rv, &esk)
+			}
 		}
-		realk, err := EntitySecretKeySchemeInstanceFor(&kre)
-		if err != nil {
-			panic(err)
-		}
-		rv = append(rv, realk.(SlottedSecretKey))
 	}
 	return rv
 }

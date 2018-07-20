@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
@@ -279,7 +280,6 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	//Step 0 generate the WR1 keys
 	// - IBE key using the domain visibility from the policy
 	// - OAQUE key using the WR1 partition from the entity
-	// - TODO: e2e encryption keys
 	// - TODO: in-order parent dot key delegation
 	//  basically we are only supporting same or broadening delegation in/out of order
 	//  to support narrowing in-order we would want to include extra WR1 keys in the dot
@@ -293,8 +293,12 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	if visibilityEntity != nil {
 		visibilityID = visibilityEntity.MultihashString()
 	}
-	//fmt.Printf("visibilityID became: %q\n", visibilityID)
-	bodySlots := policy.WR1Partition()
+	bodySlots, err := CalculateWR1Partition(plaintextBody.VerifierBody.Validity.NotBefore,
+		plaintextBody.VerifierBody.Validity.NotAfter,
+		policy.WR1PartitionPrefix())
+	if err != nil {
+		return nil, nil, err
+	}
 	visibilityParams, err := subject.WR1_DomainVisiblityParams()
 	if err != nil {
 		return nil, nil, err
@@ -321,11 +325,29 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	if err != nil {
 		return nil, nil, err
 	}
-	delegatedBodyKey, err := attester.WR1BodyKey(ctx, bodySlots)
+
+	//Get the bundle, but it is empty (no keys)
+	partitions, delegatedBundle, err := CalculateEmptyKeyBundleEntries(plaintextBody.VerifierBody.Validity.NotBefore,
+		plaintextBody.VerifierBody.Validity.NotAfter,
+		policy.WR1PartitionPrefix())
 	if err != nil {
 		return nil, nil, err
 	}
-
+	for idx, part := range partitions {
+		//Fill in the key in the bundle
+		k, err := attester.WR1BodyKey(ctx, part)
+		if err != nil {
+			return nil, nil, err
+		}
+		//This is a keyring entry, we need to extract just the oaque private key
+		cf := k.SecretCanonicalForm()
+		delegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BN256_s20)
+	}
+	params := bodyParams.(*EntityKey_OAQUE_BN256_S20_Params).Params.Marshal()
+	bundleCF := serdes.EntityKeyringBundle{
+		Params:  params,
+		Entries: delegatedBundle,
+	}
 	//Ok now lets generate the symmetric encryption keys
 	bodyKeys := make([]byte, 16+12+16+12)
 	if _, e := rand.Read(bodyKeys); e != nil {
@@ -344,8 +366,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	proverBody.Addendums = plaintextBody.ProverPolicyAddendums
 	dvkSCF := delegatedVisibilityKey.SecretCanonicalForm()
 	proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(serdes.WR1DomainVisibilityKey_IBE_BN256(*dvkSCF)))
-	dbkSCF := delegatedBodyKey.SecretCanonicalForm()
-	proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(serdes.WR1PartitionKey_OAQUE_BN256_s20(*dbkSCF)))
+	proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(bundleCF))
 	proverBody.Extensions = plaintextBody.ProverExtensions
 	verifierBody.AttestationVerifierBody = plaintextBody.VerifierBody
 
@@ -354,6 +375,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	if err != nil {
 		return nil, nil, err
 	}
+	ioutil.WriteFile("/tmp/proverBodyDER", []byte(proverBodyDER), 0777)
 	verifierBodyDER, err := asn1.Marshal(*verifierBody)
 	if err != nil {
 		return nil, nil, err
