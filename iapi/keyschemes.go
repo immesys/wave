@@ -1529,9 +1529,9 @@ func (k *EntitySecretKey_OAQUE_BN256_S20) GenerateChildSecretKey(ctx context.Con
 		return nil, err
 	}
 	privblob := privkey.Marshal()
-
+	childparams := serdes.EntityParamsOQAUE_BN256_s20(k.Params.Marshal())
 	publicCF := serdes.EntityPublicOAQUE_BN256_s20{
-		Params:       k.SerdesForm.Public.Key.Content.(serdes.EntityParamsOQAUE_BN256_s20),
+		Params:       childparams,
 		AttributeSet: id,
 	}
 	cf := &serdes.EntityKeyringEntry{
@@ -1634,7 +1634,8 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20) IdHash() [32]byte {
 		h := sha3.New256()
 		h.Write(ek.PrivateKey.Marshal())
 		res := [32]byte{}
-		h.Sum(res[:])
+		rslice := h.Sum(nil)
+		copy(res[:], rslice)
 		ek.idhash = &res
 	}
 	return *ek.idhash
@@ -1798,5 +1799,6 @@ func (ek *EntitySecretKey_OAQUE_BN256_S20_Master) GobDecode(ba []byte) error {
 	if !ok {
 		return fmt.Errorf("failed to unmarshal")
 	}
+
 	return nil
 }

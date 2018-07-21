@@ -50,6 +50,7 @@ func TestOAQUEE2EE(t *testing.T) {
 		Namespace:         source.Entity,
 		NamespaceLocation: NewLocationSchemeInstanceURL("test", 1),
 		Content:           msg,
+		PartitionPrefix:   [][]byte{[]byte("foo")},
 	})
 	require.NoError(t, err)
 

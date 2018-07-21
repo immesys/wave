@@ -215,6 +215,7 @@ func (e *Attestation) Hash(scheme HashScheme) HashSchemeInstance {
 }
 
 func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
+	fmt.Printf("slotted keys was called\n")
 	rv := []SlottedSecretKey{}
 	for _, ex := range e.DecryptedBody.ProverPolicyAddendums {
 		var kre serdes.EntityKeyringEntry
@@ -252,12 +253,13 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 					continue
 				}
 
-				esk := EntitySecretKey_OAQUE_BN256_S20{
+				esk := &EntitySecretKey_OAQUE_BN256_S20{
 					Params:       &pub,
 					PrivateKey:   &priv,
 					AttributeSet: parts[i],
 				}
-				rv = append(rv, &esk)
+				fmt.Printf("KB %2d : %s : %x\n", i, WR1PartitionToString(parts[i]), esk.IdHash())
+				rv = append(rv, esk)
 			}
 		}
 	}

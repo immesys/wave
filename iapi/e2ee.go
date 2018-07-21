@@ -1,9 +1,11 @@
 package iapi
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
+	"time"
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
@@ -17,9 +19,10 @@ type PEncryptMessage struct {
 	//OAQUE encryption
 	Namespace         *Entity
 	NamespaceLocation LocationSchemeInstance
-	Partition         [][]byte
-
-	Content []byte
+	PartitionPrefix   [][]byte
+	ValidAfter        *time.Time
+	ValidBefore       *time.Time
+	Content           []byte
 }
 type REncryptMessage struct {
 	Ciphertext []byte
@@ -29,6 +32,7 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 	if len(p.Content) == 0 {
 		return nil, wve.Err(wve.InvalidParameter, "message to be encrypted is empty")
 	}
+
 	contentKey := make([]byte, 16+12)
 	rand.Read(contentKey)
 	contentCiphertext := aesGCMEncrypt(contentKey[:16], p.Content, contentKey[16:])
@@ -48,13 +52,18 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 		canonicalForm.Keys = append(canonicalForm.Keys, asn1.NewExternal(directKey))
 	}
 	if p.Namespace != nil {
-		if len(p.Partition) > 20 {
-			return nil, wve.Err(wve.InvalidParameter, "partition longer than 20 elements")
+		if len(p.PartitionPrefix) > 12 {
+			return nil, wve.Err(wve.InvalidParameter, "partition prefix must be <= 12 elements")
 		}
-		partition := make([][]byte, 20)
-		for i, e := range p.Partition {
-			partition[i] = e
+		if p.ValidBefore == nil || p.ValidAfter == nil {
+			return nil, wve.Err(wve.InvalidParameter, "valid times are required if encrypting on a namespace")
 		}
+		partition, werr := CalculateWR1Partition(*p.ValidAfter, *p.ValidBefore, p.PartitionPrefix)
+		if werr != nil {
+			return nil, werr
+		}
+		fmt.Printf("enc partition: %s\n", WR1PartitionToIntString(partition))
+
 		outerkey, err := p.Namespace.WR1_DomainVisiblityParams()
 		if err != nil {
 			return nil, wve.Err(wve.InvalidParameter, "namespace missing WR1 parameters")
@@ -170,10 +179,10 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 			var envelopeKey []byte
 			//First get IBE key for namespace
 			p.Dctx.WR1IBEKeysForPartitionLabel(ctx, ns, func(k EntitySecretKeySchemeInstance) bool {
-				id, _ := k.Public().IdentifyingBlob(context.Background())
-				fmt.Printf("outerkey dec: %x\n", id)
+				fmt.Printf("trying outer key\n")
 				contents, err := k.DecryptMessage(ctx, wr1key.EnvelopeKeyIBEBN256)
 				if err != nil {
+					fmt.Printf("outer key failed\n")
 					return true
 				}
 				envelopeKey = contents
@@ -198,15 +207,44 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 
 			//Now decrypt oaque
 			var contentsKey []byte
-			p.Dctx.WR1OAQUEKeysForContent(ctx, ns, envelope.Partition, func(k SlottedSecretKey) bool {
+			realpartition := make([][]byte, 20)
+			for idx, p := range envelope.Partition {
+				if len(p) != 0 {
+					realpartition[idx] = p
+				}
+			}
+			p.Dctx.WR1OAQUEKeysForContent(ctx, ns, realpartition, func(k SlottedSecretKey) bool {
 				var err error
+				match := true
+				kslots := k.Slots()
+				for i := 0; i < 20; i++ {
+					if !bytes.Equal(kslots[i], realpartition[i]) {
+						match = false
+						break
+					}
+				}
+				if !match {
+					//The key is actually a superset, we need to generate the child key
+					sk, err := k.GenerateChildSecretKey(ctx, realpartition)
+					if err != nil {
+						panic(err)
+					}
+					k = sk.(SlottedSecretKey)
+				}
+				fmt.Printf("trying inner key\n")
+
+				fmt.Printf("got key with partition: %s\n", WR1PartitionToString(k.Slots()))
+				fmt.Printf("int partition %s\n", WR1PartitionToIntString(k.Slots()))
+				fmt.Printf("id %x\n", k.IdHash())
 				contentsKey, err = k.DecryptMessage(ctx, envelope.ContentsKey)
 				if err == nil {
 					return false
 				}
+				fmt.Printf("inner key failed\n")
 				return true
 			})
 			if contentsKey == nil {
+				fmt.Printf("no inner key\n")
 				continue
 			}
 			if len(contentsKey) != 16+12 {

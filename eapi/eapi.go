@@ -817,7 +817,8 @@ func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (
 	if len(p.Namespace) != 0 {
 		validFrom := TimeFromInt64MillisWithDefault(p.ValidFrom, time.Now())
 		validUntil := TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now())
-		params.
+		params.ValidAfter = validFrom
+		params.ValidBefore = validUntil
 		nsHash := iapi.HashSchemeInstanceFromMultihash(p.Namespace)
 		nsLoc, err := LocationSchemeInstance(p.NamespaceLocation)
 		if err != nil {
@@ -838,7 +839,7 @@ func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (
 		}
 		params.Namespace = ns
 		params.NamespaceLocation = nsLoc
-		params.Partition = p.Partition
+		params.PartitionPrefix = p.Partition
 	}
 	params.Content = p.Content
 	rv, err := iapi.EncryptMessage(ctx, &params)

@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
 )
 
 func CalculateWR1Partition(validFrom time.Time, validUntil time.Time, userPrefix [][]byte) ([][]byte, wve.WVE) {
-	if len(userPrefix) != 12 {
-		return nil, wve.Err(wve.InvalidParameter, "user prefix partition must be 12 elements")
+	if len(userPrefix) > 12 {
+		spew.Dump(userPrefix)
+		return nil, wve.Err(wve.InvalidParameter, "user prefix partition must be < 12 elements")
 	}
 	tiers := WR1PartitionTiers
 	endNS := validUntil.UnixNano()
@@ -33,8 +35,18 @@ func CalculateWR1Partition(validFrom time.Time, validUntil time.Time, userPrefix
 		byteend[i] = make([]byte, 2)
 		binary.BigEndian.PutUint16(byteend[i], uint16(intend[i]))
 	}
+	fmt.Printf("calculated wr1 partition is [%d %d %d %d] [%d %d %d %d]\n",
+		intstart[0], intstart[1], intstart[2], intstart[3],
+		intend[0], intend[1], intend[2], intend[3])
 	rv := make([][]byte, 20)
-	copy(rv[:12], userPrefix)
+	for i := 0; i < 12; i++ {
+		if i >= len(userPrefix) {
+			break
+		}
+		if userPrefix[i] != nil {
+			rv[i] = userPrefix[i]
+		}
+	}
 	for i := 0; i < 4; i++ {
 		rv[12+i] = bytestart[i]
 		rv[16+i] = byteend[i]
@@ -133,8 +145,7 @@ func CalculateKeyBundlePartitions(startDat time.Time, endDat time.Time, userPref
 					break
 				}
 			}
-
-			//fmt.Printf("would use %4v %s   ->   %s\n", current, sd, ed)
+			fmt.Printf("would use %4v %s   ->   %s\n", current, sd, ed)
 			cp := make([]int64, len(current))
 			copy(cp[:], current[:])
 			left = append(left, cp)
@@ -181,7 +192,7 @@ func CalculateKeyBundlePartitions(startDat time.Time, endDat time.Time, userPref
 			}
 			right = append(right, cp)
 			rightTimeRanges = append(rightTimeRanges, DateRange{sd, ed})
-			//fmt.Printf("would use %4v %s   ->   %s\n", cp, sd, ed)
+			fmt.Printf("would use %4v %s   ->   %s\n", cp, sd, ed)
 			cursor -= tiers[tier]
 			current[tier] = cursor / tiers[tier]
 
@@ -233,7 +244,38 @@ func CalculateKeyBundlePartitions(startDat time.Time, endDat time.Time, userPref
 	}
 	return results, nil
 }
-
+func WR1PartitionToIntString(p [][]byte) string {
+	result := bytes.Buffer{}
+	result.WriteString("[")
+	for i := 0; i < 12; i++ {
+		if p[i] == nil {
+			break
+		}
+		result.WriteString(fmt.Sprintf("%q/", string(p[i])))
+	}
+	result.WriteString("] ")
+	parseChunk := func(chunk [][]byte) []int64 {
+		ichunk := make([]int64, 4)
+		for i := 0; i < 4; i++ {
+			if len(chunk[i]) == 0 {
+				break
+			}
+			if len(chunk[i]) != 2 {
+				panic("this is just a debug function")
+			}
+			ichunk[i] = int64(binary.BigEndian.Uint16(chunk[i]))
+			if ichunk[i] == 0 {
+				panic("it was literally zero\n")
+			}
+		}
+		return ichunk
+	}
+	left := parseChunk(p[12:16])
+	right := parseChunk(p[16:])
+	result.WriteString(fmt.Sprintf("(%d %d %d %d)", left[0], left[1], left[2], left[3]))
+	result.WriteString(fmt.Sprintf("(%d %d %d %d)", right[0], right[1], right[2], right[3]))
+	return result.String()
+}
 func WR1PartitionToString(p [][]byte) string {
 	tfmt := "2006-01-02 15:04:05"
 	result := bytes.Buffer{}
