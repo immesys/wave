@@ -184,6 +184,10 @@ message EncryptMessageParams {
   bytes namespace = 5;
   Location namespaceLocation = 6;
   repeated bytes partition = 7;
+  //ms since epoch, if zero set to now
+  int64 validFrom = 8;
+  //ms since epoch, if zero set to now
+  int64 validUntil = 9;
 }
 message EncryptMessageResponse {
   Error error = 1;

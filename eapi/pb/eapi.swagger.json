@@ -596,12 +596,12 @@
         "validFrom": {
           "type": "string",
           "format": "int64",
-          "title": "If 0, will be set to time.Now"
+          "title": "If 0, will be set to time.Now. Ms since epoch"
         },
         "validUntil": {
           "type": "string",
           "format": "int64",
-          "title": "If 0, will be set to some arbitrary default"
+          "title": "If 0, will be set to some arbitrary default. Ms since epoch"
         },
         "policy": {
           "$ref": "#/definitions/pbPolicy"
@@ -729,6 +729,16 @@
             "type": "string",
             "format": "byte"
           }
+        },
+        "validFrom": {
+          "type": "string",
+          "format": "int64",
+          "title": "ms since epoch, if zero set to now"
+        },
+        "validUntil": {
+          "type": "string",
+          "format": "int64",
+          "title": "ms since epoch, if zero set to now"
         }
       }
     },

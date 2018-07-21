@@ -119,7 +119,7 @@ func init() {
 		{WR1DomainVisibilityKey_IBE_BN256OID, WR1DomainVisibilityKey_IBE_BN256{}},
 		{WR1PartitionKey_OAQUE_BN256_s20OID, WR1PartitionKey_OAQUE_BN256_s20{}},
 
-		{WR1EncryptionBundle_OAQUE_BN256_s20OID, BN256OAQUEKeyringBundleEntry{}},
+		{WR1EncryptionBundle_OAQUE_BN256_s20OID, BN256OAQUEKeyringBundle{}},
 		{PlaintextKeyringOID, EntityKeyring{}},
 		{EntitySecretOID, WaveEntitySecret{}},
 		{KeyringAES128_GCM_PBKDF2OID, KeyringAESCiphertext{}},

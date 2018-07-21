@@ -3,6 +3,7 @@ package iapi
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
@@ -58,6 +59,8 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 		if err != nil {
 			return nil, wve.Err(wve.InvalidParameter, "namespace missing WR1 parameters")
 		}
+		id, _ := outerkey.IdentifyingBlob(context.Background())
+		fmt.Printf("outerkey enc: %x\n", id)
 		innerkey, err := p.Namespace.WR1_BodyParams()
 		if err != nil {
 			return nil, wve.Err(wve.InvalidParameter, "namespace missing WR1 parameters")
@@ -167,6 +170,8 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 			var envelopeKey []byte
 			//First get IBE key for namespace
 			p.Dctx.WR1IBEKeysForPartitionLabel(ctx, ns, func(k EntitySecretKeySchemeInstance) bool {
+				id, _ := k.Public().IdentifyingBlob(context.Background())
+				fmt.Printf("outerkey dec: %x\n", id)
 				contents, err := k.DecryptMessage(ctx, wr1key.EnvelopeKeyIBEBN256)
 				if err != nil {
 					return true
@@ -175,6 +180,7 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 				return false
 			})
 			if envelopeKey == nil {
+				fmt.Printf("no outer key\n")
 				continue
 			}
 			if len(envelopeKey) != 16+12 {

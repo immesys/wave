@@ -56,7 +56,7 @@ func TestOAQUEE2EE(t *testing.T) {
 	kpdc := NewKeyPoolDecryptionContext()
 	kpdc.AddEntity(source.EntitySecrets.Entity)
 	kpdc.AddEntitySecret(source.EntitySecrets, true)
-	kpdc.AddDomainVisibilityID(source.Entity.Keccak256())
+	kpdc.AddDomainVisibilityID([]byte(source.Entity.Keccak256HI().MultihashString()))
 
 	r2, err := DecryptMessage(ctx, &PDecryptMessage{
 		Decryptor:  dst.EntitySecrets,
