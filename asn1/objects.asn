@@ -167,12 +167,12 @@ BEGIN
     secret EntityPrivateKey
   }
 
-  EntityKeyringBundle ::= SEQUENCE {
+  BN256OAQUEKeyringBundle ::= SEQUENCE {
     params Params-BN256-OAQUE,
-    entries SEQUENCE OF KeyringBundleEntry
+    entries SEQUENCE OF BN256OAQUEBundleEntry
   }
 
-  KeyringBundleEntry ::= SEQUENCE {
+  BN256OAQUEBundleEntry ::= SEQUENCE {
     partitionChange SEQUENCE OF SEQUENCE {
       index INTEGER,
       content OCTET STRING
@@ -657,7 +657,7 @@ wr1-oaque-bundle-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 4 }
 PolicyAddendumSchemes TYPE-IDENTIFIER ::= {
   {EntityKeyringEntry IDENTIFIED BY wr1-domain-visibility-key} |
   {EntityKeyringEntry IDENTIFIED BY wr1-partition-key} |
-  {EntityKeyringBundle IDENTIFIED BY wr1-oaque-bundle-key},
+  {BN256OAQUEKeyringBundle IDENTIFIED BY wr1-oaque-bundle-key},
   ...
 }
 

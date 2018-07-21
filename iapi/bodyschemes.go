@@ -359,7 +359,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	}
 	wg.Wait()
 	params := bodyParams.(*EntityKey_OAQUE_BN256_S20_Params).Params.Marshal()
-	bundleCF := serdes.EntityKeyringBundle{
+	bundleCF := serdes.BN256OAQUEKeyringBundle{
 		Params:  params,
 		Entries: delegatedBundle,
 	}

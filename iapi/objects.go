@@ -228,7 +228,7 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 			rv = append(rv, realk.(SlottedSecretKey))
 			continue
 		}
-		kb, ok := ex.Content.(serdes.EntityKeyringBundle)
+		kb, ok := ex.Content.(serdes.BN256OAQUEKeyringBundle)
 		if ok {
 			parts, err := DecodeKeyBundleEntries(kb.Entries)
 			if err != nil {
