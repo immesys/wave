@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"sync"
 
 	"github.com/immesys/asn1"
@@ -358,7 +357,11 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 		}(i)
 	}
 	wg.Wait()
-	params := bodyParams.(*EntityKey_OAQUE_BN256_S20_Params).Params.Marshal()
+	sparams, err := attester.Entity.WR1_BodyParams()
+	if err != nil {
+		panic(err)
+	}
+	params := sparams.(*EntityKey_OAQUE_BN256_S20_Params).Params.Marshal()
 	bundleCF := serdes.BN256OAQUEKeyringBundle{
 		Params:  params,
 		Entries: delegatedBundle,
@@ -390,7 +393,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	if err != nil {
 		return nil, nil, err
 	}
-	ioutil.WriteFile("/tmp/proverBodyDER", []byte(proverBodyDER), 0777)
+
 	verifierBodyDER, err := asn1.Marshal(*verifierBody)
 	if err != nil {
 		return nil, nil, err

@@ -35,9 +35,9 @@ func CalculateWR1Partition(validFrom time.Time, validUntil time.Time, userPrefix
 		byteend[i] = make([]byte, 2)
 		binary.BigEndian.PutUint16(byteend[i], uint16(intend[i]))
 	}
-	fmt.Printf("calculated wr1 partition is [%d %d %d %d] [%d %d %d %d]\n",
-		intstart[0], intstart[1], intstart[2], intstart[3],
-		intend[0], intend[1], intend[2], intend[3])
+	// fmt.Printf("calculated wr1 partition is [%d %d %d %d] [%d %d %d %d]\n",
+	// 	intstart[0], intstart[1], intstart[2], intstart[3],
+	// 	intend[0], intend[1], intend[2], intend[3])
 	rv := make([][]byte, 20)
 	for i := 0; i < 12; i++ {
 		if i >= len(userPrefix) {
@@ -145,7 +145,7 @@ func CalculateKeyBundlePartitions(startDat time.Time, endDat time.Time, userPref
 					break
 				}
 			}
-			fmt.Printf("would use %4v %s   ->   %s\n", current, sd, ed)
+			//fmt.Printf("would use %4v %s   ->   %s\n", current, sd, ed)
 			cp := make([]int64, len(current))
 			copy(cp[:], current[:])
 			left = append(left, cp)
@@ -192,7 +192,7 @@ func CalculateKeyBundlePartitions(startDat time.Time, endDat time.Time, userPref
 			}
 			right = append(right, cp)
 			rightTimeRanges = append(rightTimeRanges, DateRange{sd, ed})
-			fmt.Printf("would use %4v %s   ->   %s\n", cp, sd, ed)
+			//fmt.Printf("would use %4v %s   ->   %s\n", cp, sd, ed)
 			cursor -= tiers[tier]
 			current[tier] = cursor / tiers[tier]
 

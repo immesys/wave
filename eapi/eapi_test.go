@@ -435,11 +435,32 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 	}
 
 	//---------------------
-
+	// nsent, _ := iapi.ParseEntitySecrets(ctx, &iapi.PParseEntitySecrets{
+	// 	DER:        srcSecret,
+	// 	Passphrase: iapi.String("password"),
+	// })
+	// k, _ := nsent.EntitySecrets.WR1BodyKey(ctx, iapi.XXSlots)
+	//
 	decrv, err := eapi.DecryptMessage(ctx, &pb.DecryptMessageParams{
 		Perspective: dstperspective,
 		Ciphertext:  encrv.Ciphertext,
 	})
+
+	// _, err = k.DecryptMessage(ctx, iapi.XXCiphertext)
+	// if err == nil {
+	// 	fmt.Printf("SUCCEEDED XX in decrypting message with sneaky key\n")
+	// } else {
+	// 	fmt.Printf("END THING XX failed to decrypt message\n")
+	// }
+	// fmt.Printf("YY decrypt as %s\n", nsent.EntitySecrets.Entity.Keccak256HI().MultihashString())
+	// k2, _ := nsent.EntitySecrets.WR1BodyKey(ctx, iapi.YYSlots)
+	// _, err = k2.DecryptMessage(ctx, iapi.YYCiphertext)
+	// if err == nil {
+	// 	fmt.Printf("SUCCEEDED YY in decrypting message with sneaky key\n")
+	// } else {
+	// 	fmt.Printf("END THING YY failed to decrypt message\n")
+	// }
+
 	require.NoError(t, err)
 	require.Nil(t, decrv.Error)
 	require.Equal(t, decrv.Content, msg)

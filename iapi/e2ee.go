@@ -1,7 +1,6 @@
 package iapi
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
@@ -62,14 +61,14 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 		if werr != nil {
 			return nil, werr
 		}
-		fmt.Printf("enc partition: %s\n", WR1PartitionToIntString(partition))
+		//	fmt.Printf("enc partition: %s\n", WR1PartitionToIntString(partition))
 
 		outerkey, err := p.Namespace.WR1_DomainVisiblityParams()
 		if err != nil {
 			return nil, wve.Err(wve.InvalidParameter, "namespace missing WR1 parameters")
 		}
-		id, _ := outerkey.IdentifyingBlob(context.Background())
-		fmt.Printf("outerkey enc: %x\n", id)
+		//	id, _ := outerkey.IdentifyingBlob(context.Background())
+		//	fmt.Printf("outerkey enc: %x\n", id)
 		innerkey, err := p.Namespace.WR1_BodyParams()
 		if err != nil {
 			return nil, wve.Err(wve.InvalidParameter, "namespace missing WR1 parameters")
@@ -179,7 +178,7 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 			var envelopeKey []byte
 			//First get IBE key for namespace
 			p.Dctx.WR1IBEKeysForPartitionLabel(ctx, ns, func(k EntitySecretKeySchemeInstance) bool {
-				fmt.Printf("trying outer key\n")
+				//fmt.Printf("trying outer key\n")
 				contents, err := k.DecryptMessage(ctx, wr1key.EnvelopeKeyIBEBN256)
 				if err != nil {
 					fmt.Printf("outer key failed\n")
@@ -215,28 +214,8 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 			}
 			p.Dctx.WR1OAQUEKeysForContent(ctx, ns, realpartition, func(k SlottedSecretKey) bool {
 				var err error
-				match := true
-				kslots := k.Slots()
-				for i := 0; i < 20; i++ {
-					if !bytes.Equal(kslots[i], realpartition[i]) {
-						match = false
-						break
-					}
-				}
-				if !match {
-					//The key is actually a superset, we need to generate the child key
-					sk, err := k.GenerateChildSecretKey(ctx, realpartition)
-					if err != nil {
-						panic(err)
-					}
-					k = sk.(SlottedSecretKey)
-				}
-				fmt.Printf("trying inner key\n")
 
-				fmt.Printf("got key with partition: %s\n", WR1PartitionToString(k.Slots()))
-				fmt.Printf("int partition %s\n", WR1PartitionToIntString(k.Slots()))
-				fmt.Printf("id %x\n", k.IdHash())
-				contentsKey, err = k.DecryptMessage(ctx, envelope.ContentsKey)
+				contentsKey, err = k.DecryptMessageAsChild(ctx, envelope.ContentsKey, realpartition)
 				if err == nil {
 					return false
 				}

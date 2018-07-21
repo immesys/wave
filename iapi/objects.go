@@ -254,11 +254,16 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 				}
 
 				esk := &EntitySecretKey_OAQUE_BN256_S20{
+					SerdesForm: &serdes.EntityKeyringEntry{
+						Public: serdes.EntityPublicKey{
+							Capabilities: []int{int(CapEncryption)},
+						},
+					},
 					Params:       &pub,
 					PrivateKey:   &priv,
 					AttributeSet: parts[i],
 				}
-				fmt.Printf("KB %2d : %s : %x\n", i, WR1PartitionToString(parts[i]), esk.IdHash())
+				//fmt.Printf("KB %2d : %s : %x\n", i, WR1PartitionToString(parts[i]), esk.IdHash())
 				rv = append(rv, esk)
 			}
 		}
