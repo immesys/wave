@@ -87,10 +87,16 @@ type StorageDriverStatus struct {
 	Operational bool
 	Info        map[string]string
 }
+type GetResult struct {
+	Attestation     *Attestation
+	NameDeclaration *NameDeclaration
+}
 type StorageInterface interface {
 	GetEntity(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*Entity, error)
 	PutEntity(ctx context.Context, loc LocationSchemeInstance, ent *Entity) (HashSchemeInstance, error)
 	GetAttestation(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*Attestation, error)
+	GetAttestationOrDeclaration(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*GetResult, error)
+	PutNameDeclaration(ctx context.Context, loc LocationSchemeInstance, nd *NameDeclaration) (HashSchemeInstance, error)
 	PutAttestation(ctx context.Context, loc LocationSchemeInstance, att *Attestation) (HashSchemeInstance, error)
 	IterateQeueue(ctx context.Context, loc LocationSchemeInstance, queueId HashSchemeInstance, token string) (object HashSchemeInstance, nextToken string, err error)
 	Enqueue(ctx context.Context, loc LocationSchemeInstance, queueId HashSchemeInstance, object HashSchemeInstance) error

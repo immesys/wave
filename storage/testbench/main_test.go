@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/storage/memoryserver"
+	"github.com/immesys/wave/storage/overlay"
 	"github.com/immesys/wave/storage/simplehttp"
 	"github.com/stretchr/testify/require"
 )
@@ -20,13 +22,102 @@ func getInstance(t *testing.T) iapi.StorageDriverInterface {
 func getSimpleHTTPStorageInstance(t *testing.T) iapi.StorageDriverInterface {
 	sh := &simplehttp.SimpleHTTPStorage{}
 	cfg := make(map[string]string)
-	cfg["url"] = "http://vldm.cal-sdb.org:8080/v1"
-	cfg["v1key"] = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJeCG0aGGL93ZisvIih7ZVRVPdUis
-gImCbKUF6SvULO1DxQUjH+zF4+AO4R0yX6rYKPZ1D10VZ055tG3oEIK3hQ==
------END PUBLIC KEY-----`
+	//cfg["url"] = "http://vldm.cal-sdb.org:8080/v1"
+	//	cfg["v1key"] = `-----BEGIN PUBLIC KEY-----
+	//MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJeCG0aGGL93ZisvIih7ZVRVPdUis
+	//gImCbKUF6SvULO1DxQUjH+zF4+AO4R0yX6rYKPZ1D10VZ055tG3oEIK3hQ==
+	//-----END PUBLIC KEY-----`
+	cfg["url"] = "https://standalone.storage.bwave.io/v1"
 	require.NoError(t, sh.Initialize(context.Background(), "simplehttp", cfg))
 	return sh
+}
+
+func init() {
+	go memoryserver.Main()
+	time.Sleep(100 * time.Millisecond)
+	cfg := make(map[string]map[string]string)
+	cfg["inmem"] = make(map[string]string)
+	cfg["inmem"]["provider"] = "http_v1"
+	cfg["inmem"]["url"] = "http://localhost:8080/v1"
+	ov, err := overlay.NewOverlay(cfg)
+	if err != nil {
+		panic(err)
+	}
+	iapi.InjectStorageInterface(ov)
+}
+func TestXPutGetAttestation(t *testing.T) {
+	cfg := make(map[string]map[string]string)
+	cfg["inmem"] = make(map[string]string)
+	cfg["inmem"]["provider"] = "http_v1"
+	cfg["inmem"]["url"] = "http://localhost:8080/v1"
+	inmem := iapi.NewLocationSchemeInstanceURL(cfg["inmem"]["url"], 1)
+	ov, err := overlay.NewOverlay(cfg)
+	require.NoError(t, err)
+
+	source, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	dst, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	pol, err := iapi.NewTrustLevelPolicy(3)
+	require.NoError(t, err)
+	bodyscheme := iapi.NewPlaintextBodyScheme()
+	rv, err := iapi.NewParsedAttestation(context.Background(), &iapi.PCreateAttestation{
+		Policy:            pol,
+		HashScheme:        &iapi.HashScheme_Keccak_256{},
+		BodyScheme:        bodyscheme,
+		EncryptionContext: nil,
+		Attester:          source.EntitySecrets,
+		AttesterLocation:  inmem,
+		Subject:           dst.EntitySecrets.Entity,
+		SubjectLocation:   inmem,
+	})
+	ctx := context.Background()
+	require.NoError(t, err)
+	hi, err := ov.PutAttestation(ctx, inmem, rv.Attestation)
+	require.NoError(t, err)
+
+	att, err := ov.GetAttestation(ctx, inmem, hi)
+	require.NoError(t, err)
+	require.NotNil(t, att)
+
+	other, err := ov.GetAttestationOrDeclaration(ctx, inmem, hi)
+	require.NoError(t, err)
+	require.Nil(t, other.NameDeclaration)
+	require.NotNil(t, other.Attestation)
+}
+
+func TestXPutGetNameDeclaration(t *testing.T) {
+	cfg := make(map[string]map[string]string)
+	cfg["inmem"] = make(map[string]string)
+	cfg["inmem"]["provider"] = "http_v1"
+	cfg["inmem"]["url"] = "http://localhost:8080/v1"
+	inmem := iapi.NewLocationSchemeInstanceURL(cfg["inmem"]["url"], 1)
+	ov, err := overlay.NewOverlay(cfg)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	source, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	require.NoError(t, werr)
+	dst, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	require.NoError(t, werr)
+
+	rv, err := iapi.CreateNameDeclaration(ctx, &iapi.PCreateNameDeclaration{
+		Attester:          source.EntitySecrets,
+		AttesterLocation:  inmem,
+		Subject:           dst.Entity,
+		SubjectLocation:   inmem,
+		Name:              "foo",
+		Namespace:         source.Entity,
+		NamespaceLocation: inmem,
+		Partition:         [][]byte{[]byte("foo")},
+	})
+	hi, err := ov.PutNameDeclaration(ctx, inmem, rv.NameDeclaration)
+	require.NoError(t, err)
+	other, err := ov.GetAttestationOrDeclaration(ctx, inmem, hi)
+	require.NoError(t, err)
+	require.NotNil(t, other.NameDeclaration)
+	require.Nil(t, other.Attestation)
 }
 
 func TestPutGet(t *testing.T) {

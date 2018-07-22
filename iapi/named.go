@@ -213,6 +213,12 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 		}
 	}
 
+	if p.Dctx == nil {
+		//We can't resolve the attesting entity so we cannot progress any further
+		return &RParseNameDeclaration{
+			Result: nd,
+		}, nil
+	}
 	//Get attesting entity
 	attester, err := p.Dctx.EntityByHashLoc(ctx, nd.Attester, nd.AttesterLocation)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/storage/simplehttp"
+	"github.com/immesys/wave/wve"
 )
 
 type Overlay struct {
@@ -106,6 +107,46 @@ func (ov *Overlay) PutEntity(ctx context.Context, loc iapi.LocationSchemeInstanc
 	}
 	return p.Put(sctx, der)
 }
+
+func (ov *Overlay) GetAttestationOrDeclaration(ctx context.Context, loc iapi.LocationSchemeInstance, hash iapi.HashSchemeInstance) (*iapi.GetResult, error) {
+	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
+	defer scancel()
+	p, err := ov.getProvider(sctx, loc)
+	if err != nil {
+		return nil, err
+	}
+	der, err := p.Get(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	rpa, werr := iapi.ParseAttestation(sctx, &iapi.PParseAttestation{
+		DER: der,
+	})
+	if werr != nil && werr.Code() == wve.UnexpectedObject {
+		//Try parse as name declaration
+		nda, err := iapi.ParseNameDeclaration(ctx, &iapi.PParseNameDeclaration{
+			DER: der,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if nda.IsMalformed {
+			return nil, errors.New("object is malformed")
+		}
+		return &iapi.GetResult{
+			NameDeclaration: nda.Result,
+		}, nil
+	}
+	if werr != nil {
+		return nil, werr
+	}
+	if rpa.IsMalformed {
+		return nil, errors.New("Attestation is malformed")
+	}
+	return &iapi.GetResult{
+		Attestation: rpa.Attestation,
+	}, nil
+}
 func (ov *Overlay) GetAttestation(ctx context.Context, loc iapi.LocationSchemeInstance, hash iapi.HashSchemeInstance) (*iapi.Attestation, error) {
 	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
 	defer scancel()
@@ -136,6 +177,19 @@ func (ov *Overlay) PutAttestation(ctx context.Context, loc iapi.LocationSchemeIn
 		return nil, err
 	}
 	der, err := att.DER()
+	if err != nil {
+		return nil, err
+	}
+	return p.Put(sctx, der)
+}
+func (ov *Overlay) PutNameDeclaration(ctx context.Context, loc iapi.LocationSchemeInstance, nd *iapi.NameDeclaration) (iapi.HashSchemeInstance, error) {
+	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
+	defer scancel()
+	p, err := ov.getProvider(sctx, loc)
+	if err != nil {
+		return nil, err
+	}
+	der, err := nd.DER()
 	if err != nil {
 		return nil, err
 	}

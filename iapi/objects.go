@@ -40,6 +40,15 @@ func (nd *NameDeclaration) SetCanonicalForm(cf *serdes.WaveNameDeclaration) wve.
 	nd.CanonicalForm = cf
 	return nil
 }
+func (nd *NameDeclaration) DER() ([]byte, wve.WVE) {
+	wo := serdes.WaveWireObject{}
+	wo.Content = asn1.NewExternal(*nd.CanonicalForm)
+	rv, err := asn1.Marshal(wo.Content)
+	if err != nil {
+		return nil, wve.Err(wve.MalformedDER, "could not produce DER")
+	}
+	return rv, nil
+}
 func (nd *NameDeclaration) SetDecryptedBody(db *serdes.NameDeclarationBody) wve.WVE {
 	sub := HashSchemeInstanceFor(&db.Subject)
 	if !sub.Supported() {
