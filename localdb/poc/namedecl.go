@@ -151,6 +151,19 @@ func (p *poc) MoveNameDeclarationExpiredP(ctx context.Context, nd *iapi.NameDecl
 	return p.setNameDeclStateField(ctx, hsh, StateExpired)
 }
 
+func (p *poc) GetNameDeclarationP(ctx context.Context, hi iapi.HashSchemeInstance) (nd *iapi.NameDeclaration, err error) {
+	hsh := keccakFromHI(hi)
+
+	ds, err := p.loadNameDeclState(ctx, hsh)
+	if err != nil {
+		return nil, err
+	}
+	if ds == nil {
+		return nil, nil
+	}
+	return ds.NameDeclaration, nil
+}
+
 func (p *poc) MoveNameDeclarationRevokedP(ctx context.Context, nd *iapi.NameDeclaration) error {
 	hsh := keccakFromND(nd)
 	//If nd has real info, remove the active link in case it exists
