@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/immesys/asn1"
-	"github.com/starwave/crypto/oaque"
+	"github.com/ucbrise/starwave/crypto/oaque"
 
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"

@@ -3,3 +3,4 @@ cli/wv
 storage/vldmstore/vldmstorage
 storage/vldmstorage/vldmstorage
 waved/cmd/waved
+vendor 

@@ -14,10 +14,10 @@ import (
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
-	"github.com/starwave/crypto/cryptutils"
-	"github.com/starwave/crypto/oaque"
+	"github.com/ucbrise/starwave/crypto/cryptutils"
+	"github.com/ucbrise/starwave/crypto/oaque"
+	"github.com/ucbrise/vuvuzelacrypto/ibe"
 	"vuvuzela.io/crypto/bn256"
-	"vuvuzela.io/crypto/ibe"
 
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/ed25519"
@@ -274,7 +274,7 @@ func NewEntityKeySchemeInstance(oid asn1.ObjectIdentifier, capabilities ...Capab
 		if err != nil {
 			return nil, err
 		}
-		params, master, err := oaque.Setup(rand.Reader, 20)
+		params, master, err := oaque.Setup(rand.Reader, 20, true)
 		paramsblob := params.Marshal()
 		if err != nil {
 			return nil, err
