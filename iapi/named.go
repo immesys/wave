@@ -213,6 +213,8 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 		}
 	}
 
+	wr1extra := &WR1Extra{}
+	nd.WR1Extra = wr1extra
 	if p.Dctx == nil {
 		//We can't resolve the attesting entity so we cannot progress any further
 		return &RParseNameDeclaration{
@@ -255,6 +257,7 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 		if !ok {
 			continue
 		}
+
 		ns := HashSchemeInstanceFor(&wr1k.Namespace)
 		if !ns.Supported() {
 			return &RParseNameDeclaration{
@@ -267,6 +270,8 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 				IsMalformed: true,
 			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
 		}
+		wr1extra.Namespace = ns
+
 		var envkey []byte
 		uerr := p.Dctx.WR1IBEKeysForPartitionLabel(ctx, ns, func(k EntitySecretKeySchemeInstance) bool {
 			var err error
@@ -301,8 +306,7 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
 		}
 
-		//We are at the very least labelled
-		nd.Partition = envelope.Partition
+		wr1extra.Partition = envelope.Partition
 
 		//Try for full decryption
 		var bodykey []byte
@@ -336,7 +340,11 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 		break
 
 	}
-
+	if bodyDER == nil {
+		return &RParseNameDeclaration{
+			Result: nd,
+		}, nil
+	}
 	body := serdes.NameDeclarationBody{}
 	rest, uerr := asn1.Unmarshal(bodyDER, &body)
 	if len(rest) != 0 || uerr != nil {

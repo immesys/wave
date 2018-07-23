@@ -15,13 +15,13 @@ import (
 type NameDeclaration struct {
 	CanonicalForm    *serdes.WaveNameDeclaration
 	DecryptedBody    *serdes.NameDeclarationBody
-	Partition        [][]byte
 	Attester         HashSchemeInstance
 	AttesterLocation LocationSchemeInstance
 	Subject          HashSchemeInstance
 	SubjectLocation  LocationSchemeInstance
 	Name             string
 	Revocations      []RevocationScheme
+	WR1Extra         *WR1Extra
 }
 
 func (nd *NameDeclaration) SetCanonicalForm(cf *serdes.WaveNameDeclaration) wve.WVE {
@@ -49,6 +49,30 @@ func (nd *NameDeclaration) DER() ([]byte, wve.WVE) {
 	}
 	return rv, nil
 }
+
+func (nd *NameDeclaration) Hash(scheme HashScheme) HashSchemeInstance {
+	der, err := nd.DER()
+	if err != nil {
+		panic(err)
+	}
+	return scheme.Instance(der)
+}
+
+func (nd *NameDeclaration) Keccak256() []byte {
+	hi := nd.Hash(KECCAK256)
+	rv := hi.Value()
+	return rv
+}
+func (nd *NameDeclaration) Keccak256HI() HashSchemeInstance {
+	rv := nd.Hash(KECCAK256)
+	return rv
+}
+func (nd *NameDeclaration) ArrayKeccak256() [32]byte {
+	rv := [32]byte{}
+	copy(rv[:], nd.Keccak256())
+	return rv
+}
+
 func (nd *NameDeclaration) SetDecryptedBody(db *serdes.NameDeclarationBody) wve.WVE {
 	sub := HashSchemeInstanceFor(&db.Subject)
 	if !sub.Supported() {

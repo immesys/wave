@@ -31,6 +31,13 @@ type AttestationState struct {
 	LabelKeyIndex int
 }
 
+type NameDeclarationState struct {
+	Hash            []byte
+	NameDeclaration *iapi.NameDeclaration
+	State           int
+	LabelKeyIndex   int
+}
+
 // type RevocationState struct {
 // 	IsEntity   bool
 // 	TargetHash []byte

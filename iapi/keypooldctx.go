@@ -13,6 +13,7 @@ type KeyPoolDecryptionContext struct {
 	entz       []*Entity
 	//These two go together
 	entsecrets          []*EntitySecrets
+	labelOnly           []*EntitySecrets
 	delegatedOnly       []bool
 	domainVisibilityIds [][]byte
 }
@@ -29,6 +30,9 @@ func (kpd *KeyPoolDecryptionContext) AddDomainVisibilityID(id []byte) {
 func (kpd *KeyPoolDecryptionContext) AddEntitySecret(es *EntitySecrets, delegatedOnly bool) {
 	kpd.entsecrets = append(kpd.entsecrets, es)
 	kpd.delegatedOnly = append(kpd.delegatedOnly, delegatedOnly)
+}
+func (kpd *KeyPoolDecryptionContext) AddEntitySecretsLabelOnly(es *EntitySecrets) {
+	kpd.labelOnly = append(kpd.labelOnly, es)
 }
 func (kpd *KeyPoolDecryptionContext) AddEntity(e *Entity) {
 	kpd.entz = append(kpd.entz, e)
@@ -59,10 +63,18 @@ func (kpd *KeyPoolDecryptionContext) EntityByHashLoc(ctx context.Context, hash H
 			return es.Entity, nil
 		}
 	}
+	for _, es := range kpd.labelOnly {
+		hi := es.Entity.Keccak256HI()
+		if hash.OID().Equal(hi.OID()) && bytes.Equal(hi.Value(), hash.Value()) {
+			return es.Entity, nil
+		}
+	}
 	return nil, nil
 }
 func (kpd *KeyPoolDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error {
-	for _, es := range kpd.entsecrets {
+	toproc := []*EntitySecrets{}
+	toproc = append(toproc, kpd.entsecrets...)
+	for _, es := range toproc {
 		hi := es.Entity.Keccak256HI()
 		if dst.OID().Equal(hi.OID()) && bytes.Equal(hi.Value(), dst.Value()) {
 			bk, err := es.WR1BodyKey(ctx, slots)
@@ -78,7 +90,10 @@ func (kpd *KeyPoolDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context,
 	return nil
 }
 func (kpd *KeyPoolDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error {
-	for _, es := range kpd.entsecrets {
+	toproc := []*EntitySecrets{}
+	toproc = append(toproc, kpd.labelOnly...)
+	toproc = append(toproc, kpd.entsecrets...)
+	for _, es := range toproc {
 		hi := es.Entity.Keccak256HI()
 		if dst.OID().Equal(hi.OID()) && bytes.Equal(hi.Value(), dst.Value()) {
 			for _, dv := range kpd.domainVisibilityIds {

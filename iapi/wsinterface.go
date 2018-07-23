@@ -17,6 +17,8 @@ type LowLevelStorage interface {
 	//Values will be nil
 	LoadPrefixKeys(ctx context.Context, key string) (results chan KeyValue, err chan error)
 	Store(ctx context.Context, key string, val []byte) (err error)
+	//Removes key, no error if it does not exist
+	Remove(ctx context.Context, key string) (err error)
 }
 
 type PendingAttestation struct {
@@ -25,6 +27,13 @@ type PendingAttestation struct {
 	Keccak256   []byte
 	//Only for pending without partition
 	LabelKeyIndex *int
+}
+
+type PendingNameDeclaration struct {
+	Err             error
+	NameDeclaration *NameDeclaration
+	Keccak256       []byte
+	LabelKeyIndex   *int
 }
 
 type InterestingEntityResult struct {
@@ -43,6 +52,11 @@ type InterestingEntityResult struct {
 type LookupFromResult struct {
 	Attestation *Attestation
 	Err         error
+}
+
+type ResolveResult struct {
+	NameDeclaration *NameDeclaration
+	Err             error
 }
 
 type LookupFromFilter struct {
@@ -103,6 +117,24 @@ type WaveState interface {
 	GetLabelledAttestationsP(ctx context.Context, subject HashSchemeInstance, partition [][]byte) chan PendingAttestation
 	//If possible, only return pending dots with a secret index less than siLT
 	GetPendingAttestationsP(ctx context.Context, subject HashSchemeInstance, lkiLT int) chan PendingAttestation
+
+	//Like attestations, but for namedecl
+	MoveNameDeclarationPendingP(ctx context.Context, nd *NameDeclaration, labelKeyIndex int) error
+	//Assume dot already inserted into pending, but update the labelKeyIndex
+	UpdateNameDeclarationPendingP(ctx context.Context, nd *NameDeclaration, labelKeyIndex int) error
+	MoveNameDeclarationLabelledP(ctx context.Context, nd *NameDeclaration) error
+	MoveNameDeclarationActiveP(ctx context.Context, nd *NameDeclaration) error
+	MoveNameDeclarationExpiredP(ctx context.Context, nd *NameDeclaration) error
+	MoveNameDeclarationMalformedP(ctx context.Context, HashSchemeInstance HashSchemeInstance) error
+	GetLabelledNameDeclarationsP(ctx context.Context, namespace HashSchemeInstance, partition [][]byte) chan PendingNameDeclaration
+	//If possible, only return pending dots with a secret index less than siLT
+	GetPendingNameDeclarationP(ctx context.Context, namespace HashSchemeInstance, lkiLT int) chan PendingNameDeclaration
+	MoveNameDeclarationRevokedP(ctx context.Context, nd *NameDeclaration) error
+
+	//Interact with active namedecls
+	//Results should be sorted with the latest start date appearing first
+	ResolveNameDeclarationsP(ctx context.Context, attester HashSchemeInstance, name string) chan ResolveResult
+
 	GetEntityPartitionLabelKeyIndexP(ctx context.Context, entHashSchemeInstance HashSchemeInstance) (bool, int, error)
 	GetAttestationP(ctx context.Context, HashSchemeInstance HashSchemeInstance) (at *Attestation, err error)
 	GetActiveAttestationsFromP(ctx context.Context, attester HashSchemeInstance, filter *LookupFromFilter) chan LookupFromResult

@@ -29,6 +29,7 @@ func keccakFromExt(e *asn1.External) []byte {
 	val := hi.Value()
 	return val
 }
+
 func (p *poc) saveAttestationState(ctx context.Context, ds *AttestationState) error {
 	k := p.PKey(ctx, "att", ToB64(ds.Hash))
 	if ds.Hash == nil {

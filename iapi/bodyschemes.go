@@ -78,6 +78,9 @@ type WR1Extra struct {
 	Partition       [][]byte
 	VerifierBodyKey []byte
 	ProverBodyKey   []byte
+
+	//For NameDecl only
+	Namespace HashSchemeInstance
 }
 
 func (w *WR1BodyScheme) Supported() bool {

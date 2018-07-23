@@ -95,3 +95,7 @@ func (s *lls) loadPrefix(ctx context.Context, key string, includeValue bool, rvv
 func (s *lls) Store(ctx context.Context, key string, val []byte) error {
 	return s.db.Put([]byte(key), val, nil)
 }
+
+func (s *lls) Remove(ctx context.Context, key string) error {
+	return s.db.Delete([]byte(key), nil)
+}

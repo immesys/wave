@@ -16,4 +16,6 @@ func init() {
 	gob.Register(&EntityKey_OAQUE_BN256_S20{})
 	gob.Register(&EntitySecretKey_OAQUE_BN256_S20{})
 	gob.Register(&LocationSchemeInstanceURL{})
+	gob.Register(&HashSchemeInstance_Keccak_256{})
+	gob.Register(&HashSchemeInstance_Sha3_256{})
 }

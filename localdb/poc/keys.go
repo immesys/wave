@@ -102,6 +102,20 @@ func (p *poc) insertPartitionToAttestationLink(ctx context.Context, dst []byte, 
 	return p.u.Store(ctx, k, ba)
 }
 
+//This is to facilitate GetLabelledNameDeclarationsP. Gets called when moving dots to labelled
+func (p *poc) insertPartitionToNameDeclLink(ctx context.Context, ns []byte, partition [][]byte, nd *iapi.NameDeclaration) error {
+	k := p.PKey(ctx, "ndl", ToB64(ns), ToB64(keccakFromND(nd)))
+	if partition == nil {
+		panic(partition)
+	}
+	pl := &PendingLabels{Slots: partition}
+	ba, err := marshalGob(pl)
+	if err != nil {
+		panic(err)
+	}
+	return p.u.Store(ctx, k, ba)
+}
+
 //In this case we want dots that are MORE qualified than the given partition
 func (p *poc) GetLabelledAttestationsP(pctx context.Context, dsthi iapi.HashSchemeInstance, partition [][]byte) chan iapi.PendingAttestation {
 	dst := keccakFromHI(dsthi)
