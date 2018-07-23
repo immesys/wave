@@ -115,8 +115,8 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 	ctx := context.Background()
 	perspective := &pb.Perspective{
 		EntitySecret: &pb.EntitySecret{
-			DER:        t.secrets[dst],
-			Passphrase: []byte("password"),
+			DER: t.secrets[dst],
+			//Passphrase: []byte("password"),
 		},
 		Location: &inmem,
 	}
@@ -208,8 +208,8 @@ func (t *TestGraph) Edge(tst *testing.T, src, dst string, perms string, ttl int)
 	att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
 		Perspective: &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{
-				DER:        t.secrets[src],
-				Passphrase: []byte("password"),
+				DER: t.secrets[src],
+				//	Passphrase: []byte("password"),
 			},
 			Location: &inmem,
 		},

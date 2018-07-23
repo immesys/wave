@@ -92,7 +92,7 @@ func TestCreateEntityNoPassphrase(t *testing.T) {
 func createEntity(t *testing.T) (public []byte, secret []byte) {
 	ctx := context.Background()
 	rv, err := eapi.CreateEntity(ctx, &pb.CreateEntityParams{
-		SecretPassphrase: "password",
+	//SecretPassphrase: "password",
 	})
 	require.NoError(t, err)
 	return rv.PublicDER, rv.SecretDER
@@ -100,7 +100,7 @@ func createEntity(t *testing.T) (public []byte, secret []byte) {
 func createAndPublishEntity(t *testing.T) (public []byte, secret []byte, hash []byte) {
 	ctx := context.Background()
 	rv, err := eapi.CreateEntity(ctx, &pb.CreateEntityParams{
-		SecretPassphrase: "password",
+	//SecretPassphrase: "password",
 	})
 	require.NoError(t, err)
 	rvhash, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
