@@ -35,9 +35,9 @@ func getPctx() context.Context {
 }
 func TestStoreLoadEntity(t *testing.T) {
 	ctx := getPctx()
-	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-	if err != nil {
-		panic(err)
+	rne, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	if werr != nil {
+		panic(werr)
 	}
 	perspective := rne.EntitySecrets
 	ent := perspective.Entity
@@ -59,14 +59,14 @@ func TestStoreLoadEntity(t *testing.T) {
 
 func TestEntityQueueToken(t *testing.T) {
 	ctx := getPctx()
-	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-	if err != nil {
-		panic(err)
+	rne, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	if werr != nil {
+		panic(werr)
 	}
 	perspective := rne.EntitySecrets
 	ent := perspective.Entity
 	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
-	err = db.MoveEntityInterestingP(ctx, ent, tloc)
+	err := db.MoveEntityInterestingP(ctx, ent, tloc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,13 +132,13 @@ func TestNonExistingEntityInteresting(t *testing.T) {
 
 func TestInterestingEntity(t *testing.T) {
 	ctx := getPctx()
-	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-	if err != nil {
-		panic(err)
+	rne, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	if werr != nil {
+		panic(werr)
 	}
 	ent := rne.EntitySecrets.Entity
 	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
-	err = db.MoveEntityInterestingP(ctx, ent, tloc)
+	err := db.MoveEntityInterestingP(ctx, ent, tloc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,11 +153,11 @@ func TestInterestingEntity(t *testing.T) {
 
 func TestInterestingEntityRevoked(t *testing.T) {
 	ctx := getPctx()
-	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-	require.NoError(t, err)
+	rne, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	require.NoError(t, werr)
 	ent := rne.EntitySecrets.Entity
 	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
-	err = db.MoveEntityInterestingP(ctx, ent, tloc)
+	err := db.MoveEntityInterestingP(ctx, ent, tloc)
 	require.NoError(t, err)
 	intr, err := db.IsEntityInterestingP(ctx, ent.Keccak256HI())
 	require.NoError(t, err)
@@ -170,11 +170,11 @@ func TestInterestingEntityRevoked(t *testing.T) {
 
 func TestInterestingEntityExpired(t *testing.T) {
 	ctx := getPctx()
-	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-	require.NoError(t, err)
+	rne, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	require.NoError(t, werr)
 	ent := rne.EntitySecrets.Entity
 	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
-	err = db.MoveEntityInterestingP(ctx, ent, tloc)
+	err := db.MoveEntityInterestingP(ctx, ent, tloc)
 	require.NoError(t, err)
 	intr, err := db.IsEntityInterestingP(ctx, ent.Keccak256HI())
 	require.NoError(t, err)
@@ -190,11 +190,11 @@ func TestInterestingEntitySequence(t *testing.T) {
 	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
 	dataset := make(map[[32]byte]*iapi.Entity)
 	for i := 0; i < 100; i++ {
-		rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-		require.NoError(t, err)
+		rne, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+		require.NoError(t, werr)
 		ent := rne.EntitySecrets.Entity
 		dataset[ent.ArrayKeccak256()] = ent
-		err = db.MoveEntityInterestingP(ctx, ent, tloc)
+		err := db.MoveEntityInterestingP(ctx, ent, tloc)
 		require.NoError(t, err)
 	}
 	rvc := db.GetInterestingEntitiesP(ctx)
@@ -214,10 +214,10 @@ func TestInterestingEntitySequenceRevokedExpired(t *testing.T) {
 	entz := make([]*iapi.Entity, 0)
 	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
 	for i := 0; i < 100; i++ {
-		rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-		require.NoError(t, err)
+		rne, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+		require.NoError(t, werr)
 		ent := rne.EntitySecrets.Entity
-		err = db.MoveEntityInterestingP(ctx, ent, tloc)
+		err := db.MoveEntityInterestingP(ctx, ent, tloc)
 		require.NoError(t, err)
 		entz = append(entz, ent)
 	}

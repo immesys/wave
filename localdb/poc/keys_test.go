@@ -10,13 +10,13 @@ import (
 
 func TestKeyPartitionLabel(t *testing.T) {
 	ctx := getPctx()
-	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-	if err != nil {
-		panic(err)
+	rne, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	if werr != nil {
+		panic(werr)
 	}
 	es := rne.EntitySecrets
 	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
-	err = db.MoveEntityInterestingP(ctx, es.Entity, tloc)
+	err := db.MoveEntityInterestingP(ctx, es.Entity, tloc)
 	require.NoError(t, err)
 
 	ok, index, err := db.GetEntityPartitionLabelKeyIndexP(ctx, es.Entity.Keccak256HI())
@@ -26,8 +26,8 @@ func TestKeyPartitionLabel(t *testing.T) {
 
 	k, err := es.WR1LabelKey(ctx, []byte("foo"))
 	require.NoError(t, err)
-	pub, err := k.Public()
-	require.NoError(t, err)
+	pub := k.Public()
+
 	ciphertext, err := pub.EncryptMessage(ctx, []byte("helloworld"))
 	require.NoError(t, err)
 	new, err := db.InsertPartitionLabelKeyP(ctx, es.Entity.Keccak256HI(), k)
@@ -53,13 +53,13 @@ func TestKeyPartitionLabel(t *testing.T) {
 
 func TestWR1Keys(t *testing.T) {
 	ctx := getPctx()
-	rne, err := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
-	if err != nil {
-		panic(err)
+	rne, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
+	if werr != nil {
+		panic(werr)
 	}
 	es := rne.EntitySecrets
 	tloc := iapi.NewLocationSchemeInstanceURL("test", 1)
-	err = db.MoveEntityInterestingP(ctx, es.Entity, tloc)
+	err := db.MoveEntityInterestingP(ctx, es.Entity, tloc)
 	require.NoError(t, err)
 	slots := make([][]byte, 20)
 	slots[0] = []byte("foo")
