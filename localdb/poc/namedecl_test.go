@@ -237,7 +237,7 @@ func TestNameDeclPutGetActiveNotEncrypted(t *testing.T) {
 	}
 	require.EqualValues(t, count, 0)
 
-	err = db.MoveNameDeclarationExpiredP(ctx, nd)
+	err = db.MoveNameDeclarationRevokedP(ctx, nd)
 	require.NoError(t, err)
 
 	rvc = db.ResolveNameDeclarationsP(ctx, c.Attester.Entity.Keccak256HI(), "foo")
