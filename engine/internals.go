@@ -8,19 +8,6 @@ import (
 	"github.com/immesys/wave/iapi"
 )
 
-//how to develop this?
-// guiding principles: we don't take an action based on a new BC event
-// but rather based on a task
-// BUT we may also trigger some tasks based on observed logs blooms
-// in the block headers
-// actions:
-//  A) update an entity (fields, attestations)
-//  B) update dot index (dstvk, index)
-//  C) add out-of-band DOT
-// b+c will trigger further actions that must get added to the work queue
-
-// When agent first starts, all interesting entities will be updated.
-// after that, updates are triggered by header block blooms
 // There is one engine per perspective (a perspective is a controlling entity)
 type Engine struct {
 	ctx       context.Context

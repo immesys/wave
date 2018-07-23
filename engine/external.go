@@ -63,21 +63,6 @@ type LookupResult struct {
 	Validity       *Validity
 }
 
-// received proof:
-
-// TODO formulate dots decoded with AESK
-// TODO how to decrypt a dot that you granted yourself?
-// func (e *Engine) InsertAttestationDER(ctx context.Context, der []byte, proverkey []byte, verifierkey []byte) error {
-// 	todo integrate prover and verifier keys
-// 	par, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
-// 		DER: der,
-// 	})
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return e.InsertAttestation(ctx, par.Attestation)
-// }
-
 //External function: insert a DOT learned out of band
 func (e *Engine) InsertAttestation(ctx context.Context, att *iapi.Attestation) error {
 	//this must go into pending even if decryptable
@@ -214,28 +199,9 @@ func (e *Engine) ResyncEntireGraph(ctx context.Context) error {
 	return e.updateAllInterestingEntities(ctx)
 }
 
-//
-// //We should have a function that allows applications to tap into perspective changes
-// //for the purposes of alerts and so on (also avoiding polling)
-// func (e *Engine) SubscribePerspectiveChanges(ctx context.Context, someAdditionStuff string) {
-// 	panic("ni")
-// }
-//
-// //For things like brokers, they will want to subscribe to changes on dots and
-// //entities used in active subscriptions, rather than polling
-// func (e *Engine) SubscribeRevocations(ctx context.Context, interesting [][]byte) {
-// 	panic("ni")
-// }
-
 //This should try find and decrypt a dot given the hash and aesk. No information from our
 //perspective (active entity) is used
 func (e *Engine) LookupAttestationNoPerspective(ctx context.Context, hash iapi.HashSchemeInstance, verifierKey []byte, location iapi.LocationSchemeInstance) (*iapi.Attestation, *Validity, error) {
-	//First get the DOT from cache. This will come back decrypted if we know about it:
-	//Removed, this could return a decrypted attestation from perspective
-	// att, err := e.ws.GetAttestationP(ctx, hash)
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
 	var der []byte
 
 	//We need to try retrieve it from storage
