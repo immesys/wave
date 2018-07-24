@@ -8,6 +8,7 @@ import (
 
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/wve"
 )
 
 //functions that the engine needs from above
@@ -40,6 +41,7 @@ type Validity struct {
 	Valid        bool
 	Revoked      bool
 	Expired      bool
+	NotValidYet  bool
 	Malformed    bool
 	NotDecrypted bool
 
@@ -284,6 +286,18 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 	return par.Attestation, validity, err
 }
 
+func (e *Engine) CheckNameDeclaration(ctx context.Context, nd *iapi.NameDeclaration) (*Validity, error) {
+	if !nd.Decoded() {
+		return nil, wve.Err(wve.InvalidParameter, "ND is not decoded, can't check validity")
+	}
+	if time.Now().After(nd.DecryptedBody.Validity.NotAfter) {
+		return &Validity{Expired: true, Message: "Name declaration expired"}, nil
+	}
+	if time.Now().Before(nd.DecryptedBody.Validity.NotBefore) {
+		return &Validity{NotValidYet, Message: "Name declaration not valid yet"}, nil
+	}
+}
+
 //Unlike checkDot, this should not touch the DB, it is a read-only operation
 func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Validity, error) {
 	subjecth, subjloc := d.Subject()
@@ -345,6 +359,12 @@ func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Va
 			Message: fmt.Sprintf("Attestation expired"),
 		}, nil
 	}
+	if d.DecryptedBody.VerifierBody.Validity.NotBefore.After(time.Now()) {
+		return &Validity{
+			NotValidYet: true,
+			Message:     fmt.Sprintf("Attestation not yet valid"),
+		}, nil
+	}
 	return &Validity{
 		Valid: true,
 	}, nil
@@ -352,6 +372,9 @@ func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Va
 func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, error) {
 	if ent.Expired() {
 		return &Validity{Valid: false, Expired: true, Message: "Entity expired"}, nil
+	}
+	if ent.CanonicalForm.TBS.Validity.NotBefore.After(time.Now()) {
+		return &Validity{Valid: false, NotValidYet: true, Message: "Entity not valid yet"}, nil
 	}
 	// revoked, err := e.IsRevoked(e.ctx, ent.RevocationHash)
 	// if err != nil {

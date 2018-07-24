@@ -586,6 +586,7 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 		return err
 	}
 	if validity == nil || !validity.Valid {
+		//fmt.Printf("IAA 4.5\n")
 		e.ws.MoveAttestationEntRevokedP(e.ctx, d)
 		return nil
 	}

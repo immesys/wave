@@ -57,6 +57,9 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 		if p.ValidBefore == nil || p.ValidAfter == nil {
 			return nil, wve.Err(wve.InvalidParameter, "valid times are required if encrypting on a namespace")
 		}
+		if p.ValidBefore.Add(-3 * 365 * 24 * time.Hour).After(*p.ValidAfter) {
+			return nil, wve.Err(wve.InvalidParameter, "valid range cannot exceed roughly 3 years")
+		}
 		partition, werr := CalculateWR1Partition(*p.ValidAfter, *p.ValidBefore, p.PartitionPrefix)
 		if werr != nil {
 			return nil, werr
