@@ -211,7 +211,12 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 		}, wve.Err(wve.BodySchemeError, "Unsupported body scheme")
 	}
 
-	decoded, extra, err := scheme.DecryptBody(ctx, p.DecryptionContext, att)
+	var inextra *WR1Extra
+	if p.Attestation != nil {
+		inextra = p.Attestation.WR1Extra
+	}
+
+	decoded, extra, err := scheme.DecryptBody(ctx, p.DecryptionContext, att, inextra)
 	if err != nil {
 		fmt.Printf("failed parse5: %v %s\n", err, att.TBS.Body.OID)
 		return &RParseAttestation{

@@ -312,9 +312,11 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				continue
 			}
 			//fmt.Printf("MPLA 7\n")
-			if _, ok := rpa.ExtraInfo.(iapi.WR1Extra); ok {
+			if _, ok := rpa.ExtraInfo.(*iapi.WR1Extra); ok {
 				//This is a WR1 dot that has been labelled, transition to labelled
 				//fmt.Printf("moving the att to labelled\n")
+				//sub, _ := rpa.Attestation.Subject()
+				//fmt.Printf("moving att to ...%x to labelled %s\n", sub.Multihash()[25:], iapi.WR1PartitionToIntString(rpa.ExtraInfo.(*iapi.WR1Extra).Partition))
 				if err := e.ws.MoveAttestationLabelledP(subctx, rpa.Attestation); err != nil {
 					return err
 				}
@@ -323,6 +325,9 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				//fails
 				e.partitionMutex.Unlock()
 				continue
+			} else {
+				_, ok := rpa.ExtraInfo.(*iapi.WR1Extra)
+				fmt.Printf("NO WR1EXTRA, BUT %v\n", ok)
 			}
 			e.partitionMutex.Unlock()
 			//This attestation failed to decrypt at all
@@ -432,13 +437,22 @@ func (e *Engine) insertKeyAndUnlockLabelled(ent *iapi.Entity, key iapi.SlottedSe
 	//we don't insert the new actives because they too contain keys so must be handled carefully
 	//Before we insert the key, we need to ensure we process all labelled dots
 	//that it might match (under mutex)
-
+	//edit: I think we have to insert the key before we try processing the labelled
+	//      dots. I don't think the order matters because we hold the lock?
 	rv := make(map[[32]byte]*iapi.Attestation)
 	e.partitionMutex.Lock()
 	defer e.partitionMutex.Unlock()
 	ctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
+
+	//Insert the key before processing, to ensure it is available to ParseX
+	err := e.ws.InsertWR1KeysForP(ctx, ent.Keccak256HI(), key)
+	if err != nil {
+		return nil, err
+	}
+
 	dctx := NewEngineDecryptionContext(e)
+	//fmt.Printf("looking for labelled on ...%x : %s\n", ent.Keccak256HI().Multihash()[25:], iapi.WR1PartitionToIntString(key.Slots()))
 	for dt := range e.ws.GetLabelledAttestationsP(ctx, ent.Keccak256HI(), key.Slots()) {
 		//No need to pass list of label keys to use, label is already
 		//decrypted
@@ -453,6 +467,7 @@ func (e *Engine) insertKeyAndUnlockLabelled(ent *iapi.Entity, key iapi.SlottedSe
 			e.ws.MoveAttestationMalformedP(ctx, dt.Attestation.Keccak256HI())
 			continue
 		}
+		//fmt.Printf("insert key unlock labelled proc: %x\n", rpa.Attestation.CanonicalForm.OuterSignature.Content.(serdes.Ed25519OuterSignature).Signature[0:4])
 		if rpa.Attestation.DecryptedBody != nil {
 			rv[rpa.Attestation.ArrayKeccak256()] = rpa.Attestation
 			err := e.moveAttestationToActiveWithoutProcessingKeys(rpa.Attestation)
@@ -460,7 +475,7 @@ func (e *Engine) insertKeyAndUnlockLabelled(ent *iapi.Entity, key iapi.SlottedSe
 				return nil, err
 			}
 		} else {
-			panic("we expected the dot to decrypt with the given key")
+			//	panic("we expected the dot to decrypt with the given key")
 		}
 	}
 	for nd := range e.ws.GetLabelledNameDeclarationsP(ctx, ent.Keccak256HI(), key.Slots()) {
@@ -485,31 +500,52 @@ func (e *Engine) insertKeyAndUnlockLabelled(ent *iapi.Entity, key iapi.SlottedSe
 			}
 		}
 	}
-	//Okay all labelled dots/nds have been processed, no new ones have been inserted
-	//because we hold the mutex. Insert the new key and release the mutex
-	err := e.ws.InsertWR1KeysForP(ctx, ent.Keccak256HI(), key)
-	if err != nil {
-		return nil, err
-	}
+
+	//Release mutex
 	return rv, nil
+}
+
+type recursiveKey struct {
+	K        iapi.SlottedSecretKey
+	Attester *iapi.Entity
 }
 
 //As we move dots from labelled, we get keys. This tries to be a little efficient
 //in not trying the exact same key more than once
 func (e *Engine) recursiveInsertKeyAndMoveLabelled(ent *iapi.Entity, newkey iapi.SlottedSecretKey) error {
-	keysToProcess := make(map[[32]byte]iapi.SlottedSecretKey)
-	keysToProcess[newkey.IdHash()] = newkey
+	keysToProcess := make(map[[32]byte]recursiveKey)
+	keysToProcess[newkey.IdHash()] = recursiveKey{
+		K:        newkey,
+		Attester: ent,
+	}
 	for len(keysToProcess) > 0 {
 		for h, key := range keysToProcess {
 			delete(keysToProcess, h)
-			newDots, err := e.insertKeyAndUnlockLabelled(ent, key)
+			newDots, err := e.insertKeyAndUnlockLabelled(key.Attester, key.K)
 			if err != nil {
 				return err
 			}
+			// XXX this does not seem right: the new dots are going to be dots
+			// granted TO the entity that we just unlocked labelled. But
+			//if we put them in keysToProcess we will call insertKey with
+			//the TO entity instead of the FROM entity!
 			for _, d := range newDots {
+				attesterhi, attesterloc, err := d.Attester()
+				if err != nil {
+					panic("expected attester to be available")
+				}
+				attester, validity, err := e.LookupEntity(e.ctx, attesterhi, attesterloc)
+				if !validity.Valid {
+					//I would expect this not to have shown up here at all
+					continue
+				}
+
 				kz := d.WR1SecretSlottedKeys()
 				for _, k := range kz {
-					keysToProcess[k.IdHash()] = k
+					keysToProcess[k.IdHash()] = recursiveKey{
+						Attester: attester,
+						K:        k,
+					}
 				}
 			}
 		}
@@ -526,6 +562,8 @@ func (e *Engine) moveAttestationToActiveWithoutProcessingKeys(d *iapi.Attestatio
 //of the dot is held
 func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	//fmt.Printf("XIAA 0\n")
+	//fmt.Printf("inserting active attestation\n")
+
 	okay, err := e.checkAttestationAndSave(context.Background(), d)
 	if err != nil {
 		//fmt.Printf("IAA 1\n")

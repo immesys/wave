@@ -176,17 +176,32 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 			}
 			ns := HashSchemeInstanceFor(&wr1key.Namespace)
 			var envelopeKey []byte
-			//First get IBE key for namespace
-			p.Dctx.WR1IBEKeysForPartitionLabel(ctx, ns, func(k EntitySecretKeySchemeInstance) bool {
-				//fmt.Printf("trying outer key\n")
-				contents, err := k.DecryptMessage(ctx, wr1key.EnvelopeKeyIBEBN256)
+
+			if ns.MultihashString() == p.Decryptor.Entity.Keccak256HI().MultihashString() {
+				//Instead of consulting the dctx, lets do it ourselves
+				sk, err := p.Decryptor.WR1LabelKey(ctx, []byte(ns.MultihashString()))
 				if err != nil {
-					fmt.Printf("outer key failed\n")
-					return true
+					panic(err)
 				}
-				envelopeKey = contents
-				return false
-			})
+				envelopeKey, err = sk.DecryptMessage(ctx, wr1key.EnvelopeKeyIBEBN256)
+				if err != nil {
+					return nil, wve.Err(wve.MalformedObject, "ciphertext is not correctly constructed")
+				}
+			}
+
+			if envelopeKey == nil {
+				//First get IBE key for namespace
+				p.Dctx.WR1IBEKeysForPartitionLabel(ctx, ns, func(k EntitySecretKeySchemeInstance) bool {
+					//fmt.Printf("trying outer key\n")
+					contents, err := k.DecryptMessage(ctx, wr1key.EnvelopeKeyIBEBN256)
+					if err != nil {
+						fmt.Printf("outer key failed\n")
+						return true
+					}
+					envelopeKey = contents
+					return false
+				})
+			}
 			if envelopeKey == nil {
 				fmt.Printf("no outer key\n")
 				continue
@@ -212,16 +227,31 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 					realpartition[idx] = p
 				}
 			}
-			p.Dctx.WR1OAQUEKeysForContent(ctx, ns, realpartition, func(k SlottedSecretKey) bool {
-				var err error
 
-				contentsKey, err = k.DecryptMessageAsChild(ctx, envelope.ContentsKey, realpartition)
-				if err == nil {
-					return false
+			if ns.MultihashString() == p.Decryptor.Entity.Keccak256HI().MultihashString() {
+				//Instead of consulting the dctx, lets do it ourselves
+				sk, err := p.Decryptor.WR1BodyKey(ctx, realpartition)
+				if err != nil {
+					panic(err)
 				}
-				fmt.Printf("inner key failed\n")
-				return true
-			})
+				contentsKey, err = sk.DecryptMessage(ctx, envelope.ContentsKey)
+				if err != nil {
+					return nil, wve.Err(wve.MalformedObject, "ciphertext is not correctly constructed")
+				}
+			}
+
+			if contentsKey != nil {
+				p.Dctx.WR1OAQUEKeysForContent(ctx, ns, realpartition, func(k SlottedSecretKey) bool {
+					var err error
+
+					contentsKey, err = k.DecryptMessageAsChild(ctx, envelope.ContentsKey, realpartition)
+					if err == nil {
+						return false
+					}
+					fmt.Printf("inner key failed\n")
+					return true
+				})
+			}
 			if contentsKey == nil {
 				fmt.Printf("no inner key\n")
 				continue

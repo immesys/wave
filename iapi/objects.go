@@ -248,7 +248,6 @@ func (e *Attestation) Hash(scheme HashScheme) HashSchemeInstance {
 }
 
 func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
-	fmt.Printf("slotted keys was called\n")
 	rv := []SlottedSecretKey{}
 	for _, ex := range e.DecryptedBody.ProverPolicyAddendums {
 		var kre serdes.EntityKeyringEntry

@@ -26,7 +26,7 @@ type BodyEncryptionContext interface {
 }
 type AttestationBodyScheme interface {
 	Scheme
-	DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error)
+	DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation, inextra interface{}) (decodedForm *serdes.AttestationBody, extra interface{}, err error)
 	EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error)
 }
 

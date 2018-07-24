@@ -38,7 +38,7 @@ func NewPlaintextBodyScheme() *PlaintextBodyScheme {
 func (pt *PlaintextBodyScheme) Supported() bool {
 	return true
 }
-func (pt *PlaintextBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
+func (pt *PlaintextBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation, inextra interface{}) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
 	rv := canonicalForm.TBS.Body.Content.(serdes.AttestationBody)
 	return &rv, nil, nil
 }
@@ -55,7 +55,7 @@ type UnsupportedBodyScheme struct {
 func (u *UnsupportedBodyScheme) Supported() bool {
 	return false
 }
-func (u *UnsupportedBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
+func (u *UnsupportedBodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation, inextra interface{}) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
 	return nil, nil, fmt.Errorf("body scheme is unsupported")
 }
 func (u *UnsupportedBodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
@@ -79,6 +79,7 @@ type WR1Extra struct {
 	VerifierBodyKey []byte
 	ProverBodyKey   []byte
 
+	EnvelopeKey []byte
 	//For NameDecl only
 	Namespace HashSchemeInstance
 }
@@ -87,12 +88,18 @@ func (w *WR1BodyScheme) Supported() bool {
 	return true
 }
 
-func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
+var XXKey SlottedSecretKey
+
+func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContext, canonicalForm *serdes.WaveAttestation, inextra interface{}) (decodedForm *serdes.AttestationBody, extra interface{}, err error) {
 	//fmt.Printf("dc AA %x\n", canonicalForm.OuterSignature.Content.(serdes.Ed25519OuterSignature).Signature[0:4])
 	// bf := make([]byte, 8000)
 	// count := runtime.Stack(bf, false)
 	// bf = bf[:count]
 	//fmt.Printf("stack: %s\n", string(bf))
+	incomingExtra, ok := inextra.(*WR1Extra)
+	if !ok {
+		incomingExtra = nil
+	}
 	wr1body, ok := canonicalForm.TBS.Body.Content.(serdes.WR1BodyCiphertext)
 	if !ok {
 		//fmt.Printf("dc A1\n")
@@ -144,9 +151,11 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	if explicitProverBodyKey != nil {
 		envelopeKey = explicitProverBodyKey[:28]
 	}
+	if incomingExtra != nil && incomingExtra.EnvelopeKey != nil {
+		envelopeKey = incomingExtra.EnvelopeKey
+	}
 	if envelopeKey == nil {
 		err = wr1dctx.WR1DirectDecryptionKey(ctx, subjectHI, func(k EntitySecretKeySchemeInstance) bool {
-			//fmt.Printf("trying direct key %p\n", k)
 			var err error
 			envelopeKey, err = k.DecryptMessage(ctx, wr1body.EnvelopeKey_Curve25519)
 			if err == nil {
@@ -155,7 +164,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 			return true
 		})
 		if err != nil {
-			//fmt.Printf("dc D\n")
+			fmt.Printf("dc D\n")
 			return nil, nil, err
 		}
 	}
@@ -176,22 +185,21 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		}
 	}
 	if envelopeKey == nil {
-		//fmt.Printf("dc no label\n")
+		fmt.Printf("dc no label\n")
 		return nil, nil, nil
 	}
+
 	//The key is actually 16 bytes of AES key + 12 bytes of GCM nonce
 	if len(envelopeKey) != 16+12 {
-		//fmt.Printf("dc E\n")
+		fmt.Printf("dc E\n")
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 
 	//Lets actually decrypt the envelope DER
 	envelopeDER, ok := aesGCMDecrypt(envelopeKey[:16], wr1body.EnvelopeCiphertext, envelopeKey[16:])
 	if !ok {
-		//fmt.Printf("dc F\n")
+		fmt.Printf("dc F\n")
 		return nil, nil, ErrDecryptBodyMalformed
-	} else {
-		//fmt.Printf("envelope decrypted ok\n")
 	}
 
 	envelope := serdes.WR1Envelope{}
@@ -201,9 +209,17 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		return nil, nil, ErrDecryptBodyMalformed
 	}
 
+	//strip empty strings
+	realpartition := make([][]byte, 20)
+	for idx, e := range envelope.Partition {
+		if len(e) > 0 {
+			realpartition[idx] = e
+		}
+	}
+
 	//fmt.Printf("dc2 1\n")
 	//We know the partition labels now
-	rvextra := &WR1Extra{Partition: envelope.Partition}
+	rvextra := &WR1Extra{Partition: realpartition, EnvelopeKey: envelopeKey}
 	extra = rvextra
 	var bodyKeys []byte
 	if explicitProverBodyKey != nil {
@@ -211,10 +227,10 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 	if bodyKeys == nil {
 		//Try decrypt with those labels
-		err = wr1dctx.WR1OAQUEKeysForContent(ctx, subjectHI, envelope.Partition, func(k SlottedSecretKey) bool {
-			//fmt.Printf("got an oq key\n")
+		err = wr1dctx.WR1OAQUEKeysForContent(ctx, subjectHI, realpartition, func(k SlottedSecretKey) bool {
 			var err error
-			bodyKeys, err = k.DecryptMessageAsChild(ctx, envelope.BodyKeys_OAQUE, envelope.Partition)
+			XXKey = k
+			bodyKeys, err = k.DecryptMessageAsChild(ctx, envelope.BodyKeys_OAQUE, realpartition)
 			if err == nil {
 				return false
 			}
@@ -226,7 +242,6 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		}
 	}
 	if bodyKeys == nil {
-		//fmt.Printf("no body keys obtained\n")
 		//We could not decrypt the dot. Just return with whatever we have
 		return nil, extra, nil
 	}

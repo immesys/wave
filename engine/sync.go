@@ -46,7 +46,6 @@ func (e *Engine) queueEntityForSync(dest []byte) error {
 	}
 	e.totalSyncRequests++
 	e.totalMutex.Unlock()
-	//fmt.Printf("enqueueing %x\n", dest)
 	e.resyncQueue <- sliceToArray(dest)
 	return nil
 }
@@ -176,20 +175,20 @@ func (e *Engine) synchronizeEntity(ctx context.Context, dest *iapi.Entity) (err 
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	fmt.Printf(">moveInterestingAttToPending\n")
+	//fmt.Printf(">moveInterestingAttToPending\n")
 	_, err = e.moveInterestingObjectsToPending(dest)
 	if err != nil {
 		fmt.Printf("se Err 1\n")
 		return err
 	}
-	fmt.Printf("<moveInterestingAttToPending\n")
-	fmt.Printf(">movePendingToLabelled\n")
+	//fmt.Printf("<moveInterestingAttToPending\n")
+	//fmt.Printf(">movePendingToLabelled\n")
 	err = e.movePendingToLabelledAndActive(dest)
 	if err != nil {
 		//fmt.Printf("se Err 2\n")
 		return err
 	}
-	fmt.Printf("<movePendingToLabelled\n")
+	//fmt.Printf("<movePendingToLabelled\n")
 	return nil
 }
 
@@ -201,13 +200,16 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 	//We artificially put a fake request in here so that the done channel
 	//will not be closed until we are done enqueueing all interesting entities
 	e.totalMutex.Lock()
+	if e.totalSyncRequests == e.totalCompletedSyncs {
+		//We are about to be unequal, replace the channel
+		e.totalEqual = make(chan struct{})
+	}
 	e.totalSyncRequests++
 	e.totalMutex.Unlock()
 	for res := range e.ws.GetInterestingEntitiesP(subctx) {
 		if res.Err != nil {
 			return res.Err
 		}
-		//fmt.Printf("found an interesting entity [[[[%q]]]]\n", ctx.Value(consts.PerspectiveKey).(*iapi.EntitySecrets).Entity.Keccak256HI().MultihashString())
 		// ent, err := e.ws.GetEntityByHashG(subctx, res.Hash)
 		// if err != nil {
 		// 	return err
