@@ -217,8 +217,9 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 		}
 	}
 
-	wr1extra := &WR1Extra{}
-	nd.WR1Extra = wr1extra
+	if nd.WR1Extra == nil {
+		nd.WR1Extra = &WR1Extra{}
+	}
 	if p.Dctx == nil {
 		//We can't resolve the attesting entity so we cannot progress any further
 		return &RParseNameDeclaration{
@@ -274,19 +275,26 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 				IsMalformed: true,
 			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
 		}
-		wr1extra.Namespace = ns
+		nd.WR1Extra.Namespace = ns
 
 		var envkey []byte
-		uerr := p.Dctx.WR1IBEKeysForPartitionLabel(ctx, ns, func(k EntitySecretKeySchemeInstance) bool {
-			var err error
-			envkey, err = k.DecryptMessage(ctx, wr1k.EnvelopeKey)
-			if err == nil {
-				return false
+
+		if nd.WR1Extra.EnvelopeKey != nil {
+			envkey = nd.WR1Extra.EnvelopeKey
+		}
+
+		if envkey == nil {
+			uerr := p.Dctx.WR1IBEKeysForPartitionLabel(ctx, ns, func(k EntitySecretKeySchemeInstance) bool {
+				var err error
+				envkey, err = k.DecryptMessage(ctx, wr1k.EnvelopeKey)
+				if err == nil {
+					return false
+				}
+				return true
+			})
+			if uerr != nil {
+				continue
 			}
-			return true
-		})
-		if uerr != nil {
-			continue
 		}
 		if len(envkey) == 0 {
 			fmt.Printf("DC no outer key\n")
@@ -297,6 +305,7 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 				IsMalformed: true,
 			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
 		}
+		nd.WR1Extra.EnvelopeKey = envkey
 		envelopeDER, ok := aesGCMDecrypt(envkey[:16], wr1k.Envelope, envkey[16:])
 		if !ok {
 			return &RParseNameDeclaration{
@@ -316,7 +325,7 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 				realpartition[i] = envelope.Partition[i]
 			}
 		}
-		wr1extra.Partition = realpartition
+		nd.WR1Extra.Partition = realpartition
 
 		//Try for full decryption
 		var bodykey []byte

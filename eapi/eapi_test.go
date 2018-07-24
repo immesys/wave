@@ -325,15 +325,13 @@ func TestE2EEOAQUEEncryptionNS(t *testing.T) {
 	// require.NoError(t, uerr)
 	srcperspective := &pb.Perspective{
 		EntitySecret: &pb.EntitySecret{
-			DER:        srcSecret,
-			Passphrase: []byte("password"),
+			DER: srcSecret,
 		},
 		Location: &inmem,
 	}
 	dstperspective := &pb.Perspective{
 		EntitySecret: &pb.EntitySecret{
-			DER:        dstSecret,
-			Passphrase: []byte("password"),
+			DER: dstSecret,
 		},
 		Location: &inmem,
 	}
