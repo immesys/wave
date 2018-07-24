@@ -107,7 +107,7 @@ nextlocation:
 						changes++
 					}
 					if storageResult.NameDeclaration != nil {
-						fmt.Printf("XX got SR ND\n")
+						//fmt.Printf("XX got SR ND\n")
 						//TODO reparse name declaration to validate signature (needs attester resolution)
 						nd, err := e.reparseND(storageResult.NameDeclaration)
 						if err != nil {
@@ -118,14 +118,14 @@ nextlocation:
 							goto settoken
 						}
 						if nd.Decoded() {
-							fmt.Printf("ND was decoded\n")
+							//fmt.Printf("ND was decoded\n")
 							//This was a plaintext ND, skip the pipeline
 							err := e.ws.MoveNameDeclarationActiveP(e.ctx, nd)
 							if err != nil {
 								return 0, err
 							}
 						} else {
-							fmt.Printf("ND was not decoded\n")
+							//fmt.Printf("ND was not decoded\n")
 							err = e.insertPendingNameDeclaration(storageResult.NameDeclaration)
 							if err != nil {
 								return 0, err

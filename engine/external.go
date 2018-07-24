@@ -8,7 +8,6 @@ import (
 
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
-	"github.com/immesys/wave/wve"
 )
 
 //functions that the engine needs from above
@@ -288,14 +287,15 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 
 func (e *Engine) CheckNameDeclaration(ctx context.Context, nd *iapi.NameDeclaration) (*Validity, error) {
 	if !nd.Decoded() {
-		return nil, wve.Err(wve.InvalidParameter, "ND is not decoded, can't check validity")
+		return &Validity{NotDecrypted: true}, nil
 	}
 	if time.Now().After(nd.DecryptedBody.Validity.NotAfter) {
 		return &Validity{Expired: true, Message: "Name declaration expired"}, nil
 	}
 	if time.Now().Before(nd.DecryptedBody.Validity.NotBefore) {
-		return &Validity{NotValidYet, Message: "Name declaration not valid yet"}, nil
+		return &Validity{NotValidYet: true, Message: "Name declaration not valid yet"}, nil
 	}
+	return &Validity{Valid: true}, nil
 }
 
 //Unlike checkDot, this should not touch the DB, it is a read-only operation

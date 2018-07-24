@@ -166,6 +166,103 @@ func TestNameDeclOneHop(t *testing.T) {
 	require.Nil(t, lrv)
 }
 
+func TestNameDeclTwoHop(t *testing.T) {
+	ctx := context.Background()
+	a, _ := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	b, _ := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	c, _ := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+	ns, _ := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
+
+	rv, werr := iapi.CreateNameDeclaration(ctx, &iapi.PCreateNameDeclaration{
+		Attester:          a.EntitySecrets,
+		AttesterLocation:  inmem,
+		Subject:           b.Entity,
+		SubjectLocation:   inmem,
+		Name:              "foo",
+		Namespace:         ns.Entity,
+		NamespaceLocation: inmem,
+		Partition:         iapi.Partition("p1", "p2"),
+	})
+	require.NoError(t, werr)
+	ndhash, err := iapi.SI().PutNameDeclaration(ctx, inmem, rv.NameDeclaration)
+	require.NoError(t, err)
+
+	iapi.SI().PutEntity(ctx, inmem, a.Entity)
+	iapi.SI().PutEntity(ctx, inmem, b.Entity)
+	iapi.SI().PutEntity(ctx, inmem, c.Entity)
+	iapi.SI().PutEntity(ctx, inmem, ns.Entity)
+	err = iapi.SI().Enqueue(ctx, inmem, a.Entity.Keccak256HI(), ndhash)
+	require.NoError(t, err)
+
+	nsex := ns.Entity.Keccak256HI().CanonicalForm()
+	//Grant attestation from NS giving permission to read
+	policy := serdes.RTreePolicy{
+		Namespace:    *nsex,
+		Indirections: 3,
+		Statements: []serdes.RTreeStatement{
+			{
+				PermissionSet: *nsex,
+				Permissions:   []string{"foo"},
+				Resource:      "foo/bar",
+			},
+		},
+	}
+	pol, uerr := iapi.NewRTreePolicyScheme(policy, iapi.Partition("p1", "p2"))
+	require.NoError(t, uerr)
+	bodyscheme := &iapi.WR1BodyScheme{}
+	arv, werr := iapi.NewParsedAttestation(ctx, &iapi.PCreateAttestation{
+		Policy:            pol,
+		HashScheme:        &iapi.HashScheme_Keccak_256{},
+		BodyScheme:        bodyscheme,
+		EncryptionContext: nil,
+		Attester:          ns.EntitySecrets,
+		AttesterLocation:  inmem,
+		Subject:           b.Entity,
+		SubjectLocation:   inmem,
+	})
+	require.NoError(t, werr)
+	atthash, err := iapi.SI().PutAttestation(ctx, inmem, arv.Attestation)
+	require.NoError(t, err)
+	err = iapi.SI().Enqueue(ctx, inmem, b.Entity.Keccak256HI(), atthash)
+	require.NoError(t, err)
+
+	arv, werr = iapi.NewParsedAttestation(ctx, &iapi.PCreateAttestation{
+		Policy:            pol,
+		HashScheme:        &iapi.HashScheme_Keccak_256{},
+		BodyScheme:        bodyscheme,
+		EncryptionContext: nil,
+		Attester:          b.EntitySecrets,
+		AttesterLocation:  inmem,
+		Subject:           c.Entity,
+		SubjectLocation:   inmem,
+	})
+	require.NoError(t, werr)
+	atthash, err = iapi.SI().PutAttestation(ctx, inmem, arv.Attestation)
+	require.NoError(t, err)
+	err = iapi.SI().Enqueue(ctx, inmem, c.Entity.Keccak256HI(), atthash)
+	require.NoError(t, err)
+
+	eng, err := NewEngine(ctx, ws, iapi.SI(), c.EntitySecrets, inmem)
+	require.NoError(t, err)
+	err = eng.MarkEntityInterestingAndQueueForSync(a.Entity, inmem)
+	require.NoError(t, err)
+	err = eng.ResyncEntireGraph(ctx)
+	require.NoError(t, err)
+	select {
+	case <-eng.WaitForEmptySyncQueue():
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for empty sync")
+	}
+
+	lrv, err := eng.LookupName(ctx, a.Entity.Keccak256HI(), "foo")
+	require.NoError(t, err)
+	require.NotNil(t, lrv)
+	require.EqualValues(t, lrv.Name, "foo")
+	lrv, err = eng.LookupName(ctx, a.Entity.Keccak256HI(), "bar")
+	require.NoError(t, err)
+	require.Nil(t, lrv)
+}
+
 func TestNameDeclOneHopThroughLabelled(t *testing.T) {
 	ctx := context.Background()
 	a, _ := iapi.NewParsedEntitySecrets(ctx, &iapi.PNewEntity{})
