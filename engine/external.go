@@ -3,11 +3,13 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/wve"
 )
 
 //functions that the engine needs from above
@@ -410,29 +412,63 @@ func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance,
 	return ent, val, err
 }
 
-func (e *Engine) LookupName(ctx context.Context, attester iapi.HashSchemeInstance, name string) (*iapi.NameDeclaration, error) {
+func (e *Engine) LookupName(ctx context.Context, attester iapi.HashSchemeInstance, name string) (*iapi.NameDeclaration, wve.WVE) {
 	ctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
+	if !iapi.IsNameDeclarationValid(name) {
+		return nil, wve.Err(wve.InvalidParameter, "names must match [a-z0-9_-]{1,63}")
+	}
 	var rv *iapi.NameDeclaration
 	for res := range e.ws.ResolveNameDeclarationsP(ctx, attester, name) {
 		if ctx.Err() != nil {
-			return nil, ctx.Err()
+			return nil, wve.CtxE(ctx)
 		}
 		if res.Err != nil {
-			return nil, res.Err
+			return nil, wve.ErrW(wve.InternalError, "could not resolve", res.Err)
 		}
 		nd := res.NameDeclaration
-		if nd.DecryptedBody.Validity.NotAfter.Before(time.Now()) {
+
+		validity, err := e.CheckNameDeclaration(ctx, nd)
+		if err != nil {
+			return nil, wve.ErrW(wve.InternalError, "could not check ND", err)
+		}
+
+		if validity.Expired {
 			err := e.ws.MoveNameDeclarationExpiredP(ctx, nd)
 			if err != nil {
-				return nil, err
+				return nil, wve.ErrW(wve.InternalError, "could not modify ND state", err)
 			}
 			continue
 		}
+		if validity.Valid {
+			rv = nd
+		}
 		//TODO revocation
-		rv = nd
 	}
 	//Possibly nil, otherwise latest sorted by creation date
+	return rv, nil
+}
+
+func (e *Engine) LookupFullName(ctx context.Context, attester iapi.HashSchemeInstance, name string) ([]*iapi.NameDeclaration, wve.WVE) {
+	parts := strings.Split(name, ".")
+	for _, p := range parts {
+		if !iapi.IsNameDeclarationValid(p) {
+			return nil, wve.Err(wve.InvalidParameter, "invalid WAVE name")
+		}
+	}
+	rv := make([]*iapi.NameDeclaration, len(parts))
+	lastAtt := attester
+	for idx := len(parts) - 1; idx >= 0; idx-- {
+		nd, err := e.LookupName(ctx, lastAtt, parts[idx])
+		if err != nil {
+			return nil, err
+		}
+		if nd == nil {
+			return nil, nil
+		}
+		rv[idx] = nd
+		lastAtt = nd.Subject
+	}
 	return rv, nil
 }
 
