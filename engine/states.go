@@ -3,6 +3,7 @@ package engine
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"runtime"
 	"strconv"
 
@@ -24,7 +25,7 @@ func getGID() uint64 {
 // These must all be super efficient (basically noop if there are no changes)
 
 //These functions return the number of changes to facilitate efficient looping
-func (e *Engine) moveInterestingAttestationsToPending(dest *iapi.Entity) (changed int, err error) {
+func (e *Engine) moveInterestingObjectsToPending(dest *iapi.Entity) (changed int, err error) {
 
 	//If we return early due to error, ensure the functions we call returning channels
 	//clean up cleanly
@@ -70,30 +71,71 @@ nextlocation:
 				//There is nothing more in this queue on this location yet
 				continue nextlocation
 			}
-			//fmt.Printf("got object for token %q\n", token)
-			//Check if we already know about this attestation
-			found, err := e.ws.GetAttestationP(e.ctx, object)
+
+			//Check if this object is a known attestation or namedecl
+			foundAtt, err := e.ws.GetAttestationP(e.ctx, object)
 			if err != nil {
 				return 0, err
 			}
-			if found == nil {
-				//fmt.Printf("found was nil\n")
-				//The object is probably an attestation
-				attestation, err := e.st.GetAttestation(e.ctx, loc, object)
+			skip := false
+			if foundAtt != nil {
+				skip = true
+			}
+			if !skip {
+				foundNameDecl, err := e.ws.GetNameDeclarationP(e.ctx, object)
 				if err != nil {
 					return 0, err
 				}
-				if attestation == nil {
-					//object was not an attestation, that is fine
-				} else {
-					//do not trigger a resync of dst, we are already syncing dst
-					err = e.insertPendingAttestationSync(attestation, false)
-					if err != nil {
-						return 0, err
-					}
-					changes++
+				if foundNameDecl != nil {
+					skip = true
 				}
 			}
+
+			if !skip {
+				//The object is probably an attestation or name declaration
+				storageResult, err := e.st.GetAttestationOrDeclaration(e.ctx, loc, object)
+				if err != nil {
+					return 0, err
+				}
+
+				if storageResult != nil {
+					if storageResult.Attestation != nil {
+						err = e.insertPendingAttestationSync(storageResult.Attestation, false)
+						if err != nil {
+							return 0, err
+						}
+						changes++
+					}
+					if storageResult.NameDeclaration != nil {
+						fmt.Printf("XX got SR ND\n")
+						//TODO reparse name declaration to validate signature (needs attester resolution)
+						nd, err := e.reparseND(storageResult.NameDeclaration)
+						if err != nil {
+							return 0, err
+						}
+						if nd == nil {
+							//malformed
+							goto settoken
+						}
+						if nd.Decoded() {
+							fmt.Printf("ND was decoded\n")
+							//This was a plaintext ND, skip the pipeline
+							err := e.ws.MoveNameDeclarationActiveP(e.ctx, nd)
+							if err != nil {
+								return 0, err
+							}
+						} else {
+							fmt.Printf("ND was not decoded\n")
+							err = e.insertPendingNameDeclaration(storageResult.NameDeclaration)
+							if err != nil {
+								return 0, err
+							}
+						}
+						changes++
+					}
+				}
+			}
+		settoken:
 			//fmt.Printf("setting entity queue token to %q in ws %s\n", nextToken, dest.Keccak256HI().MultihashString())
 			err = e.ws.SetEntityQueueTokenP(sctx, loc, dest.Keccak256HI(), nextToken)
 			if err != nil {
@@ -103,6 +145,21 @@ nextlocation:
 	}
 
 	return changes, nil
+}
+
+func (e *Engine) reparseND(nd *iapi.NameDeclaration) (*iapi.NameDeclaration, error) {
+	dctx := NewEngineDecryptionContext(e)
+	rv, err := iapi.ParseNameDeclaration(e.ctx, &iapi.PParseNameDeclaration{
+		NameDeclaration: nd,
+		Dctx:            dctx,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if rv.IsMalformed {
+		return nil, nil
+	}
+	return rv.Result, nil
 }
 
 //These two functions need to tie in to subscribers of revocations as well
@@ -123,6 +180,13 @@ func (e *Engine) moveAttestationToExpired(att *iapi.Attestation) error {
 func (e *Engine) moveEntityToExpired(ctx context.Context, ent *iapi.Entity) error {
 	//panic("ni") //TODO notify subscribers
 	return e.ws.MoveEntityExpiredG(ctx, ent)
+}
+
+type attOrND struct {
+	A             *iapi.Attestation
+	N             *iapi.NameDeclaration
+	LabelKeyIndex *int
+	Err           error
 }
 
 func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
@@ -147,7 +211,35 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 	if isdirect {
 		getTargetIndex = -1
 	}
-	for res := range e.ws.GetPendingAttestationsP(subctx, dest.Keccak256HI(), getTargetIndex) {
+
+	todo := make(chan attOrND, 10)
+	go func() {
+		for res := range e.ws.GetPendingAttestationsP(subctx, dest.Keccak256HI(), getTargetIndex) {
+			if res.Err != nil {
+				todo <- attOrND{
+					Err: res.Err,
+				}
+			}
+			todo <- attOrND{
+				A:             res.Attestation,
+				LabelKeyIndex: res.LabelKeyIndex,
+			}
+		}
+		for res := range e.ws.GetPendingNameDeclarationP(subctx, dest.Keccak256HI(), getTargetIndex) {
+			if res.Err != nil {
+				todo <- attOrND{
+					Err: res.Err,
+				}
+			}
+			todo <- attOrND{
+				N:             res.NameDeclaration,
+				LabelKeyIndex: res.LabelKeyIndex,
+			}
+		}
+		close(todo)
+	}()
+
+	for res := range todo {
 		//fmt.Printf("MPLA 2\n")
 		if res.Err != nil {
 			//fmt.Printf("MPLA 2.5 %v\n", res.Err)
@@ -175,71 +267,118 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 		dctx := NewEngineDecryptionContext(e)
 		dctx.SetPartitionSecrets(secretCache)
 		e.partitionMutex.Lock()
-		//When we parse the attestation here, it is for a given set of
-		//partition keys available in the engine. The keys can't change because
-		//we hold the mutex
-		//fmt.Printf("starting decode that should succeed\n")
-		rpa, err := iapi.ParseAttestation(subctx, &iapi.PParseAttestation{
-			Attestation:       res.Attestation,
-			DecryptionContext: dctx,
-		})
-		if err != nil {
-			panic(err)
-		}
 
-		//fmt.Printf("MPLA 4\n")
-		//The dot will either
-		// stay pending
-		// move to labelled
-		// move to active
-		//if it is moving to labelled it must happen while we still hold the
-		//partitionmutex
-		if rpa.IsMalformed {
+		if res.A != nil {
+			//When we parse the attestation here, it is for a given set of
+			//partition keys available in the engine. The keys can't change because
+			//we hold the mutex
+			//fmt.Printf("starting decode that should succeed\n")
+			rpa, err := iapi.ParseAttestation(subctx, &iapi.PParseAttestation{
+				Attestation:       res.A,
+				DecryptionContext: dctx,
+			})
+			if err != nil {
+				panic(err)
+			}
+
+			//fmt.Printf("MPLA 4\n")
+			//The dot will either
+			// stay pending
+			// move to labelled
+			// move to active
+			//if it is moving to labelled it must happen while we still hold the
+			//partitionmutex
+			if rpa.IsMalformed {
+				e.partitionMutex.Unlock()
+				//fmt.Printf("MPLA 5\n")
+				if err := e.ws.MoveAttestationMalformedP(e.ctx, res.A.Keccak256HI()); err != nil {
+					return err
+				}
+				continue
+			}
+			if rpa.Attestation == nil {
+				e.partitionMutex.Unlock()
+				panic("nil attestation not malformed?")
+			}
+			if rpa.Attestation.DecryptedBody != nil {
+				//fmt.Printf(">MPLA 6 decrypted body\n")
+				e.partitionMutex.Unlock()
+				//DOT is transitioning to active
+				if err := e.insertActiveAttestation(rpa.Attestation); err != nil {
+					//fmt.Printf("MPLA 7\n")
+					return err
+				}
+				//fmt.Printf("<MPLA 6\n")
+				continue
+			}
+			//fmt.Printf("MPLA 7\n")
+			if _, ok := rpa.ExtraInfo.(iapi.WR1Extra); ok {
+				//This is a WR1 dot that has been labelled, transition to labelled
+				//fmt.Printf("moving the att to labelled\n")
+				if err := e.ws.MoveAttestationLabelledP(subctx, rpa.Attestation); err != nil {
+					return err
+				}
+				//This is the whole reason for the partition mutex, the att must be
+				//atomically compared against all partition keys and inserted if it
+				//fails
+				e.partitionMutex.Unlock()
+				continue
+			}
 			e.partitionMutex.Unlock()
-			//fmt.Printf("MPLA 5\n")
-			if err := e.ws.MoveAttestationMalformedP(e.ctx, res.Attestation.Keccak256HI()); err != nil {
-				return err
+			//This attestation failed to decrypt at all
+			//update the secret key index if we are not direct
+			//fmt.Printf("att did not decode\n")
+			if !isdirect {
+				if err := e.ws.UpdateAttestationPendingP(e.ctx, rpa.Attestation, targetIndex); err != nil {
+					return err
+				}
+			}
+			continue
+		} //this is an attestation
+		if res.N != nil {
+			fmt.Printf("parsing ND again in lab->active\n")
+			rpn, err := iapi.ParseNameDeclaration(subctx, &iapi.PParseNameDeclaration{
+				NameDeclaration: res.N,
+				Dctx:            dctx,
+			})
+			if err != nil {
+				panic(err)
+			}
+			if rpn.IsMalformed {
+				e.partitionMutex.Unlock()
+				//fmt.Printf("MPLA 5\n")
+				if err := e.ws.MoveNameDeclarationMalformedP(e.ctx, res.N.Keccak256HI()); err != nil {
+					return err
+				}
+				continue
+			}
+			if rpn.Result.Decoded() {
+				fmt.Printf("ND decoded\n")
+				e.partitionMutex.Unlock()
+				if err := e.ws.MoveNameDeclarationActiveP(e.ctx, res.N); err != nil {
+					return err
+				}
+				continue
+			} else {
+				fmt.Printf("ND not decoded\n")
+			}
+			if rpn.Result.WR1Extra != nil && rpn.Result.WR1Extra.Partition != nil {
+				//It has been labelled
+				e.partitionMutex.Unlock()
+				if err := e.ws.MoveNameDeclarationLabelledP(e.ctx, res.N); err != nil {
+					return err
+				}
+				continue
+			}
+			//We failed to make any headway, update key index
+			if !isdirect {
+				if err := e.ws.UpdateNameDeclarationPendingP(e.ctx, res.N, targetIndex); err != nil {
+					return err
+				}
 			}
 			continue
 		}
-		if rpa.Attestation == nil {
-			e.partitionMutex.Unlock()
-			panic("nil attestation not malformed?")
-		}
-		if rpa.Attestation.DecryptedBody != nil {
-			//fmt.Printf(">MPLA 6 decrypted body\n")
-			e.partitionMutex.Unlock()
-			//DOT is transitioning to active
-			if err := e.insertActiveAttestation(rpa.Attestation); err != nil {
-				//fmt.Printf("MPLA 7\n")
-				return err
-			}
-			//fmt.Printf("<MPLA 6\n")
-			continue
-		}
-		//fmt.Printf("MPLA 7\n")
-		if _, ok := rpa.ExtraInfo.(iapi.WR1Extra); ok {
-			//This is a WR1 dot that has been labelled, transition to labelled
-			//fmt.Printf("moving the att to labelled\n")
-			if err := e.ws.MoveAttestationLabelledP(subctx, rpa.Attestation); err != nil {
-				return err
-			}
-			//This is the whole reason for the partition mutex, the att must be
-			//atomically compared against all partition keys and inserted if it
-			//fails
-			e.partitionMutex.Unlock()
-			continue
-		}
-		e.partitionMutex.Unlock()
-		//This attestation failed to decrypt at all
-		//update the secret key index if we are not direct
-		//fmt.Printf("att did not decode\n")
-		if !isdirect {
-			if err := e.ws.UpdateAttestationPendingP(e.ctx, rpa.Attestation, targetIndex); err != nil {
-				return err
-			}
-		}
-		continue
+		//ND
 	} //next pending attestation
 	//fmt.Printf("MPLA X\n")
 	return nil
@@ -324,7 +463,29 @@ func (e *Engine) insertKeyAndUnlockLabelled(ent *iapi.Entity, key iapi.SlottedSe
 			panic("we expected the dot to decrypt with the given key")
 		}
 	}
-	//Okay all labelled dots have been processed, no new ones have been inserted
+	for nd := range e.ws.GetLabelledNameDeclarationsP(ctx, ent.Keccak256HI(), key.Slots()) {
+		rnd, err := iapi.ParseNameDeclaration(ctx, &iapi.PParseNameDeclaration{
+			NameDeclaration: nd.NameDeclaration,
+			Dctx:            dctx,
+		})
+		if err != nil {
+			panic(err)
+		}
+		if rnd.IsMalformed {
+			err := e.ws.MoveNameDeclarationMalformedP(ctx, nd.NameDeclaration.Keccak256HI())
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+		if rnd.Result.Decoded() {
+			err := e.ws.MoveNameDeclarationActiveP(ctx, nd.NameDeclaration)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	//Okay all labelled dots/nds have been processed, no new ones have been inserted
 	//because we hold the mutex. Insert the new key and release the mutex
 	err := e.ws.InsertWR1KeysForP(ctx, ent.Keccak256HI(), key)
 	if err != nil {
@@ -387,7 +548,8 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 		return err
 	}
 	if validity == nil || !validity.Valid {
-		panic("what should we do here, dot from invalid ent")
+		e.ws.MoveAttestationEntRevokedP(e.ctx, d)
+		return nil
 	}
 	//fmt.Printf("XIAA 2\n")
 	//Make sure the storage knows the attester is interesting
@@ -464,4 +626,12 @@ func (e *Engine) insertPendingAttestationSync(d *iapi.Attestation, resyncDestina
 		return e.enqueueEntityResyncIfInteresting(e.ctx, dst)
 	}
 	return nil
+}
+
+func (e *Engine) insertPendingNameDeclaration(nd *iapi.NameDeclaration) error {
+	if !nd.Decoded() && (nd.WR1Extra == nil || nd.WR1Extra.Namespace == nil) {
+		panic("we need to re-parse this")
+	}
+
+	return e.ws.MoveNameDeclarationPendingP(e.ctx, nd, 0)
 }

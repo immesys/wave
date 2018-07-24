@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
@@ -384,6 +385,32 @@ func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance,
 	val, err := e.CheckEntity(ctx, ent)
 	//fmt.Printf("validity in lookup: %v\n", val)
 	return ent, val, err
+}
+
+func (e *Engine) LookupName(ctx context.Context, attester iapi.HashSchemeInstance, name string) (*iapi.NameDeclaration, error) {
+	ctx, cancel := context.WithCancel(e.ctx)
+	defer cancel()
+	var rv *iapi.NameDeclaration
+	for res := range e.ws.ResolveNameDeclarationsP(ctx, attester, name) {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if res.Err != nil {
+			return nil, res.Err
+		}
+		nd := res.NameDeclaration
+		if nd.DecryptedBody.Validity.NotAfter.Before(time.Now()) {
+			err := e.ws.MoveNameDeclarationExpiredP(ctx, nd)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+		//TODO revocation
+		rv = nd
+	}
+	//Possibly nil, otherwise latest sorted by creation date
+	return rv, nil
 }
 
 // //TODO this function should do some caching

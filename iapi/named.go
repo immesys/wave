@@ -3,6 +3,7 @@ package iapi
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -71,7 +72,7 @@ func CreateNameDeclaration(ctx context.Context, p *PCreateNameDeclaration) (*RCr
 	if p.ValidUntil != nil {
 		body.Validity.NotAfter = *p.ValidUntil
 	} else {
-		body.Validity.NotAfter = time.Now().Add(5 * 365 * 24 * time.Hour)
+		body.Validity.NotAfter = time.Now().Add(3 * 365 * 24 * time.Hour)
 	}
 	//Body is complete. Now encode and encrypt it
 	bodyDER, err := asn1.Marshal(body)
@@ -88,10 +89,13 @@ func CreateNameDeclaration(ctx context.Context, p *PCreateNameDeclaration) (*RCr
 		outer.TBS.Keys = append(outer.TBS.Keys, asn1.NewExternal(serdes.NameDeclarationKeyNone{}))
 
 	} else {
-		expandedPartition := make([][]byte, 20)
-		for i, e := range p.Partition {
-			expandedPartition[i] = e
+		expandedPartition, uerr := CalculateWR1Partition(body.Validity.NotBefore,
+			body.Validity.NotAfter,
+			p.Partition)
+		if uerr != nil {
+			return nil, wve.ErrW(wve.InvalidParameter, "could not form partition", uerr)
 		}
+
 		nscf := p.Namespace.Keccak256HI().CanonicalForm()
 		nsloc := p.NamespaceLocation.CanonicalForm()
 		wr1key := serdes.NameDeclarationKeyWR1{}
@@ -285,6 +289,7 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 			continue
 		}
 		if len(envkey) == 0 {
+			fmt.Printf("DC no outer key\n")
 			continue
 		}
 		if len(envkey) != 16+12 {
@@ -305,14 +310,19 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 				IsMalformed: true,
 			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
 		}
-
-		wr1extra.Partition = envelope.Partition
+		realpartition := make([][]byte, 20)
+		for i := 0; i < 20; i++ {
+			if len(envelope.Partition[i]) > 0 {
+				realpartition[i] = envelope.Partition[i]
+			}
+		}
+		wr1extra.Partition = realpartition
 
 		//Try for full decryption
 		var bodykey []byte
-		uerr = p.Dctx.WR1OAQUEKeysForContent(ctx, ns, envelope.Partition, func(k SlottedSecretKey) bool {
+		uerr = p.Dctx.WR1OAQUEKeysForContent(ctx, ns, realpartition, func(k SlottedSecretKey) bool {
 			var err error
-			bodykey, err = k.DecryptMessage(ctx, envelope.BodyKey)
+			bodykey, err = k.DecryptMessageAsChild(ctx, envelope.BodyKey, realpartition)
 			if err == nil {
 				return false
 			}
@@ -322,6 +332,7 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 			continue
 		}
 		if len(bodykey) == 0 {
+			fmt.Printf("DC no inner key\n")
 			continue
 		}
 		if len(bodykey) != 16+12 {

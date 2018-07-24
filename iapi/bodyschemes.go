@@ -336,6 +336,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	if err != nil {
 		return nil, nil, err
 	}
+
 	//Generating these delegated keys is a bit of a pain. Sequentially its about 1.5s on my machine.
 	//If we split it over multiple cores it goes down to about 250 ms
 	const workers = 32
@@ -360,6 +361,9 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 		}(i)
 	}
 	wg.Wait()
+	// for idx, p := range partitions {
+	// 	fmt.Printf("granted key %d: %s\n", idx, WR1PartitionToIntString(p))
+	// }
 	sparams, err := attester.Entity.WR1_BodyParams()
 	if err != nil {
 		panic(err)

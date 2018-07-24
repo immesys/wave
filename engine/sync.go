@@ -176,20 +176,20 @@ func (e *Engine) synchronizeEntity(ctx context.Context, dest *iapi.Entity) (err 
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	//fmt.Printf(">moveInterestingAttToPending\n")
-	_, err = e.moveInterestingAttestationsToPending(dest)
+	fmt.Printf(">moveInterestingAttToPending\n")
+	_, err = e.moveInterestingObjectsToPending(dest)
 	if err != nil {
-		//fmt.Printf("se Err 1\n")
+		fmt.Printf("se Err 1\n")
 		return err
 	}
-	//fmt.Printf("<moveInterestingAttToPending\n")
-	//fmt.Printf(">movePendingToLabelled\n")
+	fmt.Printf("<moveInterestingAttToPending\n")
+	fmt.Printf(">movePendingToLabelled\n")
 	err = e.movePendingToLabelledAndActive(dest)
 	if err != nil {
 		//fmt.Printf("se Err 2\n")
 		return err
 	}
-	//fmt.Printf("<movePendingToLabelled\n")
+	fmt.Printf("<movePendingToLabelled\n")
 	return nil
 }
 

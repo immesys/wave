@@ -279,7 +279,7 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 }
 
 //This is obviously of limited use, only an Att with no encryption will fully parse
-func NewParsedAttestation(ctx context.Context, p *PCreateAttestation) (*RParseAttestation, error) {
+func NewParsedAttestation(ctx context.Context, p *PCreateAttestation) (*RParseAttestation, wve.WVE) {
 	intermediate, err := CreateAttestation(ctx, p)
 	if err != nil {
 		return nil, err
