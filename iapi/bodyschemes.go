@@ -81,7 +81,8 @@ type WR1Extra struct {
 
 	EnvelopeKey []byte
 	//For NameDecl only
-	Namespace HashSchemeInstance
+	Namespace         HashSchemeInstance
+	NamespaceLocation LocationSchemeInstance
 }
 
 func (w *WR1BodyScheme) Supported() bool {

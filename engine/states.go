@@ -120,7 +120,7 @@ nextlocation:
 						if nd.Decoded() {
 							//fmt.Printf("ND was decoded\n")
 							//This was a plaintext ND, skip the pipeline
-							err := e.ws.MoveNameDeclarationActiveP(e.ctx, nd)
+							err := e.insertActiveNameDeclaration(e.ctx, nd)
 							if err != nil {
 								return 0, err
 							}
@@ -360,7 +360,9 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 			if rpn.Result.Decoded() {
 				fmt.Printf("ND decoded\n")
 				e.partitionMutex.Unlock()
-				if err := e.ws.MoveNameDeclarationActiveP(e.ctx, res.N); err != nil {
+
+				err := e.insertActiveNameDeclaration(e.ctx, res.N)
+				if err != nil {
 					return err
 				}
 				continue
@@ -386,6 +388,24 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 		//ND
 	} //next pending attestation
 	//fmt.Printf("MPLA X\n")
+	return nil
+}
+
+func (e *Engine) insertActiveNameDeclaration(ctx context.Context, nd *iapi.NameDeclaration) error {
+	err := e.ws.MoveNameDeclarationActiveP(e.ctx, nd)
+	if err != nil {
+		return err
+	}
+	entity, validity, err := e.LookupEntity(ctx, nd.Subject, nd.SubjectLocation)
+	if err != nil {
+		return err
+	}
+	if validity.Valid {
+		err := e.ws.MoveEntityInterestingP(ctx, entity, nd.SubjectLocation)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

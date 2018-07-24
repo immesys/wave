@@ -739,6 +739,78 @@ func TestCreateAttestationExpiryNonIntersect(t *testing.T) {
 	require.EqualValues(t, 0, len(lookupresponse.Results))
 }
 
+func TestNameDeclNoEncrypt(t *testing.T) {
+	ctx := context.Background()
+	ap, as := createEntity(t)
+	bp, _ := createEntity(t)
+	//cp, cs := createEntity(t)
+
+	_, _ = eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      ap,
+		Location: &inmem,
+	})
+	bpub, _ := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      bp,
+		Location: &inmem,
+	})
+	// cpub, _ := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+	// 	DER:      cp,
+	// 	Location: &inmem,
+	// })
+
+	crv, err := eapi.CreateNameDeclaration(ctx, &pb.CreateNameDeclarationParams{
+		Perspective: &pb.Perspective{
+			EntitySecret: &pb.EntitySecret{
+				DER: as,
+			},
+			Location: &inmem,
+		},
+		Name:            "foo",
+		Subject:         bpub.Hash,
+		SubjectLocation: &inmem,
+	})
+	require.NoError(t, err)
+	require.Nil(t, crv.Error)
+
+	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
+	aper := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER: as,
+		},
+		Location: &inmem,
+	}
+	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+		Perspective: aper,
+	})
+	require.NoError(t, err)
+	require.Nil(t, rv.Error)
+	//Spin until sync complete (but don't use wait because its hard to use)
+	wsync := func() {
+		for {
+			ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+				Perspective: aper,
+			})
+			require.NoError(t, err)
+			require.Nil(t, ss.Error)
+			//fmt.Printf("syncs %d/%d\n", ss.TotalSyncRequests, ss.CompletedSyncs)
+			if ss.CompletedSyncs == ss.TotalSyncRequests {
+				//fmt.Printf("Syncs complete")
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	wsync()
+	fmt.Printf("==== FIRST SYNC COMPLETE ====\n")
+
+	rrv, err := eapi.ResolveName(ctx, &pb.ResolveNameParams{
+		Perspective: aper,
+		Name:        "foo",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, rrv.Entity)
+	require.EqualValues(t, rrv.Entity.Hash, bpub.Hash)
+}
 func TestAttestationLabelledToActive(t *testing.T) {
 	ctx := context.Background()
 	ap, as := createEntity(t)

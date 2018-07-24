@@ -5,6 +5,7 @@ import (
 	"encoding/asn1"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
@@ -26,13 +27,48 @@ func ConvertEntityWVal(e *iapi.Entity, v *engine.Validity) *pb.Entity {
 		ValidFrom:  e.CanonicalForm.TBS.Validity.NotBefore.UnixNano() / 1e6,
 		ValidUntil: e.CanonicalForm.TBS.Validity.NotAfter.UnixNano() / 1e6,
 		Validity: &pb.EntityValidity{
-			Valid:     v.Valid,
-			Revoked:   v.Revoked,
-			Expired:   v.Expired,
-			Malformed: v.Malformed,
-			Message:   v.Message,
+			Valid:       v.Valid,
+			Revoked:     v.Revoked,
+			NotValidYet: v.NotValidYet,
+			Expired:     v.Expired,
+			Malformed:   v.Malformed,
+			Message:     v.Message,
 		},
 	}
+}
+func ConvertNDWVal(nd *iapi.NameDeclaration, v *engine.Validity) *pb.NameDeclaration {
+	var ndv *pb.NameDeclarationValidity
+	if v != nil {
+		ndv = &pb.NameDeclarationValidity{
+			Valid:       v.Valid,
+			Revoked:     v.Revoked,
+			Expired:     v.Expired,
+			NotValidYet: v.NotValidYet,
+			Malformed:   v.Malformed,
+			Message:     v.Message,
+		}
+	}
+	if !nd.Decoded() {
+		panic("ConvertND called on non decoded ND")
+	}
+	rv := &pb.NameDeclaration{
+		Hash:             nd.Keccak256HI().Multihash(),
+		Name:             nd.Name,
+		Subject:          nd.Subject.Multihash(),
+		SubjectLocation:  ToPbLocation(nd.SubjectLocation),
+		Attester:         nd.Attester.Multihash(),
+		AttesterLocation: ToPbLocation(nd.AttesterLocation),
+		ValidFrom:        nd.DecryptedBody.Validity.NotBefore.UnixNano() / 1e6,
+		ValidUntil:       nd.DecryptedBody.Validity.NotAfter.UnixNano() / 1e6,
+		Validity:         ndv,
+	}
+	if nd.WR1Extra != nil {
+		spew.Dump(nd.WR1Extra)
+		rv.Namespace = nd.WR1Extra.Namespace.Multihash()
+		rv.NamespaceLocation = ToPbLocation(nd.WR1Extra.NamespaceLocation)
+		rv.Partition = nd.WR1Extra.Partition
+	}
+	return rv
 }
 func LocationSchemeInstance(in *pb.Location) (iapi.LocationSchemeInstance, wve.WVE) {
 	if in == nil {
@@ -172,6 +208,7 @@ func ConvertLookupResult(r *engine.LookupResult) *pb.Attestation {
 		Expired:      r.Validity.Expired,
 		Malformed:    r.Validity.Malformed,
 		NotDecrypted: r.Validity.NotDecrypted,
+		NotValidYet:  r.Validity.NotValidYet,
 		SrcInvalid:   r.Validity.SrcInvalid,
 		DstInvalid:   r.Validity.DstInvalid,
 		Message:      r.Validity.Message,

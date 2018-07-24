@@ -74,6 +74,9 @@ func CreateNameDeclaration(ctx context.Context, p *PCreateNameDeclaration) (*RCr
 	} else {
 		body.Validity.NotAfter = time.Now().Add(3 * 365 * 24 * time.Hour)
 	}
+	if body.Validity.NotBefore.After(body.Validity.NotAfter) {
+		return nil, wve.Err(wve.InvalidParameter, "invalid validity times")
+	}
 	//Body is complete. Now encode and encrypt it
 	bodyDER, err := asn1.Marshal(body)
 	if err != nil {
@@ -217,9 +220,6 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 		}
 	}
 
-	if nd.WR1Extra == nil {
-		nd.WR1Extra = &WR1Extra{}
-	}
 	if p.Dctx == nil {
 		//We can't resolve the attesting entity so we cannot progress any further
 		return &RParseNameDeclaration{
@@ -258,6 +258,9 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 			bodyDER = nd.CanonicalForm.TBS.Body
 			break
 		}
+		if nd.WR1Extra == nil {
+			nd.WR1Extra = &WR1Extra{}
+		}
 		wr1k, ok := k.Content.(serdes.NameDeclarationKeyWR1)
 		if !ok {
 			continue
@@ -276,6 +279,7 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 			}, wve.Err(wve.MalformedObject, "invalid wr1 key")
 		}
 		nd.WR1Extra.Namespace = ns
+		nd.WR1Extra.NamespaceLocation = nsloc
 
 		var envkey []byte
 

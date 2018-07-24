@@ -122,6 +122,32 @@
         ]
       }
     },
+    "/v1/CreateNameDeclaration": {
+      "post": {
+        "operationId": "CreateNameDeclaration",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbCreateNameDeclarationResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbCreateNameDeclarationParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
     "/v1/DecryptMessage": {
       "post": {
         "operationId": "DecryptMessage",
@@ -252,6 +278,32 @@
         ]
       }
     },
+    "/v1/MarkEntityInteresting": {
+      "post": {
+        "operationId": "MarkEntityInteresting",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbMarkEntityInterestingResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbMarkEntityInterestingParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
     "/v1/PublishAttestation": {
       "post": {
         "summary": "Publish an attestation",
@@ -324,6 +376,32 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/pbResolveHashParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/ResolveName": {
+      "post": {
+        "operationId": "ResolveName",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbResolveNameResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbResolveNameParams"
             }
           }
         ],
@@ -537,6 +615,10 @@
         },
         "message": {
           "type": "string"
+        },
+        "notValidYet": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },
@@ -663,6 +745,65 @@
           "format": "byte"
         },
         "SecretDER": {
+          "type": "string",
+          "format": "byte"
+        },
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbCreateNameDeclarationParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "name": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string",
+          "format": "byte"
+        },
+        "subjectLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "validFrom": {
+          "type": "string",
+          "format": "int64",
+          "title": "ms since epoch, if omitted default = now"
+        },
+        "validUntil": {
+          "type": "string",
+          "format": "int64",
+          "title": "ms since epoch if omitted default = now+3 years"
+        },
+        "namespace": {
+          "type": "string",
+          "format": "byte",
+          "title": "if specified, the name declaration will be encrypted"
+        },
+        "namespaceLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "partition": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "byte"
+          }
+        }
+      }
+    },
+    "pbCreateNameDeclarationResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "DER": {
           "type": "string",
           "format": "byte"
         },
@@ -808,6 +949,10 @@
         },
         "message": {
           "type": "string"
+        },
+        "notValidYet": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },
@@ -923,6 +1068,108 @@
           "items": {
             "$ref": "#/definitions/pbAttestation"
           }
+        }
+      }
+    },
+    "pbMarkEntityInterestingParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "entity": {
+          "type": "string",
+          "format": "byte"
+        },
+        "entityLocation": {
+          "$ref": "#/definitions/pbLocation"
+        }
+      }
+    },
+    "pbMarkEntityInterestingResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        }
+      }
+    },
+    "pbNameDeclaration": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "name": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string",
+          "format": "byte"
+        },
+        "subjectLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "attester": {
+          "type": "string",
+          "format": "byte"
+        },
+        "attesterLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "validFrom": {
+          "type": "string",
+          "format": "int64"
+        },
+        "validUntil": {
+          "type": "string",
+          "format": "int64"
+        },
+        "namespace": {
+          "type": "string",
+          "format": "byte"
+        },
+        "namespaceLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "partition": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "byte"
+          }
+        },
+        "validity": {
+          "$ref": "#/definitions/pbNameDeclarationValidity"
+        }
+      }
+    },
+    "pbNameDeclarationValidity": {
+      "type": "object",
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "revoked": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "expired": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "malformed": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "notValidYet": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },
@@ -1109,6 +1356,39 @@
         },
         "attestation": {
           "$ref": "#/definitions/pbAttestation"
+        }
+      }
+    },
+    "pbResolveNameParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "name": {
+          "type": "string"
+        },
+        "topLevelAttester": {
+          "type": "string",
+          "format": "byte",
+          "title": "If omitted, the perspective entity is used"
+        }
+      }
+    },
+    "pbResolveNameResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "entity": {
+          "$ref": "#/definitions/pbEntity"
+        },
+        "derivation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbNameDeclaration"
+          }
         }
       }
     },

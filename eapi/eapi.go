@@ -884,3 +884,183 @@ func (e *EAPI) DecryptMessage(ctx context.Context, p *pb.DecryptMessageParams) (
 	}, nil
 
 }
+
+func (e *EAPI) ResolveName(ctx context.Context, p *pb.ResolveNameParams) (*pb.ResolveNameResponse, error) {
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.ResolveNameResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
+	attester := eng.Perspective().Entity.Keccak256HI()
+	if len(p.TopLevelAttester) > 0 {
+		attester = iapi.HashSchemeInstanceFromMultihash(p.TopLevelAttester)
+	}
+	ndz, err := eng.LookupFullName(ctx, attester, p.Name)
+	if err != nil {
+		return &pb.ResolveNameResponse{
+			Error: ToError(wve.ErrW(wve.LookupFailure, "name could not be resolved", err)),
+		}, nil
+	}
+	if ndz == nil {
+		return &pb.ResolveNameResponse{
+			Error: ToError(wve.Err(wve.LookupFailure, "name could not be resolved")),
+		}, nil
+	}
+	ent, val, uerr := eng.LookupEntity(ctx, ndz[0].Subject, ndz[0].SubjectLocation)
+	if uerr != nil {
+		return &pb.ResolveNameResponse{
+			Error: ToError(wve.ErrW(wve.LookupFailure, "could not resolve subject", uerr)),
+		}, nil
+	}
+	if ent == nil {
+		return &pb.ResolveNameResponse{
+			Error: ToError(wve.Err(wve.LookupFailure, "could not resolve subject")),
+		}, nil
+	}
+	pbEnt := ConvertEntityWVal(ent, val)
+	pbNDz := []*pb.NameDeclaration{}
+	for _, nd := range ndz {
+		pbNDz = append(pbNDz, ConvertNDWVal(nd, &engine.Validity{Valid: true}))
+	}
+	return &pb.ResolveNameResponse{
+		Entity:     pbEnt,
+		Derivation: pbNDz,
+	}, nil
+}
+
+func (e *EAPI) CreateNameDeclaration(ctx context.Context, p *pb.CreateNameDeclarationParams) (*pb.CreateNameDeclarationResponse, error) {
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.CreateNameDeclarationResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
+	subloc, err := LocationSchemeInstance(p.SubjectLocation)
+	if err != nil {
+		return &pb.CreateNameDeclarationResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create parse subject location", err)),
+		}, nil
+	}
+	sub := iapi.HashSchemeInstanceFromMultihash(p.Subject)
+	subent, val, uerr := eng.LookupEntity(ctx, sub, subloc)
+	if uerr != nil {
+		return &pb.CreateNameDeclarationResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not lookup subject entity", uerr)),
+		}, nil
+	}
+	if subent == nil {
+		return &pb.CreateNameDeclarationResponse{
+			Error: ToError(wve.Err(wve.LookupFailure, "could not lookup subject entity")),
+		}, nil
+	}
+	if !val.Valid {
+		return &pb.CreateNameDeclarationResponse{
+			Error: ToError(wve.Err(wve.InvalidParameter, "subject entity is not valid")),
+		}, nil
+	}
+	params := iapi.PCreateNameDeclaration{
+		Attester:         eng.Perspective(),
+		AttesterLocation: eng.PerspectiveLocation(),
+		Subject:          subent,
+		SubjectLocation:  subloc,
+		Name:             p.Name,
+	}
+	if p.ValidFrom != 0 {
+		t := time.Unix(0, p.ValidFrom*1e6)
+		params.ValidFrom = &t
+	}
+	if p.ValidUntil != 0 {
+		t := time.Unix(0, p.ValidUntil*1e6)
+		params.ValidUntil = &t
+	}
+	if len(p.Namespace) > 0 {
+		ns := iapi.HashSchemeInstanceFromMultihash(p.Namespace)
+		nsloc, err := LocationSchemeInstance(p.NamespaceLocation)
+		if err != nil {
+			return &pb.CreateNameDeclarationResponse{
+				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create parse namespace location", err)),
+			}, nil
+		}
+		nsent, val, uerr := eng.LookupEntity(ctx, ns, nsloc)
+		if uerr != nil {
+			return &pb.CreateNameDeclarationResponse{
+				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create namespace entity", uerr)),
+			}, nil
+		}
+		if nsent == nil {
+			return &pb.CreateNameDeclarationResponse{
+				Error: ToError(wve.Err(wve.LookupFailure, "could not lookup namespace entity")),
+			}, nil
+		}
+		if !val.Valid {
+			return &pb.CreateNameDeclarationResponse{
+				Error: ToError(wve.Err(wve.InvalidParameter, "namespace entity is not valid")),
+			}, nil
+		}
+		params.Namespace = nsent
+		params.NamespaceLocation = nsloc
+		params.Partition = p.Partition
+	}
+
+	createrv, err := iapi.CreateNameDeclaration(ctx, &params)
+	if err != nil {
+		return &pb.CreateNameDeclarationResponse{
+			Error: ToError(err),
+		}, nil
+	}
+
+	//Now publish it
+	hash, uerr := iapi.SI().PutNameDeclaration(ctx, eng.PerspectiveLocation(), createrv.NameDeclaration)
+	if uerr != nil {
+		return &pb.CreateNameDeclarationResponse{
+			Error: ToError(wve.ErrW(wve.StorageError, "could not add name declaration to storage", uerr)),
+		}, nil
+	}
+
+	uerr = iapi.SI().Enqueue(ctx, eng.PerspectiveLocation(), eng.Perspective().Entity.Keccak256HI(), hash)
+	if uerr != nil {
+		return &pb.CreateNameDeclarationResponse{
+			Error: ToError(wve.ErrW(wve.StorageError, "could not add name declaration to storage", uerr)),
+		}, nil
+	}
+
+	return &pb.CreateNameDeclarationResponse{
+		DER:  createrv.DER,
+		Hash: hash.Multihash(),
+	}, nil
+}
+
+func (e *EAPI) MarkEntityInteresting(ctx context.Context, p *pb.MarkEntityInterestingParams) (*pb.MarkEntityInterestingResponse, error) {
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.MarkEntityInterestingResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
+	hi := iapi.HashSchemeInstanceFromMultihash(p.Entity)
+	loc, err := LocationSchemeInstance(p.EntityLocation)
+	if err != nil {
+		return &pb.MarkEntityInterestingResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not parse location", err)),
+		}, nil
+	}
+	ent, _, werr := eng.LookupEntity(ctx, hi, loc)
+	if werr != nil {
+		return &pb.MarkEntityInterestingResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not lookup entity", werr)),
+		}, nil
+	}
+	if ent == nil {
+		return &pb.MarkEntityInterestingResponse{
+			Error: ToError(wve.Err(wve.LookupFailure, "could not find entity")),
+		}, nil
+	}
+	werr = eng.MarkEntityInterestingAndQueueForSync(ent, loc)
+	if werr != nil {
+		return &pb.MarkEntityInterestingResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not mark entity interesting", werr)),
+		}, nil
+	}
+	return &pb.MarkEntityInterestingResponse{}, nil
+}

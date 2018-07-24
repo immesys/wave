@@ -472,6 +472,14 @@ func (e *Engine) LookupFullName(ctx context.Context, attester iapi.HashSchemeIns
 	return rv, nil
 }
 
+func (e *Engine) Perspective() *iapi.EntitySecrets {
+	return e.perspective
+}
+
+func (e *Engine) PerspectiveLocation() iapi.LocationSchemeInstance {
+	return e.perspectiveLoc
+}
+
 // //TODO this function should do some caching
 // func (e *Engine) IsRevoked(ctx context.Context, hash []byte) (bool, error) {
 // 	pani

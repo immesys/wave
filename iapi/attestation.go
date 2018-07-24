@@ -77,6 +77,9 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	} else {
 		body.VerifierBody.Validity.NotAfter = time.Now().Add(30 * 24 * time.Hour)
 	}
+	if body.VerifierBody.Validity.NotAfter.Before(body.VerifierBody.Validity.NotBefore) {
+		return nil, wve.Err(wve.InvalidParameter, "invalid validity times")
+	}
 	if body.VerifierBody.Validity.NotAfter.Add(-3 * 365 * 24 * time.Hour).After(body.VerifierBody.Validity.NotBefore) {
 		return nil, wve.Err(wve.InvalidParameter, "valid range cannot exceed roughly 3 years")
 	}
