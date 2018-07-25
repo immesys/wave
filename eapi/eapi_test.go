@@ -179,8 +179,7 @@ func TestCorruptAttestationPublish(t *testing.T) {
 	require.Nil(t, att.Error)
 	der := att.DER
 	canonical, err := eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      der,
-		Location: &inmem,
+		DER: der,
 	})
 	//Test that for every single bit in the attestation, flipping it causes an error
 	attlen := len(der)
@@ -190,8 +189,7 @@ func TestCorruptAttestationPublish(t *testing.T) {
 			copy(cp[:], der)
 			cp[i] ^= byte(bit)
 			resp, err := eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-				DER:      cp,
-				Location: &inmem,
+				DER: cp,
 			})
 			//spew.Dump(resp)
 			require.NoError(t, err)
@@ -428,8 +426,7 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, att.Error)
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
 	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
@@ -533,8 +530,7 @@ func TestCreateAttestationWithLookup(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, att.Error)
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
 	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
@@ -651,8 +647,7 @@ func TestCreateAttestationExpiryNonIntersect(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, att.Error)
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
 	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
@@ -699,8 +694,7 @@ func TestCreateAttestationExpiryNonIntersect(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, att.Error)
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 
 	//Shift time
@@ -859,8 +853,7 @@ func TestAttestationLabelledToActive(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, at1.Error)
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      at1.DER,
-		Location: &inmem,
+		DER: at1.DER,
 	})
 
 	policy.RTreePolicy.VisibilityURI = iapi.Partition("p1", "p2", "p3")
@@ -879,8 +872,7 @@ func TestAttestationLabelledToActive(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, at2.Error)
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      at2.DER,
-		Location: &inmem,
+		DER: at2.DER,
 	})
 
 	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
@@ -938,8 +930,7 @@ func TestAttestationLabelledToActive(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, at3.Error)
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      at3.DER,
-		Location: &inmem,
+		DER: at3.DER,
 	})
 
 	rv, err = eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
@@ -1005,8 +996,7 @@ func TestCreateAttestationWithExpiredLookup(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, att.Error)
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
 	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
@@ -1109,8 +1099,7 @@ func TestBuildRTreeProof(t *testing.T) {
 		fmt.Printf("XXX create took %s\n", time.Now().Sub(then))
 		then = time.Now()
 		pubresp, err := eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-			DER:      att.DER,
-			Location: &inmem,
+			DER: att.DER,
 		})
 		require.NoError(t, err)
 		require.Nil(t, pubresp.Error)

@@ -221,8 +221,7 @@ func (t *TestGraph) Edge(tst *testing.T, src, dst string, perms string, ttl int)
 	require.NoError(tst, err)
 	require.Nil(tst, att.Error)
 	pubresp, err := eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 	require.NoError(tst, err)
 	require.Nil(tst, pubresp.Error)
