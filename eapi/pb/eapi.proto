@@ -299,7 +299,6 @@ message PublishEntityResponse {
 }
 message PublishAttestationParams {
   bytes DER = 1;
-  Location location = 2;
 }
 message PublishAttestationResponse {
   Error error = 1;
