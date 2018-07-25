@@ -134,6 +134,8 @@ type WaveState interface {
 	//Interact with active namedecls
 	//Results should be sorted with the latest start date appearing first
 	ResolveNameDeclarationsP(ctx context.Context, attester HashSchemeInstance, name string) chan ResolveResult
+	ResolveReverseName(ctx context.Context, hi HashSchemeInstance) (name string, err error)
+	InsertReverseName(ctx context.Context, name string, hi HashSchemeInstance) (err error)
 	GetNameDeclarationP(ctx context.Context, hi HashSchemeInstance) (nd *NameDeclaration, err error)
 
 	GetEntityPartitionLabelKeyIndexP(ctx context.Context, entHashSchemeInstance HashSchemeInstance) (bool, int, error)

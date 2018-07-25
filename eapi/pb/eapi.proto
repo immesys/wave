@@ -119,8 +119,22 @@ service WAVE {
       body: "*"
     };
   }
+  rpc ResolveReverseName(ResolveReverseNameParams) returns (ResolveReverseNameResponse) {
+    option (google.api.http) = {
+      post: "/v1/ResolveReverseName"
+      body: "*"
+    };
+  }
 }
 
+message ResolveReverseNameParams {
+  Perspective perspective = 1;
+  bytes hash = 2;
+}
+message ResolveReverseNameResponse {
+  Error error = 1;
+  string name = 2;
+}
 message MarkEntityInterestingParams {
   Perspective perspective = 1;
   bytes entity = 2;

@@ -260,7 +260,7 @@ func (e *EAPI) PublishEntity(ctx context.Context, p *pb.PublishEntityParams) (*p
 			Error: ToError(err),
 		}, nil
 	}
-	if loc != nil {
+	if loc == nil {
 		loc = iapi.SI().DefaultLocation(ctx)
 	}
 	rve, err := iapi.ParseEntity(ctx, &iapi.PParseEntity{
@@ -502,14 +502,20 @@ func (e *EAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncComp
 		case <-waitchan:
 			ss, err := eng.SyncStatus(ctx)
 			if err != nil {
-				panic(err)
+				srv.Send(&pb.SyncResponse{
+					Error: ToError(wve.ErrW(wve.InternalError, "sync error", err)),
+				})
+				return nil
 			}
 			emit(ss)
 			return nil
 		case <-time.After(500 * time.Millisecond):
 			ss, err := eng.SyncStatus(ctx)
 			if err != nil {
-				panic(err)
+				srv.Send(&pb.SyncResponse{
+					Error: ToError(wve.ErrW(wve.InternalError, "sync error", err)),
+				})
+				return nil
 			}
 			emit(ss)
 		}
@@ -999,6 +1005,9 @@ func (e *EAPI) CreateNameDeclaration(ctx context.Context, p *pb.CreateNameDeclar
 				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create parse namespace location", err)),
 			}, nil
 		}
+		if nsloc == nil {
+			nsloc = iapi.SI().DefaultLocation(ctx)
+		}
 		nsent, val, uerr := eng.LookupEntity(ctx, ns, nsloc)
 		if uerr != nil {
 			return &pb.CreateNameDeclarationResponse{
@@ -1032,6 +1041,14 @@ func (e *EAPI) CreateNameDeclaration(ctx context.Context, p *pb.CreateNameDeclar
 	if uerr != nil {
 		return &pb.CreateNameDeclarationResponse{
 			Error: ToError(wve.ErrW(wve.StorageError, "could not add name declaration to storage", uerr)),
+		}, nil
+	}
+
+	//Also publish reverse name
+	err = eng.InsertReverseName(ctx, params.Name, params.Subject.Keccak256HI())
+	if err != nil {
+		return &pb.CreateNameDeclarationResponse{
+			Error: ToError(wve.ErrW(wve.InternalError, "could not add name reverse name declaration", err)),
 		}, nil
 	}
 
@@ -1080,4 +1097,33 @@ func (e *EAPI) MarkEntityInteresting(ctx context.Context, p *pb.MarkEntityIntere
 		}, nil
 	}
 	return &pb.MarkEntityInterestingResponse{}, nil
+}
+
+func (e *EAPI) ResolveReverseName(ctx context.Context, p *pb.ResolveReverseNameParams) (*pb.ResolveReverseNameResponse, error) {
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.ResolveReverseNameResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
+	hi := iapi.HashSchemeInstanceFromMultihash(p.Hash)
+	if !hi.Supported() {
+		return &pb.ResolveReverseNameResponse{
+			Error: ToError(wve.Err(wve.InvalidParameter, "bad hash")),
+		}, nil
+	}
+	rv, err := eng.LookupReverseName(ctx, hi)
+	if err != nil {
+		return &pb.ResolveReverseNameResponse{
+			Error: ToError(wve.ErrW(wve.InternalError, "could not perform lookup", err)),
+		}, nil
+	}
+	if rv == "" {
+		return &pb.ResolveReverseNameResponse{
+			Error: ToError(wve.Err(wve.LookupFailure, "could not reverse resolve name")),
+		}, nil
+	}
+	return &pb.ResolveReverseNameResponse{
+		Name: rv,
+	}, nil
 }

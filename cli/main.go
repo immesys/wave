@@ -76,6 +76,11 @@ func main() {
 					Name:  "nopassphrase",
 					Usage: "do not encrypt the entity secrets",
 				},
+				cli.BoolFlag{
+					Name:  "nopublish",
+					Usage: "do not publish the entity",
+				},
+
 				oflag,
 			},
 		},
@@ -135,6 +140,14 @@ func main() {
 				cli.StringFlag{
 					Name:  "passphrase",
 					Usage: "the passphrase to use if required",
+				},
+				cli.BoolFlag{
+					Name:  "nopublish",
+					Usage: "do not publish the attestation",
+				},
+				cli.BoolFlag{
+					Name:  "skipsync",
+					Usage: "skip graph sync before granting",
 				},
 				// grant pset:perm,perm,perm@ns/suffix
 				oflag,
@@ -210,6 +223,10 @@ func main() {
 				cli.StringFlag{
 					Name:  "passphrase",
 					Usage: "the passphrase to use if required",
+				},
+				cli.BoolFlag{
+					Name:  "skipsync",
+					Usage: "skip graph sync before resolving",
 				},
 			},
 		},

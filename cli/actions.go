@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/pem"
@@ -16,6 +17,7 @@ import (
 	"github.com/howeyc/gopass"
 	"github.com/immesys/wave/eapi"
 	"github.com/immesys/wave/eapi/pb"
+	"github.com/immesys/wave/iapi"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
 )
@@ -84,16 +86,18 @@ func actionMkEntity(c *cli.Context) error {
 		fmt.Printf("bad expiry: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("enter a passphrase for your entity: ")
-	pass, err := gopass.GetPasswdMasked()
-	if err != nil {
-		fmt.Printf("could not read passphrase: %v\n", err)
-		os.Exit(1)
+	var pass []byte
+	if !c.Bool("nopassphrase") {
+		fmt.Printf("enter a passphrase for your entity: ")
+		pass, err = gopass.GetPasswdMasked()
+		if err != nil {
+			fmt.Printf("could not read passphrase: %v\n", err)
+			os.Exit(1)
+		}
 	}
-	_ = expiry
 	resp, err := conn.CreateEntity(context.Background(), &pb.CreateEntityParams{
-		//ValidFrom:        time.Now().UnixNano() / 1e6,
-		//ValidUntil:       time.Now().Add(*expiry).UnixNano() / 1e6,
+		ValidFrom:        time.Now().UnixNano() / 1e6,
+		ValidUntil:       time.Now().Add(*expiry).UnixNano() / 1e6,
 		SecretPassphrase: string(pass),
 	})
 	if err != nil {
@@ -119,6 +123,19 @@ func actionMkEntity(c *cli.Context) error {
 		os.Exit(1)
 	}
 	fmt.Printf("wrote entity: %s\n", filename)
+	if !c.Bool("nopublish") {
+		presp, err := conn.PublishEntity(context.Background(), &pb.PublishEntityParams{
+			DER: resp.PublicDER,
+		})
+		if err != nil {
+			fmt.Printf("publish error: %v\n", err)
+			os.Exit(1)
+		}
+		if presp.Error != nil {
+			fmt.Printf("publish error: %s\n", presp.Error.Message)
+			os.Exit(1)
+		}
+	}
 	return nil
 }
 func loadEntitySecretDER(filename string) []byte {
@@ -144,21 +161,39 @@ func actionRTGrant(c *cli.Context) error {
 		fmt.Printf("bad expiry\n")
 		os.Exit(1)
 	}
-	attesterder := loadEntitySecretDER(c.String("attester"))
-	subject, err := base64.URLEncoding.DecodeString(c.String("subject"))
-	if err != nil {
-		fmt.Printf("bad subject hash\n")
-		os.Exit(1)
+	conn := getConn(c)
+	perspective := getPerspective(c.String("attester"), c.String("passphrase"), "missing attesting entity secret\n")
+
+	if !c.Bool("skipsync") {
+		resp, err := conn.ResyncPerspectiveGraph(context.Background(), &pb.ResyncPerspectiveGraphParams{
+			Perspective: perspective,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: %v\n", resp.Error.Message)
+			os.Exit(1)
+		}
+		srv, err := conn.WaitForSyncComplete(context.Background(), &pb.SyncParams{
+			Perspective: perspective,
+		})
+		for {
+			rv, err := srv.Recv()
+			if err == io.EOF {
+				break
+			}
+			fmt.Printf("Synchronized %d/%d entities\n", rv.CompletedSyncs, rv.TotalSyncRequests)
+		}
+		fmt.Printf("Perspective graph sync complete\n")
 	}
-	//TODO passphrase from cli args
-	fmt.Printf("enter the passphrase for the attesting entity: ")
-	pass, err := gopass.GetPasswdMasked()
-	if err != nil {
-		fmt.Printf("could not read passphrase: %v\n", err)
-		os.Exit(1)
-	}
+
+	subject := resolveEntityNameOrHashOrFile(conn, perspective, c.String("subject"), "missing subject entity")
+
 	statements := []*pb.RTreePolicyStatement{}
-	var namespace string
+
+	var namespace []byte
 	if len(c.Args()) == 0 {
 		fmt.Printf("need to specify some statements\n")
 		os.Exit(1)
@@ -175,19 +210,17 @@ func actionRTGrant(c *cli.Context) error {
 			fmt.Printf("err 2 expected arguments of form permset:perm[,perm,perm...]@namespace/resource\n")
 			os.Exit(1)
 		}
-		pset, err := base64.URLEncoding.DecodeString(firstsplit[0])
-		if err != nil {
-			fmt.Printf("permission set invalid\n")
-			os.Exit(1)
-		}
+		pset := resolveEntityNameOrHashOrFile(conn, perspective, firstsplit[0], "bad permission set")
 		perms := strings.SplitN(firstsplit[1], ",", -1)
 		nsrez := strings.SplitN(atsplit[1], "/", 2)
-		if namespace == "" {
-			namespace = nsrez[0]
-		}
-		if namespace != nsrez[0] {
-			fmt.Printf("all statements in a single attestation must be on the same namespace\n")
-			os.Exit(1)
+		if namespace == nil {
+			namespace = resolveEntityNameOrHashOrFile(conn, perspective, nsrez[0], "bad namespace")
+		} else {
+			namespace2 := resolveEntityNameOrHashOrFile(conn, perspective, nsrez[0], "bad namespace")
+			if !bytes.Equal(namespace, namespace2) {
+				fmt.Printf("all statements in a single attestation must concern the same namespace\n")
+				os.Exit(1)
+			}
 		}
 		statements = append(statements, &pb.RTreePolicyStatement{
 			PermissionSet: pset,
@@ -195,25 +228,19 @@ func actionRTGrant(c *cli.Context) error {
 			Resource:      nsrez[1],
 		})
 	}
-	ns, err := base64.URLEncoding.DecodeString(namespace)
-	if err != nil {
-		fmt.Printf("invalid namespace\n")
-		os.Exit(1)
-	}
 	vizparts := strings.Split(c.String("partition"), "/")
 	vizuri := make([][]byte, len(vizparts))
 	for idx, s := range vizparts {
 		vizuri[idx] = []byte(s)
 	}
-	conn := getConn(c)
 	pol := &pb.RTreePolicy{
-		Namespace:     ns,
+		Namespace:     namespace,
 		Indirections:  uint32(c.Int("indirections")),
 		Statements:    statements,
 		VisibilityURI: vizuri,
 	}
 	inspectresponse, err := conn.Inspect(context.Background(), &pb.InspectParams{
-		Content: attesterder,
+		Content: perspective.EntitySecret.DER,
 	})
 	if err != nil {
 		fmt.Printf("could not get attester hash: %v\n", err)
@@ -248,13 +275,7 @@ func actionRTGrant(c *cli.Context) error {
 		os.Exit(1)
 	}
 	params := &pb.CreateAttestationParams{
-		Perspective: &pb.Perspective{
-			EntitySecret: &pb.EntitySecret{
-				DER:        attesterder,
-				Passphrase: pass,
-			},
-			Location: attesterresp.Location,
-		},
+		Perspective:     perspective,
 		BodyScheme:      eapi.BodySchemeWaveRef1,
 		SubjectHash:     subject,
 		SubjectLocation: subjresp.Location,
@@ -288,26 +309,75 @@ func actionRTGrant(c *cli.Context) error {
 		os.Exit(1)
 	}
 	fmt.Printf("wrote attestation: %s\n", outfilename)
+	if !c.Bool("nopublish") {
+		presp, err := conn.PublishAttestation(context.Background(), &pb.PublishAttestationParams{
+			DER: resp.DER,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if presp.Error != nil {
+			fmt.Printf("error: %s\n", presp.Error.Message)
+			os.Exit(1)
+		}
+		fmt.Printf("published attestation\n")
+	}
 	return nil
 }
 func formatPartition(p [][]byte) string {
+
 	if p == nil {
 		return "< unknown >"
 	}
-	rv := ""
-	for idx, el := range p {
-		if len(el) != 0 {
-			rv += fmt.Sprintf("%d:%q ", idx, el)
+	realp := make([][]byte, 20)
+	for i, e := range p {
+		if len(e) != 0 {
+			realp[i] = e
 		}
 	}
-	return strings.TrimSpace(rv)
+	return iapi.WR1PartitionToIntString(realp)
+	// if p == nil {
+	// 	return "< unknown >"
+	// }
+	// rv := ""
+	// for idx, el := range p {
+	// 	if len(el) != 0 {
+	// 		rv += fmt.Sprintf("%d:%q ", idx, el)
+	// 	}
+	// }
+	// return strings.TrimSpace(rv)
 }
 func actionResolve(c *cli.Context) error {
 	conn := getConn(c)
 
 	perspective := getPerspective(c.String("perspective"), c.String("passphrase"), "missing perspective parameter\n")
-
+	if !c.Bool("skipsync") {
+		resp, err := conn.ResyncPerspectiveGraph(context.Background(), &pb.ResyncPerspectiveGraphParams{
+			Perspective: perspective,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: %v\n", resp.Error.Message)
+			os.Exit(1)
+		}
+		srv, err := conn.WaitForSyncComplete(context.Background(), &pb.SyncParams{
+			Perspective: perspective,
+		})
+		for {
+			rv, err := srv.Recv()
+			if err == io.EOF {
+				break
+			}
+			fmt.Printf("Synchronized %d/%d entities\n", rv.CompletedSyncs, rv.TotalSyncRequests)
+		}
+		fmt.Printf("Perspective graph sync complete\n")
+	}
 	for _, a := range c.Args() {
+		fmt.Printf("%q:\n", a)
 		if len(a) == 48 && strings.Index(a, ".") == -1 {
 			//Probably a hash
 			h, err := base64.URLEncoding.DecodeString(a)
@@ -328,10 +398,11 @@ func actionResolve(c *cli.Context) error {
 				os.Exit(1)
 			}
 			if resp.Entity != nil {
-				PrintEntity(resp.Entity, resp.Location)
+				reverse := ReverseName(conn, perspective, resp.Entity.Hash)
+				PrintEntity(resp.Entity, resp.Location, reverse)
 			}
 			if resp.Attestation != nil {
-				PrintAttestation(resp.Attestation, resp.Location)
+				PrintAttestation(resp.Attestation, resp.Location, conn, perspective)
 			}
 		} else {
 			//Probably a name
@@ -347,7 +418,8 @@ func actionResolve(c *cli.Context) error {
 				fmt.Printf("could not resolve name: [%d] %s\n", resp.Error.Code, resp.Error.Message)
 				os.Exit(1)
 			}
-			PrintEntity(resp.Entity, resp.Location)
+			reverse := ReverseName(conn, perspective, resp.Entity.Hash)
+			PrintEntity(resp.Entity, resp.Location, reverse)
 		}
 	}
 	return nil
@@ -496,7 +568,7 @@ func actionPublish(c *cli.Context) error {
 					os.Exit(1)
 				}
 				if resp.Error != nil {
-					fmt.Printf("error: [%d] %s\n", resp.Error.Code, resp.Error.Message)
+					fmt.Printf("error: %s\n", resp.Error.Message)
 					os.Exit(1)
 				}
 			}
@@ -512,7 +584,7 @@ func actionPublish(c *cli.Context) error {
 				os.Exit(1)
 			}
 			if resp.Error != nil {
-				fmt.Printf("error: [%d] %s\n", resp.Error.Code, resp.Error.Message)
+				fmt.Printf("error: %s\n", resp.Error.Message)
 				os.Exit(1)
 			}
 		default:
@@ -552,7 +624,7 @@ func actionRTProve(c *cli.Context) error {
 	conn := getConn(c)
 	perspective := getPerspective(c.String("subject"), c.String("passphrase"), "missing subject entity secrets")
 	statements := []*pb.RTreePolicyStatement{}
-	var namespace string
+	var namespace []byte
 	if len(c.Args()) == 0 {
 		fmt.Printf("need to specify some statements\n")
 		os.Exit(1)
@@ -569,30 +641,23 @@ func actionRTProve(c *cli.Context) error {
 			fmt.Printf("err 2 expected arguments of form permset:perm[,perm,perm...]@namespace/resource\n")
 			os.Exit(1)
 		}
-		pset, err := base64.URLEncoding.DecodeString(firstsplit[0])
-		if err != nil {
-			fmt.Printf("permission set invalid\n")
-			os.Exit(1)
-		}
+		pset := resolveEntityNameOrHashOrFile(conn, perspective, firstsplit[0], "bad permission set")
 		perms := strings.SplitN(firstsplit[1], ",", -1)
 		nsrez := strings.SplitN(atsplit[1], "/", 2)
-		if namespace == "" {
-			namespace = nsrez[0]
-		}
-		if namespace != nsrez[0] {
-			fmt.Printf("all statements in a single policy must be on the same namespace\n")
-			os.Exit(1)
+		if namespace == nil {
+			namespace = resolveEntityNameOrHashOrFile(conn, perspective, nsrez[0], "bad namespace")
+		} else {
+			namespace2 := resolveEntityNameOrHashOrFile(conn, perspective, nsrez[0], "bad namespace")
+			if !bytes.Equal(namespace, namespace2) {
+				fmt.Printf("all statements in a single attestation must concern the same namespace\n")
+				os.Exit(1)
+			}
 		}
 		statements = append(statements, &pb.RTreePolicyStatement{
 			PermissionSet: pset,
 			Permissions:   perms,
 			Resource:      nsrez[1],
 		})
-	}
-	ns, err := base64.URLEncoding.DecodeString(namespace)
-	if err != nil {
-		fmt.Printf("invalid namespace\n")
-		os.Exit(1)
 	}
 	inspectresponse, err := conn.Inspect(context.Background(), &pb.InspectParams{
 		Content: perspective.EntitySecret.DER,
@@ -622,11 +687,10 @@ func actionRTProve(c *cli.Context) error {
 	params := &pb.BuildRTreeParams{
 		Perspective:    perspective,
 		SubjectHash:    inspectresponse.Entity.Hash,
-		RtreeNamespace: ns,
+		RtreeNamespace: namespace,
 		Statements:     statements,
 	}
 	if !c.Bool("skipsync") {
-		fmt.Printf("Resynchronizing perspective graph\n")
 		resp, err := conn.ResyncPerspectiveGraph(context.Background(), &pb.ResyncPerspectiveGraphParams{
 			Perspective: perspective,
 		})

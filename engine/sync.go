@@ -143,12 +143,12 @@ func (e *Engine) syncLoop() {
 		if resolvedEnt == nil {
 			panic("synchronize nil entity?")
 		}
-		//fmt.Printf(">syncE\n")
+		fmt.Printf(">syncE\n")
 		err = e.synchronizeEntity(e.ctx, resolvedEnt)
 		if err != nil {
 			panic(err)
 		}
-		//fmt.Printf("<syncE\n")
+		fmt.Printf("<syncE\n")
 		e.totalMutex.Lock()
 		e.totalCompletedSyncs++
 		if e.totalCompletedSyncs > e.totalSyncRequests {
@@ -175,20 +175,20 @@ func (e *Engine) synchronizeEntity(ctx context.Context, dest *iapi.Entity) (err 
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	//fmt.Printf(">moveInterestingAttToPending\n")
+	fmt.Printf(">moveInterestingAttToPending\n")
 	_, err = e.moveInterestingObjectsToPending(dest)
 	if err != nil {
 		fmt.Printf("se Err 1\n")
 		return err
 	}
-	//fmt.Printf("<moveInterestingAttToPending\n")
-	//fmt.Printf(">movePendingToLabelled\n")
+	fmt.Printf("<moveInterestingAttToPending\n")
+	fmt.Printf(">movePendingToLabelled\n")
 	err = e.movePendingToLabelledAndActive(dest)
 	if err != nil {
 		//fmt.Printf("se Err 2\n")
 		return err
 	}
-	//fmt.Printf("<movePendingToLabelled\n")
+	fmt.Printf("<movePendingToLabelled\n")
 	return nil
 }
 
@@ -199,6 +199,7 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 	defer cancel()
 	//We artificially put a fake request in here so that the done channel
 	//will not be closed until we are done enqueueing all interesting entities
+	fmt.Printf(">updateAllInteresting\n")
 	e.totalMutex.Lock()
 	if e.totalSyncRequests == e.totalCompletedSyncs {
 		//We are about to be unequal, replace the channel
@@ -236,6 +237,7 @@ func (e *Engine) updateAllInterestingEntities(ctx context.Context) error {
 		//they are equal, close the channel to notify ppl
 		close(e.totalEqual)
 	}
+	fmt.Printf("<updateAllInteresting\n")
 	e.totalMutex.Unlock()
 	return nil
 }
