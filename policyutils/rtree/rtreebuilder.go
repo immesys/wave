@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
 )
@@ -218,11 +219,14 @@ func (s *Solution) Policy() *iapi.RTreePolicy {
 		pol := &lpol
 		for _, el := range path[1:] {
 			rhs := iapi.RTreePolicy(*el.Policy)
-			result, okay, _, err := pol.Intersect(&rhs)
+			result, okay, msg, err := pol.Intersect(&rhs)
 			if err != nil {
 				panic(err)
 			}
 			if !okay {
+				spew.Dump(pol)
+				spew.Dump(rhs)
+				spew.Dump(msg)
 				//fmt.Printf("msg: %v %v\n", msg, err)
 				panic("we should not be here")
 			}

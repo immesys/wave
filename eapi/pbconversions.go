@@ -6,7 +6,6 @@ import (
 	"encoding/pem"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
@@ -64,7 +63,6 @@ func ConvertNDWVal(nd *iapi.NameDeclaration, v *engine.Validity) *pb.NameDeclara
 		Validity:         ndv,
 	}
 	if nd.WR1Extra != nil {
-		spew.Dump(nd.WR1Extra)
 		rv.Namespace = nd.WR1Extra.Namespace.Multihash()
 		rv.NamespaceLocation = ToPbLocation(nd.WR1Extra.NamespaceLocation)
 		rv.Partition = nd.WR1Extra.Partition

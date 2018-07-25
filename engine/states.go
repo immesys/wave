@@ -3,7 +3,6 @@ package engine
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"runtime"
 	"strconv"
 
@@ -190,7 +189,7 @@ type attOrND struct {
 }
 
 func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
-	fmt.Printf("MPLA 0\n")
+	//fmt.Printf("MPLA 0\n")
 	var targetIndex int
 	isdirect := bytes.Equal(dest.Keccak256(), e.perspective.Entity.Keccak256())
 	okay, targetIndex, err := e.ws.GetEntityPartitionLabelKeyIndexP(e.ctx, dest.Keccak256HI())
@@ -205,7 +204,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 	subctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
 	//fmt.Printf("targetindex: %v\n", targetIndex)
-	fmt.Printf("MPLA 1\n")
+	//fmt.Printf("MPLA 1\n")
 	//fmt.Printf("subj MPLA: %x\n", dest.Keccak256HI())
 	getTargetIndex := targetIndex
 	if isdirect {
@@ -240,9 +239,9 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 	}()
 
 	for res := range todo {
-		fmt.Printf("MPLA 2\n")
+		//fmt.Printf("MPLA 2\n")
 		if res.Err != nil {
-			fmt.Printf("MPLA 2.5 %v\n", res.Err)
+			//fmt.Printf("MPLA 2.5 %v\n", res.Err)
 			return res.Err
 		}
 		sidx := *res.LabelKeyIndex
@@ -253,7 +252,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				var serr error
 				secret, serr = e.ws.GetPartitionLabelKeyP(subctx, dest.Keccak256HI(), sidx)
 				if serr != nil {
-					fmt.Printf("MPLA 2.8 %v\n", serr)
+					//fmt.Printf("MPLA 2.8 %v\n", serr)
 					return serr
 				}
 				if secret == nil {
@@ -263,12 +262,12 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 			}
 			sidx++
 		}
-		fmt.Printf("MPLA 3\n")
+		//fmt.Printf("MPLA 3\n")
 		dctx := NewEngineDecryptionContext(e)
 		dctx.SetPartitionSecrets(secretCache)
-		fmt.Printf("MPLA 3.4\n")
+		//fmt.Printf("MPLA 3.4\n")
 		e.partitionMutex.Lock()
-		fmt.Printf("MPLA 3.5\n")
+		//fmt.Printf("MPLA 3.5\n")
 		if res.A != nil {
 			//When we parse the attestation here, it is for a given set of
 			//partition keys available in the engine. The keys can't change because
@@ -282,7 +281,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				panic(err)
 			}
 
-			fmt.Printf("MPLA 4\n")
+			//fmt.Printf("MPLA 4\n")
 			//The dot will either
 			// stay pending
 			// move to labelled
@@ -312,7 +311,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				//fmt.Printf("<MPLA 6\n")
 				continue
 			}
-			fmt.Printf("MPLA 7\n")
+			//fmt.Printf("MPLA 7\n")
 			if _, ok := rpa.ExtraInfo.(*iapi.WR1Extra); ok {
 				//This is a WR1 dot that has been labelled, transition to labelled
 				//fmt.Printf("moving the att to labelled\n")
@@ -326,9 +325,6 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				//fails
 				e.partitionMutex.Unlock()
 				continue
-			} else {
-				_, ok := rpa.ExtraInfo.(*iapi.WR1Extra)
-				fmt.Printf("NO WR1EXTRA, BUT %v\n", ok)
 			}
 			e.partitionMutex.Unlock()
 			//This attestation failed to decrypt at all
@@ -342,7 +338,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 			continue
 		} //this is an attestation
 		if res.N != nil {
-			fmt.Printf("parsing ND again in lab->active\n")
+			//fmt.Printf("parsing ND again in lab->active\n")
 			rpn, err := iapi.ParseNameDeclaration(subctx, &iapi.PParseNameDeclaration{
 				NameDeclaration: res.N,
 				Dctx:            dctx,
@@ -351,7 +347,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				panic(err)
 			}
 			if rpn.IsMalformed {
-				fmt.Printf("MPLA 5\n")
+				//fmt.Printf("MPLA 5\n")
 				if err := e.ws.MoveNameDeclarationMalformedP(e.ctx, res.N.Keccak256HI()); err != nil {
 					return err
 				}
@@ -360,7 +356,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 			}
 			if rpn.Result.Decoded() {
 				e.partitionMutex.Unlock()
-				fmt.Printf("ND decoded\n")
+				//fmt.Printf("ND decoded\n")
 
 				err := e.insertActiveNameDeclaration(e.ctx, res.N)
 				if err != nil {
@@ -368,8 +364,6 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				}
 
 				continue
-			} else {
-				fmt.Printf("ND not decoded\n")
 			}
 			if rpn.Result.WR1Extra != nil && rpn.Result.WR1Extra.Partition != nil {
 				//It has been labelled
@@ -393,7 +387,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 		}
 		//ND
 	} //next pending attestation
-	fmt.Printf("MPLA X\n")
+	//fmt.Printf("MPLA X\n")
 	return nil
 }
 

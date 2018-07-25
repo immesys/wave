@@ -623,6 +623,32 @@ func getPerspective(file string, passphrase string, msg string) *pb.Perspective 
 func actionRTProve(c *cli.Context) error {
 	conn := getConn(c)
 	perspective := getPerspective(c.String("subject"), c.String("passphrase"), "missing subject entity secrets")
+
+	if !c.Bool("skipsync") {
+		resp, err := conn.ResyncPerspectiveGraph(context.Background(), &pb.ResyncPerspectiveGraphParams{
+			Perspective: perspective,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: %v\n", resp.Error.Message)
+			os.Exit(1)
+		}
+		srv, err := conn.WaitForSyncComplete(context.Background(), &pb.SyncParams{
+			Perspective: perspective,
+		})
+		for {
+			rv, err := srv.Recv()
+			if err == io.EOF {
+				break
+			}
+			fmt.Printf("Synchronized %d/%d entities\n", rv.CompletedSyncs, rv.TotalSyncRequests)
+		}
+		fmt.Printf("Perspective graph sync complete\n")
+	}
+
 	statements := []*pb.RTreePolicyStatement{}
 	var namespace []byte
 	if len(c.Args()) == 0 {
@@ -690,30 +716,7 @@ func actionRTProve(c *cli.Context) error {
 		RtreeNamespace: namespace,
 		Statements:     statements,
 	}
-	if !c.Bool("skipsync") {
-		resp, err := conn.ResyncPerspectiveGraph(context.Background(), &pb.ResyncPerspectiveGraphParams{
-			Perspective: perspective,
-		})
-		if err != nil {
-			fmt.Printf("error: %v\n", err)
-			os.Exit(1)
-		}
-		if resp.Error != nil {
-			fmt.Printf("error: %v\n", resp.Error.Message)
-			os.Exit(1)
-		}
-		srv, err := conn.WaitForSyncComplete(context.Background(), &pb.SyncParams{
-			Perspective: perspective,
-		})
-		for {
-			rv, err := srv.Recv()
-			if err == io.EOF {
-				break
-			}
-			fmt.Printf("Synchronized %d/%d entities\n", rv.CompletedSyncs, rv.TotalSyncRequests)
-		}
-		fmt.Printf("Perspective graph sync complete\n")
-	}
+
 	resp, err := conn.BuildRTreeProof(context.Background(), params)
 	if err != nil {
 		fmt.Printf("error: %v\n", err)

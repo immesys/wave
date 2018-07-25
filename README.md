@@ -119,3 +119,13 @@ Alice can now grant permissions to bob using the names that the company created:
 wrote attestation: att_GyDe_hk7nBWHft3m61dzYa3-iHorXCDxRc0MZxRMX8NFmw==.pem
 published attestation
 ```
+
+And bob can prove that, after he names the company as well:
+
+```
+./wv name --attester bob company.namespace acme
+name "acme" -> "GyBIOr311-I6UE_9T0lYIoIZsLZaSWRWyuz8SJsrUJs3vw==" created successfully
+./wv rtprove --subject bob superapp.acme:read@acme/foo
+Perspective graph sync complete
+wrote proof: proof_2018-07-25T16:33:01-07:00.pem
+```
