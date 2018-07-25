@@ -10,6 +10,7 @@ Version 1.0
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
+//import _ "github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis/google/api"
 
 import (
 	context "golang.org/x/net/context"
@@ -28,9 +29,9 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type MarkEntityInterestingParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	Entity               []byte       `protobuf:"bytes,2,opt,name=entity,proto3" json:"entity,omitempty"`
-	EntityLocation       *Location    `protobuf:"bytes,3,opt,name=entityLocation" json:"entityLocation,omitempty"`
+	EntityLocation       *Location    `protobuf:"bytes,3,opt,name=entityLocation,proto3" json:"entityLocation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -82,7 +83,7 @@ func (m *MarkEntityInterestingParams) GetEntityLocation() *Location {
 }
 
 type MarkEntityInterestingResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -120,17 +121,17 @@ func (m *MarkEntityInterestingResponse) GetError() *Error {
 }
 
 type CreateNameDeclarationParams struct {
-	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
-	Name            string       `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	Name            string       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Subject         []byte       `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
-	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	// ms since epoch, if omitted default = now
-	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom" json:"validFrom,omitempty"`
+	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
 	// ms since epoch if omitted default = now+3 years
-	ValidUntil int64 `protobuf:"varint,6,opt,name=validUntil" json:"validUntil,omitempty"`
+	ValidUntil int64 `protobuf:"varint,6,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	// if specified, the name declaration will be encrypted
 	Namespace            []byte    `protobuf:"bytes,7,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	NamespaceLocation    *Location `protobuf:"bytes,8,opt,name=namespaceLocation" json:"namespaceLocation,omitempty"`
+	NamespaceLocation    *Location `protobuf:"bytes,8,opt,name=namespaceLocation,proto3" json:"namespaceLocation,omitempty"`
 	Partition            [][]byte  `protobuf:"bytes,9,rep,name=partition,proto3" json:"partition,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
@@ -225,7 +226,7 @@ func (m *CreateNameDeclarationParams) GetPartition() [][]byte {
 }
 
 type CreateNameDeclarationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	DER                  []byte   `protobuf:"bytes,2,opt,name=DER,proto3" json:"DER,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -279,8 +280,8 @@ func (m *CreateNameDeclarationResponse) GetHash() []byte {
 }
 
 type ResolveNameParams struct {
-	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
-	Name        string       `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	Name        string       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// If omitted, the perspective entity is used
 	TopLevelAttester     []byte   `protobuf:"bytes,3,opt,name=topLevelAttester,proto3" json:"topLevelAttester,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -335,17 +336,17 @@ func (m *ResolveNameParams) GetTopLevelAttester() []byte {
 
 type NameDeclaration struct {
 	Hash                 []byte                   `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	Name                 string                   `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Name                 string                   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Subject              []byte                   `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
-	SubjectLocation      *Location                `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation      *Location                `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	Attester             []byte                   `protobuf:"bytes,5,opt,name=attester,proto3" json:"attester,omitempty"`
-	AttesterLocation     *Location                `protobuf:"bytes,6,opt,name=attesterLocation" json:"attesterLocation,omitempty"`
-	ValidFrom            int64                    `protobuf:"varint,7,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64                    `protobuf:"varint,8,opt,name=validUntil" json:"validUntil,omitempty"`
+	AttesterLocation     *Location                `protobuf:"bytes,6,opt,name=attesterLocation,proto3" json:"attesterLocation,omitempty"`
+	ValidFrom            int64                    `protobuf:"varint,7,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64                    `protobuf:"varint,8,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	Namespace            []byte                   `protobuf:"bytes,9,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	NamespaceLocation    *Location                `protobuf:"bytes,10,opt,name=namespaceLocation" json:"namespaceLocation,omitempty"`
+	NamespaceLocation    *Location                `protobuf:"bytes,10,opt,name=namespaceLocation,proto3" json:"namespaceLocation,omitempty"`
 	Partition            [][]byte                 `protobuf:"bytes,11,rep,name=partition,proto3" json:"partition,omitempty"`
-	Validity             *NameDeclarationValidity `protobuf:"bytes,12,opt,name=validity" json:"validity,omitempty"`
+	Validity             *NameDeclarationValidity `protobuf:"bytes,12,opt,name=validity,proto3" json:"validity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
 	XXX_unrecognized     []byte                   `json:"-"`
 	XXX_sizecache        int32                    `json:"-"`
@@ -460,9 +461,9 @@ func (m *NameDeclaration) GetValidity() *NameDeclarationValidity {
 }
 
 type ResolveNameResponse struct {
-	Error                *Error             `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Entity               *Entity            `protobuf:"bytes,2,opt,name=entity" json:"entity,omitempty"`
-	Derivation           []*NameDeclaration `protobuf:"bytes,3,rep,name=derivation" json:"derivation,omitempty"`
+	Error                *Error             `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Entity               *Entity            `protobuf:"bytes,2,opt,name=entity,proto3" json:"entity,omitempty"`
+	Derivation           []*NameDeclaration `protobuf:"bytes,3,rep,name=derivation,proto3" json:"derivation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`
@@ -515,7 +516,7 @@ func (m *ResolveNameResponse) GetDerivation() []*NameDeclaration {
 
 type ResolveHashParams struct {
 	Hash                 []byte       `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	Perspective          *Perspective `protobuf:"bytes,2,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,2,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -560,10 +561,10 @@ func (m *ResolveHashParams) GetPerspective() *Perspective {
 }
 
 type ResolveHashResponse struct {
-	Error                *Error       `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Location             *Location    `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
-	Entity               *Entity      `protobuf:"bytes,3,opt,name=entity" json:"entity,omitempty"`
-	Attestation          *Attestation `protobuf:"bytes,4,opt,name=attestation" json:"attestation,omitempty"`
+	Error                *Error       `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Location             *Location    `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	Entity               *Entity      `protobuf:"bytes,3,opt,name=entity,proto3" json:"entity,omitempty"`
+	Attestation          *Attestation `protobuf:"bytes,4,opt,name=attestation,proto3" json:"attestation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -676,9 +677,9 @@ func (m *InspectParams) GetVerifierKey() []byte {
 }
 
 type InspectResponse struct {
-	Error                *Error       `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Entity               *Entity      `protobuf:"bytes,2,opt,name=entity" json:"entity,omitempty"`
-	Attestation          *Attestation `protobuf:"bytes,3,opt,name=attestation" json:"attestation,omitempty"`
+	Error                *Error       `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Entity               *Entity      `protobuf:"bytes,2,opt,name=entity,proto3" json:"entity,omitempty"`
+	Attestation          *Attestation `protobuf:"bytes,3,opt,name=attestation,proto3" json:"attestation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -760,8 +761,8 @@ func (m *ListLocationsParams) XXX_DiscardUnknown() {
 var xxx_messageInfo_ListLocationsParams proto.InternalMessageInfo
 
 type ListLocationsResponse struct {
-	Error                *Error               `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	AgentLocations       map[string]*Location `protobuf:"bytes,2,rep,name=agentLocations" json:"agentLocations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Error                *Error               `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	AgentLocations       map[string]*Location `protobuf:"bytes,2,rep,name=agentLocations,proto3" json:"agentLocations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -807,10 +808,10 @@ func (m *ListLocationsResponse) GetAgentLocations() map[string]*Location {
 
 type CreateEntityParams struct {
 	// Milliseconds since the epoch
-	ValidFrom            int64     `protobuf:"varint,1,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64     `protobuf:"varint,2,opt,name=validUntil" json:"validUntil,omitempty"`
-	RevocationLocation   *Location `protobuf:"bytes,3,opt,name=revocationLocation" json:"revocationLocation,omitempty"`
-	SecretPassphrase     string    `protobuf:"bytes,4,opt,name=SecretPassphrase" json:"SecretPassphrase,omitempty"`
+	ValidFrom            int64     `protobuf:"varint,1,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64     `protobuf:"varint,2,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
+	RevocationLocation   *Location `protobuf:"bytes,3,opt,name=revocationLocation,proto3" json:"revocationLocation,omitempty"`
+	SecretPassphrase     string    `protobuf:"bytes,4,opt,name=SecretPassphrase,proto3" json:"SecretPassphrase,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -869,7 +870,7 @@ func (m *CreateEntityParams) GetSecretPassphrase() string {
 }
 
 type CreateEntityResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	PublicDER            []byte   `protobuf:"bytes,2,opt,name=PublicDER,proto3" json:"PublicDER,omitempty"`
 	SecretDER            []byte   `protobuf:"bytes,3,opt,name=SecretDER,proto3" json:"SecretDER,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,4,opt,name=hash,proto3" json:"hash,omitempty"`
@@ -932,9 +933,9 @@ func (m *CreateEntityResponse) GetHash() []byte {
 
 type Entity struct {
 	Hash                 []byte          `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	ValidFrom            int64           `protobuf:"varint,2,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64           `protobuf:"varint,3,opt,name=validUntil" json:"validUntil,omitempty"`
-	Validity             *EntityValidity `protobuf:"bytes,4,opt,name=validity" json:"validity,omitempty"`
+	ValidFrom            int64           `protobuf:"varint,2,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64           `protobuf:"varint,3,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
+	Validity             *EntityValidity `protobuf:"bytes,4,opt,name=validity,proto3" json:"validity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -993,15 +994,15 @@ func (m *Entity) GetValidity() *EntityValidity {
 }
 
 type CreateAttestationParams struct {
-	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
-	BodyScheme      string       `protobuf:"bytes,2,opt,name=bodyScheme" json:"bodyScheme,omitempty"`
+	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	BodyScheme      string       `protobuf:"bytes,2,opt,name=bodyScheme,proto3" json:"bodyScheme,omitempty"`
 	SubjectHash     []byte       `protobuf:"bytes,3,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
-	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	// If 0, will be set to time.Now. Ms since epoch
-	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom" json:"validFrom,omitempty"`
+	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
 	// If 0, will be set to some arbitrary default. Ms since epoch
-	ValidUntil           int64    `protobuf:"varint,6,opt,name=validUntil" json:"validUntil,omitempty"`
-	Policy               *Policy  `protobuf:"bytes,7,opt,name=policy" json:"policy,omitempty"`
+	ValidUntil           int64    `protobuf:"varint,6,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
+	Policy               *Policy  `protobuf:"bytes,7,opt,name=policy,proto3" json:"policy,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1081,7 +1082,7 @@ func (m *CreateAttestationParams) GetPolicy() *Policy {
 }
 
 type ResyncPerspectiveGraphParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -1119,7 +1120,7 @@ func (m *ResyncPerspectiveGraphParams) GetPerspective() *Perspective {
 }
 
 type ResyncPerspectiveGraphResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1157,7 +1158,7 @@ func (m *ResyncPerspectiveGraphResponse) GetError() *Error {
 }
 
 type SyncParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -1195,20 +1196,20 @@ func (m *SyncParams) GetPerspective() *Perspective {
 }
 
 type EncryptMessageParams struct {
-	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	// The payload of the message
 	Content []byte `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
 	// If present, a direct decryption key will be generated
 	SubjectHash     []byte    `protobuf:"bytes,3,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
-	SubjectLocation *Location `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation *Location `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	// If present, an OAQUE decryption key will be generated
 	Namespace         []byte    `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	NamespaceLocation *Location `protobuf:"bytes,6,opt,name=namespaceLocation" json:"namespaceLocation,omitempty"`
+	NamespaceLocation *Location `protobuf:"bytes,6,opt,name=namespaceLocation,proto3" json:"namespaceLocation,omitempty"`
 	Partition         [][]byte  `protobuf:"bytes,7,rep,name=partition,proto3" json:"partition,omitempty"`
 	// ms since epoch, if zero set to now
-	ValidFrom int64 `protobuf:"varint,8,opt,name=validFrom" json:"validFrom,omitempty"`
+	ValidFrom int64 `protobuf:"varint,8,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
 	// ms since epoch, if zero set to now
-	ValidUntil           int64    `protobuf:"varint,9,opt,name=validUntil" json:"validUntil,omitempty"`
+	ValidUntil           int64    `protobuf:"varint,9,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1302,7 +1303,7 @@ func (m *EncryptMessageParams) GetValidUntil() int64 {
 }
 
 type EncryptMessageResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Ciphertext           []byte   `protobuf:"bytes,2,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1348,7 +1349,7 @@ func (m *EncryptMessageResponse) GetCiphertext() []byte {
 }
 
 type DecryptMessageParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	Ciphertext           []byte       `protobuf:"bytes,2,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
@@ -1394,7 +1395,7 @@ func (m *DecryptMessageParams) GetCiphertext() []byte {
 }
 
 type DecryptMessageResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Content              []byte   `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1440,10 +1441,10 @@ func (m *DecryptMessageResponse) GetContent() []byte {
 }
 
 type SyncResponse struct {
-	Error                *Error                          `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	StorageStatus        map[string]*StorageDriverStatus `protobuf:"bytes,2,rep,name=storageStatus" json:"storageStatus,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	TotalSyncRequests    int64                           `protobuf:"varint,3,opt,name=totalSyncRequests" json:"totalSyncRequests,omitempty"`
-	CompletedSyncs       int64                           `protobuf:"varint,4,opt,name=completedSyncs" json:"completedSyncs,omitempty"`
+	Error                *Error                          `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	StorageStatus        map[string]*StorageDriverStatus `protobuf:"bytes,2,rep,name=storageStatus,proto3" json:"storageStatus,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	TotalSyncRequests    int64                           `protobuf:"varint,3,opt,name=totalSyncRequests,proto3" json:"totalSyncRequests,omitempty"`
+	CompletedSyncs       int64                           `protobuf:"varint,4,opt,name=completedSyncs,proto3" json:"completedSyncs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
 	XXX_unrecognized     []byte                          `json:"-"`
 	XXX_sizecache        int32                           `json:"-"`
@@ -1502,8 +1503,8 @@ func (m *SyncResponse) GetCompletedSyncs() int64 {
 }
 
 type StorageDriverStatus struct {
-	Operational          bool              `protobuf:"varint,1,opt,name=operational" json:"operational,omitempty"`
-	Info                 map[string]string `protobuf:"bytes,2,rep,name=info" json:"info,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Operational          bool              `protobuf:"varint,1,opt,name=operational,proto3" json:"operational,omitempty"`
+	Info                 map[string]string `protobuf:"bytes,2,rep,name=info,proto3" json:"info,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -1548,7 +1549,7 @@ func (m *StorageDriverStatus) GetInfo() map[string]string {
 }
 
 type CreateAttestationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	DER                  []byte   `protobuf:"bytes,2,opt,name=DER,proto3" json:"DER,omitempty"`
 	VerifierKey          []byte   `protobuf:"bytes,3,opt,name=verifierKey,proto3" json:"verifierKey,omitempty"`
 	ProverKey            []byte   `protobuf:"bytes,4,opt,name=proverKey,proto3" json:"proverKey,omitempty"`
@@ -1619,7 +1620,7 @@ func (m *CreateAttestationResponse) GetHash() []byte {
 
 type PublishEntityParams struct {
 	DER                  []byte    `protobuf:"bytes,1,opt,name=DER,proto3" json:"DER,omitempty"`
-	Location             *Location `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
+	Location             *Location `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -1664,7 +1665,7 @@ func (m *PublishEntityParams) GetLocation() *Location {
 }
 
 type PublishEntityResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1748,7 +1749,7 @@ func (m *PublishAttestationParams) GetDER() []byte {
 }
 
 type PublishAttestationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1794,7 +1795,7 @@ func (m *PublishAttestationResponse) GetHash() []byte {
 }
 
 type AddAttestationParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	DER                  []byte       `protobuf:"bytes,2,opt,name=DER,proto3" json:"DER,omitempty"`
 	ProverKey            []byte       `protobuf:"bytes,3,opt,name=proverKey,proto3" json:"proverKey,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
@@ -1848,7 +1849,7 @@ func (m *AddAttestationParams) GetProverKey() []byte {
 }
 
 type AddAttestationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1886,7 +1887,7 @@ func (m *AddAttestationResponse) GetError() *Error {
 }
 
 type LookupAttestationsParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	FromEntity           []byte       `protobuf:"bytes,2,opt,name=fromEntity,proto3" json:"fromEntity,omitempty"`
 	ToEntity             []byte       `protobuf:"bytes,3,opt,name=toEntity,proto3" json:"toEntity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
@@ -1940,8 +1941,8 @@ func (m *LookupAttestationsParams) GetToEntity() []byte {
 }
 
 type LookupAttestationsResponse struct {
-	Error                *Error         `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Results              []*Attestation `protobuf:"bytes,2,rep,name=results" json:"results,omitempty"`
+	Error                *Error         `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Results              []*Attestation `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -1986,8 +1987,8 @@ func (m *LookupAttestationsResponse) GetResults() []*Attestation {
 }
 
 type Error struct {
-	Code                 int32    `protobuf:"varint,1,opt,name=code" json:"code,omitempty"`
-	Message              string   `protobuf:"bytes,2,opt,name=message" json:"message,omitempty"`
+	Code                 int32    `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Message              string   `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2032,8 +2033,8 @@ func (m *Error) GetMessage() string {
 }
 
 type Perspective struct {
-	EntitySecret         *EntitySecret `protobuf:"bytes,1,opt,name=entitySecret" json:"entitySecret,omitempty"`
-	Location             *Location     `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
+	EntitySecret         *EntitySecret `protobuf:"bytes,1,opt,name=entitySecret,proto3" json:"entitySecret,omitempty"`
+	Location             *Location     `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
 	XXX_unrecognized     []byte        `json:"-"`
 	XXX_sizecache        int32         `json:"-"`
@@ -2079,9 +2080,9 @@ func (m *Perspective) GetLocation() *Location {
 
 type Location struct {
 	// One of the following
-	LocationURI *LocationURI `protobuf:"bytes,1,opt,name=locationURI" json:"locationURI,omitempty"`
+	LocationURI *LocationURI `protobuf:"bytes,1,opt,name=locationURI,proto3" json:"locationURI,omitempty"`
 	// The name of a location in the agent config
-	AgentLocation        string   `protobuf:"bytes,2,opt,name=agentLocation" json:"agentLocation,omitempty"`
+	AgentLocation        string   `protobuf:"bytes,2,opt,name=agentLocation,proto3" json:"agentLocation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2126,8 +2127,8 @@ func (m *Location) GetAgentLocation() string {
 }
 
 type LocationURI struct {
-	URI                  string   `protobuf:"bytes,1,opt,name=URI" json:"URI,omitempty"`
-	Version              int32    `protobuf:"varint,2,opt,name=version" json:"version,omitempty"`
+	URI                  string   `protobuf:"bytes,1,opt,name=URI,proto3" json:"URI,omitempty"`
+	Version              int32    `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2220,12 +2221,12 @@ func (m *EntitySecret) GetPassphrase() []byte {
 type Attestation struct {
 	DER                  []byte               `protobuf:"bytes,1,opt,name=DER,proto3" json:"DER,omitempty"`
 	Hash                 []byte               `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
-	Body                 *AttestationBody     `protobuf:"bytes,3,opt,name=body" json:"body,omitempty"`
+	Body                 *AttestationBody     `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
 	VerifierKey          []byte               `protobuf:"bytes,4,opt,name=verifierKey,proto3" json:"verifierKey,omitempty"`
 	ProverKey            []byte               `protobuf:"bytes,5,opt,name=proverKey,proto3" json:"proverKey,omitempty"`
 	SubjectHash          []byte               `protobuf:"bytes,6,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
-	SubjectLocation      *Location            `protobuf:"bytes,7,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
-	Validity             *AttestationValidity `protobuf:"bytes,8,opt,name=validity" json:"validity,omitempty"`
+	SubjectLocation      *Location            `protobuf:"bytes,7,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
+	Validity             *AttestationValidity `protobuf:"bytes,8,opt,name=validity,proto3" json:"validity,omitempty"`
 	Partition            [][]byte             `protobuf:"bytes,9,rep,name=partition,proto3" json:"partition,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
@@ -2322,10 +2323,10 @@ func (m *Attestation) GetPartition() [][]byte {
 type AttestationBody struct {
 	DecodedBodyDER       []byte    `protobuf:"bytes,1,opt,name=DecodedBodyDER,proto3" json:"DecodedBodyDER,omitempty"`
 	AttesterHash         []byte    `protobuf:"bytes,2,opt,name=attesterHash,proto3" json:"attesterHash,omitempty"`
-	AttesterLocation     *Location `protobuf:"bytes,3,opt,name=attesterLocation" json:"attesterLocation,omitempty"`
-	Policy               *Policy   `protobuf:"bytes,4,opt,name=policy" json:"policy,omitempty"`
-	ValidFrom            int64     `protobuf:"varint,5,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64     `protobuf:"varint,6,opt,name=validUntil" json:"validUntil,omitempty"`
+	AttesterLocation     *Location `protobuf:"bytes,3,opt,name=attesterLocation,proto3" json:"attesterLocation,omitempty"`
+	Policy               *Policy   `protobuf:"bytes,4,opt,name=policy,proto3" json:"policy,omitempty"`
+	ValidFrom            int64     `protobuf:"varint,5,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64     `protobuf:"varint,6,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -2398,15 +2399,15 @@ func (m *AttestationBody) GetValidUntil() int64 {
 }
 
 type AttestationValidity struct {
-	Valid                bool     `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
-	Revoked              bool     `protobuf:"varint,2,opt,name=revoked" json:"revoked,omitempty"`
-	Expired              bool     `protobuf:"varint,3,opt,name=expired" json:"expired,omitempty"`
-	Malformed            bool     `protobuf:"varint,4,opt,name=malformed" json:"malformed,omitempty"`
-	NotDecrypted         bool     `protobuf:"varint,5,opt,name=notDecrypted" json:"notDecrypted,omitempty"`
-	SrcInvalid           bool     `protobuf:"varint,6,opt,name=srcInvalid" json:"srcInvalid,omitempty"`
-	DstInvalid           bool     `protobuf:"varint,7,opt,name=dstInvalid" json:"dstInvalid,omitempty"`
-	Message              string   `protobuf:"bytes,8,opt,name=message" json:"message,omitempty"`
-	NotValidYet          bool     `protobuf:"varint,9,opt,name=notValidYet" json:"notValidYet,omitempty"`
+	Valid                bool     `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Revoked              bool     `protobuf:"varint,2,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	Expired              bool     `protobuf:"varint,3,opt,name=expired,proto3" json:"expired,omitempty"`
+	Malformed            bool     `protobuf:"varint,4,opt,name=malformed,proto3" json:"malformed,omitempty"`
+	NotDecrypted         bool     `protobuf:"varint,5,opt,name=notDecrypted,proto3" json:"notDecrypted,omitempty"`
+	SrcInvalid           bool     `protobuf:"varint,6,opt,name=srcInvalid,proto3" json:"srcInvalid,omitempty"`
+	DstInvalid           bool     `protobuf:"varint,7,opt,name=dstInvalid,proto3" json:"dstInvalid,omitempty"`
+	Message              string   `protobuf:"bytes,8,opt,name=message,proto3" json:"message,omitempty"`
+	NotValidYet          bool     `protobuf:"varint,9,opt,name=notValidYet,proto3" json:"notValidYet,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2500,12 +2501,12 @@ func (m *AttestationValidity) GetNotValidYet() bool {
 }
 
 type EntityValidity struct {
-	Valid                bool     `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
-	Revoked              bool     `protobuf:"varint,2,opt,name=revoked" json:"revoked,omitempty"`
-	Expired              bool     `protobuf:"varint,3,opt,name=expired" json:"expired,omitempty"`
-	Malformed            bool     `protobuf:"varint,4,opt,name=malformed" json:"malformed,omitempty"`
-	Message              string   `protobuf:"bytes,5,opt,name=message" json:"message,omitempty"`
-	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet" json:"notValidYet,omitempty"`
+	Valid                bool     `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Revoked              bool     `protobuf:"varint,2,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	Expired              bool     `protobuf:"varint,3,opt,name=expired,proto3" json:"expired,omitempty"`
+	Malformed            bool     `protobuf:"varint,4,opt,name=malformed,proto3" json:"malformed,omitempty"`
+	Message              string   `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet,proto3" json:"notValidYet,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2578,12 +2579,12 @@ func (m *EntityValidity) GetNotValidYet() bool {
 }
 
 type NameDeclarationValidity struct {
-	Valid                bool     `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
-	Revoked              bool     `protobuf:"varint,2,opt,name=revoked" json:"revoked,omitempty"`
-	Expired              bool     `protobuf:"varint,3,opt,name=expired" json:"expired,omitempty"`
-	Malformed            bool     `protobuf:"varint,4,opt,name=malformed" json:"malformed,omitempty"`
-	Message              string   `protobuf:"bytes,5,opt,name=message" json:"message,omitempty"`
-	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet" json:"notValidYet,omitempty"`
+	Valid                bool     `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Revoked              bool     `protobuf:"varint,2,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	Expired              bool     `protobuf:"varint,3,opt,name=expired,proto3" json:"expired,omitempty"`
+	Malformed            bool     `protobuf:"varint,4,opt,name=malformed,proto3" json:"malformed,omitempty"`
+	Message              string   `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet,proto3" json:"notValidYet,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2656,8 +2657,8 @@ func (m *NameDeclarationValidity) GetNotValidYet() bool {
 }
 
 type Policy struct {
-	TrustLevelPolicy     *TrustLevelPolicy `protobuf:"bytes,1,opt,name=trustLevelPolicy" json:"trustLevelPolicy,omitempty"`
-	RTreePolicy          *RTreePolicy      `protobuf:"bytes,2,opt,name=rTreePolicy" json:"rTreePolicy,omitempty"`
+	TrustLevelPolicy     *TrustLevelPolicy `protobuf:"bytes,1,opt,name=trustLevelPolicy,proto3" json:"trustLevelPolicy,omitempty"`
+	RTreePolicy          *RTreePolicy      `protobuf:"bytes,2,opt,name=rTreePolicy,proto3" json:"rTreePolicy,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -2702,7 +2703,7 @@ func (m *Policy) GetRTreePolicy() *RTreePolicy {
 }
 
 type TrustLevelPolicy struct {
-	Trust                int32    `protobuf:"varint,1,opt,name=trust" json:"trust,omitempty"`
+	Trust                int32    `protobuf:"varint,1,opt,name=trust,proto3" json:"trust,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2741,8 +2742,8 @@ func (m *TrustLevelPolicy) GetTrust() int32 {
 
 type RTreePolicy struct {
 	Namespace            []byte                  `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Indirections         uint32                  `protobuf:"varint,2,opt,name=indirections" json:"indirections,omitempty"`
-	Statements           []*RTreePolicyStatement `protobuf:"bytes,3,rep,name=statements" json:"statements,omitempty"`
+	Indirections         uint32                  `protobuf:"varint,2,opt,name=indirections,proto3" json:"indirections,omitempty"`
+	Statements           []*RTreePolicyStatement `protobuf:"bytes,3,rep,name=statements,proto3" json:"statements,omitempty"`
 	VisibilityURI        [][]byte                `protobuf:"bytes,4,rep,name=visibilityURI,proto3" json:"visibilityURI,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
@@ -2803,8 +2804,8 @@ func (m *RTreePolicy) GetVisibilityURI() [][]byte {
 
 type RTreePolicyStatement struct {
 	PermissionSet        []byte   `protobuf:"bytes,1,opt,name=permissionSet,proto3" json:"permissionSet,omitempty"`
-	Permissions          []string `protobuf:"bytes,2,rep,name=permissions" json:"permissions,omitempty"`
-	Resource             string   `protobuf:"bytes,3,opt,name=resource" json:"resource,omitempty"`
+	Permissions          []string `protobuf:"bytes,2,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	Resource             string   `protobuf:"bytes,3,opt,name=resource,proto3" json:"resource,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2856,10 +2857,10 @@ func (m *RTreePolicyStatement) GetResource() string {
 }
 
 type BuildRTreeParams struct {
-	Perspective          *Perspective            `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective            `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	SubjectHash          []byte                  `protobuf:"bytes,2,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
 	RtreeNamespace       []byte                  `protobuf:"bytes,3,opt,name=rtreeNamespace,proto3" json:"rtreeNamespace,omitempty"`
-	Statements           []*RTreePolicyStatement `protobuf:"bytes,4,rep,name=statements" json:"statements,omitempty"`
+	Statements           []*RTreePolicyStatement `protobuf:"bytes,4,rep,name=statements,proto3" json:"statements,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
 	XXX_sizecache        int32                   `json:"-"`
@@ -2918,8 +2919,8 @@ func (m *BuildRTreeParams) GetStatements() []*RTreePolicyStatement {
 }
 
 type BuildRTreeResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Result               *Proof   `protobuf:"bytes,2,opt,name=result" json:"result,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Result               *Proof   `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
 	ProofDER             []byte   `protobuf:"bytes,3,opt,name=proofDER,proto3" json:"proofDER,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -3010,8 +3011,8 @@ func (m *VerifyProofParams) GetProofDER() []byte {
 }
 
 type VerifyProofResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Result               *Proof   `protobuf:"bytes,2,opt,name=result" json:"result,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Result               *Proof   `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3056,12 +3057,12 @@ func (m *VerifyProofResponse) GetResult() *Proof {
 }
 
 type Proof struct {
-	Elements             []*Attestation `protobuf:"bytes,1,rep,name=elements" json:"elements,omitempty"`
-	Paths                []*ProofPath   `protobuf:"bytes,2,rep,name=paths" json:"paths,omitempty"`
-	Policy               *Policy        `protobuf:"bytes,3,opt,name=policy" json:"policy,omitempty"`
-	Expiry               int64          `protobuf:"varint,4,opt,name=expiry" json:"expiry,omitempty"`
+	Elements             []*Attestation `protobuf:"bytes,1,rep,name=elements,proto3" json:"elements,omitempty"`
+	Paths                []*ProofPath   `protobuf:"bytes,2,rep,name=paths,proto3" json:"paths,omitempty"`
+	Policy               *Policy        `protobuf:"bytes,3,opt,name=policy,proto3" json:"policy,omitempty"`
+	Expiry               int64          `protobuf:"varint,4,opt,name=expiry,proto3" json:"expiry,omitempty"`
 	Subject              []byte         `protobuf:"bytes,5,opt,name=subject,proto3" json:"subject,omitempty"`
-	SubjectLocation      *Location      `protobuf:"bytes,6,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation      *Location      `protobuf:"bytes,6,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -3134,7 +3135,7 @@ func (m *Proof) GetSubjectLocation() *Location {
 }
 
 type ProofPath struct {
-	Elements             []int32  `protobuf:"varint,1,rep,packed,name=elements" json:"elements,omitempty"`
+	Elements             []int32  `protobuf:"varint,1,rep,packed,name=elements,proto3" json:"elements,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
