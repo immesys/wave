@@ -40,6 +40,22 @@ func main() {
 			Flags:   []cli.Flag{},
 		},
 		{
+			Name:   "resync",
+			Usage:  "resynchronize the perspective graph",
+			Action: cli.ActionFunc(actionResync),
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:   "perspective",
+					Usage:  "the perspective entity secrets",
+					EnvVar: "WAVE_DEFAULT_ENTITY",
+				},
+				cli.StringFlag{
+					Name:  "passphrase",
+					Usage: "the passphrase to use if required",
+				},
+			},
+		},
+		{
 			Name:    "mkentity",
 			Aliases: []string{"mke"},
 			Usage:   "create a new entity",
@@ -136,6 +152,41 @@ func main() {
 			},
 		},
 		{
+			Name:      "name",
+			Usage:     "name an entity",
+			ArgsUsage: "name [options] entity",
+			Action:    cli.ActionFunc(actionNameDecl),
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:   "attester",
+					Usage:  "the attesting entity secrets",
+					EnvVar: "WAVE_DEFAULT_ENTITY",
+				},
+				cli.StringFlag{
+					Name:   "expiry, e",
+					Value:  "1000d",
+					Usage:  "set the expiry measured from now e.g. 10d5h10s",
+					EnvVar: "WAVE_DEFAULT_EXPIRY",
+				},
+				cli.StringFlag{
+					Name:  "passphrase",
+					Usage: "the passphrase to use if required",
+				},
+				cli.BoolFlag{
+					Name:  "public",
+					Usage: "everyone can see this name",
+				},
+				cli.StringFlag{
+					Name:  "namespace",
+					Usage: "(optional) which namespace to place this name declaration in",
+				},
+				cli.StringFlag{
+					Name:  "partition",
+					Usage: "(optional) which partition to encrypt this under",
+				},
+			},
+		},
+		{
 			Name:   "inspect",
 			Usage:  "print information about a file",
 			Action: cli.ActionFunc(actionInspect),
@@ -148,12 +199,13 @@ func main() {
 		},
 		{
 			Name:   "resolve",
-			Usage:  "print information about a hash",
+			Usage:  "print information about a hash/name",
 			Action: cli.ActionFunc(actionResolve),
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:  "perspective",
-					Usage: "the entity to use as a perspective",
+					Name:   "perspective",
+					Usage:  "the entity to use as a perspective",
+					EnvVar: "WAVE_DEFAULT_ENTITY",
 				},
 				cli.StringFlag{
 					Name:  "passphrase",

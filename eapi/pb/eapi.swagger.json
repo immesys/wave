@@ -1386,6 +1386,9 @@
           "items": {
             "$ref": "#/definitions/pbNameDeclaration"
           }
+        },
+        "location": {
+          "$ref": "#/definitions/pbLocation"
         }
       }
     },

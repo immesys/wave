@@ -222,6 +222,7 @@ type RParseEntitySecrets struct {
 
 func ParseEntitySecrets(ctx context.Context, p *PParseEntitySecrets) (*RParseEntitySecrets, wve.WVE) {
 	wo := serdes.WaveWireObject{}
+
 	trailing, uerr := asn1.Unmarshal(p.DER, &wo.Content)
 	if uerr != nil {
 		return nil, wve.ErrW(wve.MalformedDER, "could not decode", uerr)

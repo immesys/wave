@@ -3,6 +3,7 @@ package eapi
 import (
 	"context"
 	"encoding/asn1"
+	"encoding/pem"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -309,8 +310,14 @@ func ConvertBodyScheme(in string) iapi.AttestationBodyScheme {
 }
 func ConvertEntitySecret(ctx context.Context, in *pb.EntitySecret) (*iapi.EntitySecrets, wve.WVE) {
 	passphrase := string(in.Passphrase)
+	//Bit of a hack: users might accidentally send us PEM instead of DER. Check that first:
+	der := in.DER
+	pblock, _ := pem.Decode(in.DER)
+	if pblock != nil {
+		der = pblock.Bytes
+	}
 	ppae, err := iapi.ParseEntitySecrets(ctx, &iapi.PParseEntitySecrets{
-		DER:        in.DER,
+		DER:        der,
 		Passphrase: &passphrase,
 	})
 	if err != nil {

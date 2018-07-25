@@ -304,91 +304,50 @@ func formatPartition(p [][]byte) string {
 }
 func actionResolve(c *cli.Context) error {
 	conn := getConn(c)
-	pfile := c.String("perspective")
-	var perspective *pb.Perspective
-	if pfile != "" {
-		pass := []byte(c.String("passphrase"))
-		if len(pass) == 0 {
-			fmt.Printf("passphrase for perspective entity: ")
-			var err error
-			pass, err = gopass.GetPasswdMasked()
+
+	perspective := getPerspective(c.String("perspective"), c.String("passphrase"), "missing perspective parameter\n")
+
+	for _, a := range c.Args() {
+		if len(a) == 48 && strings.Index(a, ".") == -1 {
+			//Probably a hash
+			h, err := base64.URLEncoding.DecodeString(a)
 			if err != nil {
-				fmt.Printf("could not read passphrase: %v\n", err)
+				fmt.Printf("invalid hash\n")
 				os.Exit(1)
 			}
-		}
-		pder := loadEntitySecretDER(pfile)
-		perspective = &pb.Perspective{
-			EntitySecret: &pb.EntitySecret{
-				DER:        pder,
-				Passphrase: pass,
-			},
-		}
-	}
-
-	for _, hash := range c.Args() {
-		h, err := base64.URLEncoding.DecodeString(hash)
-		if err != nil {
-			fmt.Printf("invalid hash\n")
-			os.Exit(1)
-		}
-		resp, err := conn.ResolveHash(context.Background(), &pb.ResolveHashParams{
-			Perspective: perspective,
-			Hash:        h,
-		})
-		if err != nil {
-			fmt.Printf("error: %v\n", err)
-			os.Exit(1)
-		}
-		if resp.Error != nil {
-			fmt.Printf("error: %s\n", resp.Error.Message)
-			os.Exit(1)
-		}
-		if resp.Entity != nil {
-			fmt.Printf("= Entity\n")
-			fmt.Printf("  Location: %s\n", resp.Location.AgentLocation)
-			fmt.Printf("      Hash: %s\n", base64.URLEncoding.EncodeToString(resp.Entity.Hash))
-			fmt.Printf("   Created: %s\n", time.Unix(0, resp.Entity.ValidFrom*1e6))
-			fmt.Printf("   Expires: %s\n", time.Unix(0, resp.Entity.ValidUntil*1e6))
-			fmt.Printf("  Validity:\n")
-			fmt.Printf("   - Valid: %v\n", resp.Entity.Validity.Valid)
-			fmt.Printf("   - Expired: %v\n", resp.Entity.Validity.Expired)
-			fmt.Printf("   - Malformed: %v\n", resp.Entity.Validity.Malformed)
-			fmt.Printf("   - Revoked: %v\n", resp.Entity.Validity.Revoked)
-			fmt.Printf("   - Message: %v\n", resp.Entity.Validity.Message)
-		}
-		if resp.Attestation != nil {
-			fmt.Printf("= Attestation\n")
-			fmt.Printf("    Location: %s\n", resp.Location.AgentLocation)
-			fmt.Printf("        Hash: %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.Hash))
-			fmt.Printf("   Partition: %s\n", formatPartition(resp.Attestation.Partition))
-			fmt.Printf("     Subject: %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.SubjectHash))
-			fmt.Printf("  SubjectLoc: %s\n", resp.Attestation.SubjectLocation.AgentLocation)
-			if resp.Attestation.Body != nil {
-				fmt.Printf("     Created: %s\n", time.Unix(0, resp.Attestation.Body.ValidFrom*1e6))
-				fmt.Printf("     Expires: %s\n", time.Unix(0, resp.Attestation.Body.ValidUntil*1e6))
-				fmt.Printf("    Attester: %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.Body.AttesterHash))
-				fmt.Printf(" AttesterLoc: %s\n", resp.Attestation.Body.AttesterLocation.AgentLocation)
+			resp, err := conn.ResolveHash(context.Background(), &pb.ResolveHashParams{
+				Perspective: perspective,
+				Hash:        h,
+			})
+			if err != nil {
+				fmt.Printf("error: %v\n", err)
+				os.Exit(1)
 			}
-			fmt.Printf("  Validity:\n")
-			fmt.Printf("   - Readable: %v\n", !resp.Attestation.Validity.NotDecrypted)
-			fmt.Printf("   - Revoked: %v\n", resp.Attestation.Validity.Revoked)
-			fmt.Printf("   - Malformed: %v\n", resp.Attestation.Validity.Malformed)
-			fmt.Printf("   - Subject invalid: %v\n", resp.Attestation.Validity.DstInvalid)
-			if !resp.Attestation.Validity.NotDecrypted {
-				fmt.Printf("   - Valid: %v\n", resp.Attestation.Validity.Valid)
-				fmt.Printf("   - Expired: %v\n", resp.Attestation.Validity.Expired)
-				fmt.Printf("   - Attester invalid: %v\n", resp.Attestation.Validity.SrcInvalid)
-				fmt.Printf("  Policy: RTree\n")
-				fmt.Printf("   - Namespace: %s\n", base64.URLEncoding.EncodeToString(resp.Attestation.Body.Policy.RTreePolicy.Namespace))
-				fmt.Printf("   - Indirections: %d\n", resp.Attestation.Body.Policy.RTreePolicy.Indirections)
-				fmt.Printf("   - Statements:\n")
-				for idx, st := range resp.Attestation.Body.Policy.RTreePolicy.Statements {
-					fmt.Printf("     [%02d] Permission set: %s\n", idx, base64.URLEncoding.EncodeToString(st.PermissionSet))
-					fmt.Printf("          Permissions: %s\n", strings.Join(st.Permissions, ", "))
-					fmt.Printf("          URI: %s\n", st.Resource)
-				}
+			if resp.Error != nil {
+				fmt.Printf("error: %s\n", resp.Error.Message)
+				os.Exit(1)
 			}
+			if resp.Entity != nil {
+				PrintEntity(resp.Entity, resp.Location)
+			}
+			if resp.Attestation != nil {
+				PrintAttestation(resp.Attestation, resp.Location)
+			}
+		} else {
+			//Probably a name
+			resp, err := conn.ResolveName(context.Background(), &pb.ResolveNameParams{
+				Perspective: perspective,
+				Name:        a,
+			})
+			if err != nil {
+				fmt.Printf("could not resolve name: %s\n", err.Error())
+				os.Exit(1)
+			}
+			if resp.Error != nil {
+				fmt.Printf("could not resolve name: [%d] %s\n", resp.Error.Code, resp.Error.Message)
+				os.Exit(1)
+			}
+			PrintEntity(resp.Entity, resp.Location)
 		}
 	}
 	return nil
@@ -542,25 +501,19 @@ func actionPublish(c *cli.Context) error {
 				}
 			}
 		case eapi.PEM_ATTESTATION:
-			locs := []string{"default"}
 			if len(c.StringSlice("location")) != 0 {
-				locs = c.StringSlice("location")
+				fmt.Printf("ignoring location parameter for published attestation\n")
 			}
-			for _, loc := range locs {
-				resp, err := conn.PublishAttestation(context.Background(), &pb.PublishAttestationParams{
-					DER: block.Bytes,
-					Location: &pb.Location{
-						AgentLocation: loc,
-					},
-				})
-				if err != nil {
-					fmt.Printf("error: %v\n", err)
-					os.Exit(1)
-				}
-				if resp.Error != nil {
-					fmt.Printf("error: [%d] %s\n", resp.Error.Code, resp.Error.Message)
-					os.Exit(1)
-				}
+			resp, err := conn.PublishAttestation(context.Background(), &pb.PublishAttestationParams{
+				DER: block.Bytes,
+			})
+			if err != nil {
+				fmt.Printf("error: %v\n", err)
+				os.Exit(1)
+			}
+			if resp.Error != nil {
+				fmt.Printf("error: [%d] %s\n", resp.Error.Code, resp.Error.Message)
+				os.Exit(1)
 			}
 		default:
 			fmt.Printf("unknown block type %q\n", block.Type)
@@ -569,15 +522,11 @@ func actionPublish(c *cli.Context) error {
 	}
 	return nil
 }
-func actionRTProve(c *cli.Context) error {
-	conn := getConn(c)
-
-	pfile := c.String("subject")
-	var perspective *pb.Perspective
-	if pfile != "" {
-		pass := []byte(c.String("passphrase"))
+func getPerspective(file string, passphrase string, msg string) *pb.Perspective {
+	if file != "" {
+		pass := []byte(passphrase)
 		if len(pass) == 0 {
-			fmt.Printf("passphrase for subject entity: ")
+			fmt.Printf("passphrase for entity secret: ")
 			var err error
 			pass, err = gopass.GetPasswdMasked()
 			if err != nil {
@@ -585,17 +534,23 @@ func actionRTProve(c *cli.Context) error {
 				os.Exit(1)
 			}
 		}
-		pder := loadEntitySecretDER(pfile)
-		perspective = &pb.Perspective{
+		pder := loadEntitySecretDER(file)
+		perspective := &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{
 				DER:        pder,
 				Passphrase: pass,
 			},
 		}
+		return perspective
 	} else {
-		fmt.Printf("subject is required\n")
+		fmt.Printf(msg)
 		os.Exit(1)
+		return nil
 	}
+}
+func actionRTProve(c *cli.Context) error {
+	conn := getConn(c)
+	perspective := getPerspective(c.String("subject"), c.String("passphrase"), "missing subject entity secrets")
 	statements := []*pb.RTreePolicyStatement{}
 	var namespace string
 	if len(c.Args()) == 0 {
@@ -718,5 +673,164 @@ func actionRTProve(c *cli.Context) error {
 		os.Exit(1)
 	}
 	fmt.Printf("wrote proof: %s\n", outfilename)
+	return nil
+}
+
+func resolveEntityNameOrHashOrFile(conn pb.WAVEClient, perspective *pb.Perspective, in string, msg string) (hash []byte) {
+	f, err := ioutil.ReadFile(in)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			fmt.Printf("Error opening file %q: %v\n", in, err)
+			os.Exit(1)
+		}
+		//Resolve as name/hash
+		if len(in) == 48 && strings.Index(in, ".") == -1 {
+			//Resolve as hash
+			rv, err := base64.URLEncoding.DecodeString(in)
+			if err != nil {
+				fmt.Printf("bad base64: %q\n", in)
+				os.Exit(1)
+			}
+			return rv
+		}
+		//Resolve as name
+		resp, err := conn.ResolveName(context.Background(), &pb.ResolveNameParams{
+			Perspective: perspective,
+			Name:        in,
+		})
+		if err != nil {
+			fmt.Printf("could not resolve name: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("could not resolve name %q: %s\n", in, resp.Error.Message)
+			os.Exit(1)
+		}
+		return resp.Entity.Hash
+	}
+	//Resolve as file
+	resp, err := conn.Inspect(context.Background(), &pb.InspectParams{
+		Content: f,
+	})
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		os.Exit(1)
+	}
+	if resp.Error != nil {
+		fmt.Printf("could not inspect file: %s\n", resp.Error.Message)
+		os.Exit(1)
+	}
+	if resp.Entity != nil {
+		return resp.Entity.Hash
+	}
+	fmt.Printf(msg)
+	os.Exit(1)
+	return nil
+}
+func actionNameDecl(c *cli.Context) error {
+	if len(c.Args()) != 2 {
+		fmt.Printf("usage: name [flags] entity name\n")
+		os.Exit(1)
+	}
+	expiry, err := ParseDuration(c.String("expiry"))
+	if err != nil {
+		fmt.Printf("bad expiry: %v\n", err)
+		os.Exit(1)
+	}
+	if expiry == nil {
+		panic("no expiry")
+	}
+	conn := getConn(c)
+	persp := getPerspective(c.String("attester"), c.String("passphrase"), "missing attester entity secrets\n")
+	entityArg := c.Args()[0]
+	isPublic := c.Bool("public")
+	nsArg := c.String("namespace")
+	partparts := strings.Split(c.String("partition"), "/")
+	partition := make([][]byte, len(partparts))
+	for idx, s := range partparts {
+		partition[idx] = []byte(s)
+	}
+	subject := resolveEntityNameOrHashOrFile(conn, persp, entityArg, "bad subject argument\n")
+	var ns []byte
+	if nsArg != "" {
+		ns = resolveEntityNameOrHashOrFile(conn, persp, nsArg, "bad namespace argument\n")
+	}
+
+	params := pb.CreateNameDeclarationParams{
+		Perspective: persp,
+		Name:        c.Args()[1],
+		Subject:     subject,
+		ValidFrom:   time.Now().UnixNano() / 1e6,
+		ValidUntil:  time.Now().Add(*expiry).UnixNano() / 1e6,
+	}
+	if ns != nil {
+		if isPublic {
+			fmt.Printf("namespace is not required if making a public name declaration\n")
+			os.Exit(1)
+		}
+		params.Namespace = ns
+		params.Partition = partition
+	} else {
+		if !isPublic {
+			//We need the attester hash
+			resp, err := conn.Inspect(context.Background(), &pb.InspectParams{
+				Content: persp.EntitySecret.DER,
+			})
+			if err != nil {
+				fmt.Printf("unable to obtain attester hash: %v\n", err)
+				os.Exit(1)
+			}
+			if resp.Error != nil {
+				fmt.Printf("unable to obtain attester hash: %v\n", resp.Error.Message)
+				os.Exit(1)
+			}
+			if resp.Entity == nil {
+				fmt.Printf("unable to obtain attester hashv\n")
+				os.Exit(1)
+			}
+			params.Namespace = resp.Entity.Hash
+			params.Partition = [][]byte{[]byte("privatenamedeclarations")}
+		}
+	}
+	resp, err := conn.CreateNameDeclaration(context.Background(), &params)
+	if err != nil {
+		fmt.Printf("unable to create name: %v\n", err)
+		os.Exit(1)
+	}
+	if resp.Error != nil {
+		fmt.Printf("unable to create name: %v\n", resp.Error.Message)
+		os.Exit(1)
+	}
+	fmt.Printf("name %q -> %q created successfully\n", params.Name, base64.URLEncoding.EncodeToString(subject))
+	os.Exit(0)
+	return nil
+}
+
+func actionResync(c *cli.Context) error {
+	perspective := getPerspective(c.String("perspective"), c.String("passphrase"), "missing perspective entity secrets\n")
+	conn := getConn(c)
+	resp, err := conn.ResyncPerspectiveGraph(context.Background(), &pb.ResyncPerspectiveGraphParams{
+		Perspective: perspective,
+	})
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		os.Exit(1)
+	}
+	if resp.Error != nil {
+		fmt.Printf("error: %v\n", resp.Error.Message)
+		os.Exit(1)
+	}
+	srv, err := conn.WaitForSyncComplete(context.Background(), &pb.SyncParams{
+		Perspective: perspective,
+	})
+	for {
+		rv, err := srv.Recv()
+		if err == io.EOF {
+			break
+		}
+		fmt.Printf("Synchronized %d/%d entities\n", rv.CompletedSyncs, rv.TotalSyncRequests)
+	}
+	fmt.Printf("Perspective graph sync complete\n")
+	os.Exit(0)
 	return nil
 }

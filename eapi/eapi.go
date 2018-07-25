@@ -2,6 +2,7 @@ package eapi
 
 import (
 	"context"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"time"
@@ -47,6 +48,9 @@ func (e *EAPI) StartServer(listenaddr string, httplistenaddr string) {
 	go runHTTPserver(listenaddr, httplistenaddr)
 }
 func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engine, wve.WVE) {
+	if in == nil {
+		return nil, wve.Err(wve.InvalidParameter, "missing perspective parameter")
+	}
 	secret, err := ConvertEntitySecret(ctx, in.EntitySecret)
 	if err != nil {
 		return nil, err
@@ -54,6 +58,9 @@ func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	loc, err := LocationSchemeInstance(in.Location)
 	if err != nil {
 		return nil, err
+	}
+	if loc == nil {
+		loc = iapi.SI().DefaultLocation(ctx)
 	}
 	id := secret.Entity.ArrayKeccak256()
 	eng, ok := e.engines[id]
@@ -73,8 +80,16 @@ func (e *EAPI) getEngineNoPerspective() *engine.Engine {
 func (e *EAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectResponse, error) {
 	eng := e.getEngineNoPerspective()
 	//Try as entitysecret
+
+	//Bit of a hack: users might accidentally send us PEM instead of DER. Check that first:
+	der := p.Content
+	pblock, _ := pem.Decode(p.Content)
+	if pblock != nil {
+		der = pblock.Bytes
+	}
+
 	es, err := iapi.ParseEntitySecrets(ctx, &iapi.PParseEntitySecrets{
-		DER: p.Content,
+		DER: der,
 	})
 	if es != nil {
 		validity, err := eng.CheckEntity(ctx, es.Entity)
@@ -96,7 +111,7 @@ func (e *EAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectRes
 		kpdctx.SetWR1VerifierBodyKey(p.VerifierKey)
 	}
 	att, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
-		DER:               p.Content,
+		DER:               der,
 		DecryptionContext: kpdctx,
 	})
 	if err != nil || att.IsMalformed {
@@ -147,6 +162,9 @@ func (e *EAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.
 			Error: ToError(err),
 		}, nil
 	}
+	if revloc == nil {
+		revloc = iapi.SI().DefaultLocation(ctx)
+	}
 	params := &iapi.PNewEntity{
 		ValidFrom:                    TimeFromInt64MillisWithDefault(p.ValidFrom, time.Now()),
 		ValidUntil:                   TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
@@ -185,6 +203,9 @@ func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
 		}, nil
 	}
+	if subLoc == nil {
+		subLoc = iapi.SI().DefaultLocation(ctx)
+	}
 	ent, val, uerr := eng.LookupEntity(ctx, subHash, subLoc)
 	if uerr != nil {
 		return &pb.CreateAttestationResponse{
@@ -201,19 +222,7 @@ func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 			Error: ToError(wve.Err(wve.MissingParameter, "subject is nil")),
 		}, nil
 	}
-	secret, err := ConvertEntitySecret(ctx, p.Perspective.EntitySecret)
-	if err != nil {
-		return &pb.CreateAttestationResponse{
-			Error: ToError(err),
-		}, nil
-	}
-	loc, err := LocationSchemeInstance(p.Perspective.Location)
-	if err != nil {
-		return &pb.CreateAttestationResponse{
-			Error: ToError(wve.ErrW(wve.InvalidParameter, "bad perspective location", err)),
-		}, nil
-	}
-	hashScheme, uerr := iapi.SI().HashSchemeFor(loc)
+	hashScheme, uerr := iapi.SI().HashSchemeFor(eng.PerspectiveLocation())
 	if err != nil {
 		return &pb.CreateAttestationResponse{
 			Error: ToError(wve.ErrW(wve.UnsupportedHashScheme, "could not get hash scheme for location", err)),
@@ -223,8 +232,8 @@ func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		Policy:           ConvertPolicy(p.Policy),
 		HashScheme:       hashScheme,
 		BodyScheme:       ConvertBodyScheme(p.BodyScheme),
-		Attester:         secret,
-		AttesterLocation: loc,
+		Attester:         eng.Perspective(),
+		AttesterLocation: eng.PerspectiveLocation(),
 		Subject:          ent,
 		SubjectLocation:  subLoc,
 		ValidFrom:        TimeFromInt64MillisWithDefault(p.ValidFrom, time.Now()),
@@ -250,6 +259,9 @@ func (e *EAPI) PublishEntity(ctx context.Context, p *pb.PublishEntityParams) (*p
 		return &pb.PublishEntityResponse{
 			Error: ToError(err),
 		}, nil
+	}
+	if loc != nil {
+		loc = iapi.SI().DefaultLocation(ctx)
 	}
 	rve, err := iapi.ParseEntity(ctx, &iapi.PParseEntity{
 		DER: p.DER,
@@ -795,6 +807,9 @@ func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (
 				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not load subject location", err)),
 			}, nil
 		}
+		if subLoc == nil {
+			subLoc = iapi.SI().DefaultLocation(ctx)
+		}
 		sub, val, uerr := eng.LookupEntity(ctx, subHash, subLoc)
 		if uerr != nil {
 			return &pb.EncryptMessageResponse{
@@ -819,6 +834,9 @@ func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (
 			return &pb.EncryptMessageResponse{
 				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not parse namespace location", err)),
 			}, nil
+		}
+		if nsLoc == nil {
+			nsLoc = iapi.SI().DefaultLocation(ctx)
 		}
 		ns, val, uerr := eng.LookupEntity(ctx, nsHash, nsLoc)
 		if uerr != nil {
@@ -920,6 +938,7 @@ func (e *EAPI) ResolveName(ctx context.Context, p *pb.ResolveNameParams) (*pb.Re
 	return &pb.ResolveNameResponse{
 		Entity:     pbEnt,
 		Derivation: pbNDz,
+		Location:   ToPbLocation(ndz[0].SubjectLocation),
 	}, nil
 }
 
@@ -935,6 +954,10 @@ func (e *EAPI) CreateNameDeclaration(ctx context.Context, p *pb.CreateNameDeclar
 		return &pb.CreateNameDeclarationResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create parse subject location", err)),
 		}, nil
+	}
+	if subloc == nil {
+		fmt.Printf("put in default location\n")
+		subloc = iapi.SI().DefaultLocation(ctx)
 	}
 	sub := iapi.HashSchemeInstanceFromMultihash(p.Subject)
 	subent, val, uerr := eng.LookupEntity(ctx, sub, subloc)

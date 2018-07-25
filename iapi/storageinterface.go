@@ -103,6 +103,7 @@ type StorageInterface interface {
 	HashSchemeFor(loc LocationSchemeInstance) (HashScheme, error)
 	Status(ctx context.Context) (map[string]StorageDriverStatus, error)
 	RegisteredLocations(ctx context.Context) (map[string]LocationSchemeInstance, error)
+	DefaultLocation(ctx context.Context) LocationSchemeInstance
 	LocationByName(ctx context.Context, name string) (LocationSchemeInstance, error)
 }
 

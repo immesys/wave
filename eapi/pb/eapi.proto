@@ -172,6 +172,7 @@ message ResolveNameResponse {
   Error error = 1;
   Entity entity = 2;
   repeated NameDeclaration derivation = 3;
+  Location location = 4;
 }
 
 message ResolveHashParams {
