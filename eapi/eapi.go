@@ -270,16 +270,9 @@ func (e *EAPI) PublishEntity(ctx context.Context, p *pb.PublishEntityParams) (*p
 	}, nil
 }
 func (e *EAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationParams) (*pb.PublishAttestationResponse, error) {
-	loc, err := LocationSchemeInstance(p.Location)
-	if err != nil {
-		return &pb.PublishAttestationResponse{
-			Error: ToError(err),
-		}, nil
-	}
 	rvp, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
 		DER: p.DER,
 	})
-
 	if err != nil {
 		return &pb.PublishAttestationResponse{
 			Error: ToError(err),
@@ -290,13 +283,14 @@ func (e *EAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationP
 			Error: ToError(wve.Err(wve.InternalError, "attestation is malformed")),
 		}, nil
 	}
-	hi, uerr := iapi.SI().PutAttestation(ctx, loc, rvp.Attestation)
+	subjHI, subjLoc := rvp.Attestation.Subject()
+	hi, uerr := iapi.SI().PutAttestation(ctx, subjLoc, rvp.Attestation)
 	if uerr != nil {
 		return &pb.PublishAttestationResponse{
 			Error: ToError(wve.ErrW(wve.StorageError, "could not put attestation", uerr)),
 		}, nil
 	}
-	subjHI, subjLoc := rvp.Attestation.Subject()
+
 	uerr = iapi.SI().Enqueue(ctx, subjLoc, subjHI, hi)
 	if uerr != nil {
 

@@ -1244,9 +1244,6 @@
         "DER": {
           "type": "string",
           "format": "byte"
-        },
-        "location": {
-          "$ref": "#/definitions/pbLocation"
         }
       }
     },
