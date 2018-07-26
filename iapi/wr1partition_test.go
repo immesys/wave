@@ -9,6 +9,7 @@ import (
 )
 
 func TestWR1Partition(t *testing.T) {
+	t.Skip()
 	rv, err := CalculateKeyBundlePartitions(time.Now(), time.Now().Add(700*24*time.Hour), [][]byte{[]byte("foo"), []byte("bar")})
 	require.NoError(t, err)
 

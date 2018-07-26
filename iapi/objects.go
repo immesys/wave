@@ -214,13 +214,14 @@ func (e *EntitySecrets) AttestationRevocationDetails(att *Attestation) ([]byte, 
 	}
 	hash = append(hash, os.VerifyingKey...)
 	hi := KECCAK256.Instance(hash)
+	hi2 := KECCAK256.Instance(hi.Value())
 	for _, ro := range att.CanonicalForm.TBS.Revocations {
 		cr, ok := ro.Scheme.Content.(serdes.CommitmentRevocation)
 		if !ok {
 			continue
 		}
 		exhi := HashSchemeInstanceFor(&cr.Hash)
-		if exhi.MultihashString() != hi.MultihashString() {
+		if exhi.MultihashString() != hi2.MultihashString() {
 			return nil, nil, wve.Err(wve.InvalidParameter, "attestation was not created by the given entity")
 		}
 	}

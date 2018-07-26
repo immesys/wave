@@ -156,6 +156,29 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 		rv.VerifierKey = wr1ex.VerifierBodyKey
 	}
 
+	{
+		att, err := ParseAttestation(ctx, &PParseAttestation{
+			DER: rv.DER,
+		})
+		if err != nil {
+			panic(err)
+		}
+		content, _, err := p.Attester.AttestationRevocationDetails(att.Attestation)
+		if err != nil {
+			panic(err)
+		}
+		hi := KECCAK256.Instance(content)
+		if len(att.Attestation.Revocations) == 0 {
+			panic("parsed attestation no revocations\n")
+		}
+		expectedHash := HashSchemeInstanceFor(&att.Attestation.Revocations[0].(*CommitmentRevocationSchemeInstance).CRBody.Hash)
+		if hi.MultihashString() != expectedHash.MultihashString() {
+			panic("att evocation mismatch")
+		} else {
+			fmt.Printf("att revocation ok\n")
+		}
+	}
+
 	return rv, nil
 }
 
@@ -201,6 +224,11 @@ func ParseAttestation(ctx context.Context, p *PParseAttestation) (*RParseAttesta
 
 	rv := Attestation{
 		CanonicalForm: att,
+	}
+
+	for _, ro := range att.TBS.Revocations {
+		sch := RevocationSchemeInstanceFor(&ro)
+		rv.Revocations = append(rv.Revocations, sch)
 	}
 
 	subject, subjectLoc := rv.Subject()
