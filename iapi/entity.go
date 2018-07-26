@@ -48,6 +48,7 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 	}
 	cf := ed25519KE.SecretCanonicalForm()
 	kr.Keys = append(kr.Keys, *cf)
+	rsecret := cf.Private.Content.(serdes.EntitySecretEd25519)
 
 	//Ed25519 message signing
 	{
@@ -109,6 +110,9 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 	}
 	//Put the canonical certification key in
 	en.Entity.TBS.VerifyingKey = kr.Keys[0].Public
+
+	ro := NewCommitmentRevocationSchemeInstance(p.CommitmentRevocationLocation, true, rsecret)
+	en.Entity.TBS.Revocations = append(en.Entity.TBS.Revocations, ro.CanonicalForm())
 
 	//Serialize TBS and sign it
 	der, err := asn1.Marshal(en.Entity.TBS)
@@ -222,6 +226,7 @@ type RParseEntitySecrets struct {
 
 func ParseEntitySecrets(ctx context.Context, p *PParseEntitySecrets) (*RParseEntitySecrets, wve.WVE) {
 	wo := serdes.WaveWireObject{}
+
 	trailing, uerr := asn1.Unmarshal(p.DER, &wo.Content)
 	if uerr != nil {
 		return nil, wve.ErrW(wve.MalformedDER, "could not decode", uerr)

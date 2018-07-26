@@ -180,10 +180,10 @@ next:
 	rv.SerdesForm = serdes.RTreePolicy{
 		Namespace: lhs.SerdesForm.Namespace,
 	}
-	if lhs.SerdesForm.Indirections < rhs.SerdesForm.Indirections {
+	if lhs.SerdesForm.Indirections <= rhs.SerdesForm.Indirections {
 		rv.SerdesForm.Indirections = lhs.SerdesForm.Indirections - 1
 	} else {
-		rv.SerdesForm.Indirections = rhs.SerdesForm.Indirections - 1
+		rv.SerdesForm.Indirections = rhs.SerdesForm.Indirections
 	}
 	rv.SerdesForm.Statements = dedup_statements
 

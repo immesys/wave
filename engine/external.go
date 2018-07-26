@@ -445,10 +445,31 @@ func (e *Engine) LookupName(ctx context.Context, attester iapi.HashSchemeInstanc
 		}
 		//TODO revocation
 	}
+	//If we are the attester here, store a reverse name
+	if rv != nil && attester.MultihashString() == e.Perspective().Entity.Keccak256HI().MultihashString() {
+		err := e.ws.InsertReverseName(e.ctx, rv.Name, rv.Subject)
+		if err != nil {
+			return nil, wve.ErrW(wve.InternalError, "could not modify reverse name state", err)
+		}
+	}
 	//Possibly nil, otherwise latest sorted by creation date
 	return rv, nil
 }
 
+func (e *Engine) LookupReverseName(ctx context.Context, hi iapi.HashSchemeInstance) (string, wve.WVE) {
+	rv, err := e.ws.ResolveReverseName(e.ctx, hi)
+	if err != nil {
+		return "", wve.ErrW(wve.InternalError, "storage problem", err)
+	}
+	return rv, nil
+}
+func (e *Engine) InsertReverseName(ctx context.Context, name string, hi iapi.HashSchemeInstance) wve.WVE {
+	err := e.ws.InsertReverseName(e.ctx, name, hi)
+	if err != nil {
+		return wve.ErrW(wve.InternalError, "could not modify reverse name state", err)
+	}
+	return nil
+}
 func (e *Engine) LookupFullName(ctx context.Context, attester iapi.HashSchemeInstance, name string) ([]*iapi.NameDeclaration, wve.WVE) {
 	parts := strings.Split(name, ".")
 	for _, p := range parts {
@@ -468,6 +489,14 @@ func (e *Engine) LookupFullName(ctx context.Context, attester iapi.HashSchemeIns
 		}
 		rv[idx] = nd
 		lastAtt = nd.Subject
+	}
+
+	//If we are the attester here, store a reverse name
+	if rv != nil && attester.MultihashString() == e.Perspective().Entity.Keccak256HI().MultihashString() {
+		err := e.ws.InsertReverseName(e.ctx, name, rv[0].Subject)
+		if err != nil {
+			return nil, wve.ErrW(wve.InternalError, "could not modify reverse name state", err)
+		}
 	}
 	return rv, nil
 }

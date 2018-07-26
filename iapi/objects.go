@@ -184,8 +184,26 @@ type EntitySecrets struct {
 	Entity        *Entity
 }
 
+func (e *EntitySecrets) CommitmentRevocationDetails() (content []byte, loc []LocationSchemeInstance) {
+	secret := e.Keyring[0].SecretCanonicalForm().Private.Content.(serdes.EntitySecretEd25519)
+	hash := []byte("revocation")
+	hash = append(hash, secret...)
+	hi := KECCAK256.Instance(hash)
+
+	locs := []LocationSchemeInstance{}
+	for _, ro := range e.Entity.CanonicalForm.TBS.Revocations {
+		cr, ok := ro.Scheme.Content.(serdes.CommitmentRevocation)
+		if !ok {
+			continue
+		}
+		l := LocationSchemeInstanceFor(&cr.Location)
+		if l.Supported() {
+			locs = append(locs, l)
+		}
+	}
+	return hi.Value(), locs
+}
 func (e *EntitySecrets) PrimarySigningKey() EntitySecretKeySchemeInstance {
-	//spew.Dump(e.Keyring)
 	return e.Keyring[0]
 }
 func (e *EntitySecrets) WR1LabelKey(ctx context.Context, namespace []byte) (EntitySecretKeySchemeInstance, error) {

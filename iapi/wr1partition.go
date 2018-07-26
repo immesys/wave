@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
 )
 
 func CalculateWR1Partition(validFrom time.Time, validUntil time.Time, userPrefix [][]byte) ([][]byte, wve.WVE) {
 	if len(userPrefix) > 12 {
-		spew.Dump(userPrefix)
 		return nil, wve.Err(wve.InvalidParameter, "user prefix partition must be < 12 elements")
 	}
 	tiers := WR1PartitionTiers

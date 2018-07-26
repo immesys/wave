@@ -37,6 +37,21 @@ func (p *poc) loadNameDeclState(ctx context.Context, hash []byte) (*NameDeclarat
 	return ds, nil
 }
 
+func (p *poc) InsertReverseName(ctx context.Context, name string, hi iapi.HashSchemeInstance) error {
+	k := p.PKey(ctx, "rnd", hi.MultihashString())
+	return p.u.Store(ctx, k, []byte(name))
+}
+func (p *poc) ResolveReverseName(ctx context.Context, hi iapi.HashSchemeInstance) (name string, err error) {
+	k := p.PKey(ctx, "rnd", hi.MultihashString())
+	v, err := p.u.Load(ctx, k)
+	if err != nil {
+		return "", err
+	}
+	if v == nil {
+		return "", nil
+	}
+	return string(v), nil
+}
 func (p *poc) setNameDeclStateField(ctx context.Context, dh []byte, state int) error {
 	ds, err := p.loadNameDeclState(ctx, dh)
 	if err != nil {

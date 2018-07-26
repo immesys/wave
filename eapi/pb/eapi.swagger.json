@@ -410,6 +410,32 @@
         ]
       }
     },
+    "/v1/ResolveReverseName": {
+      "post": {
+        "operationId": "ResolveReverseName",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbResolveReverseNameResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbResolveReverseNameParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
     "/v1/ResyncPerspectiveGraph": {
       "post": {
         "operationId": "ResyncPerspectiveGraph",
@@ -1386,6 +1412,32 @@
           "items": {
             "$ref": "#/definitions/pbNameDeclaration"
           }
+        },
+        "location": {
+          "$ref": "#/definitions/pbLocation"
+        }
+      }
+    },
+    "pbResolveReverseNameParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbResolveReverseNameResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "name": {
+          "type": "string"
         }
       }
     },

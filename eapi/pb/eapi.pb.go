@@ -27,10 +27,102 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type ResolveReverseNameParams struct {
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	Hash                 []byte       `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
+}
+
+func (m *ResolveReverseNameParams) Reset()         { *m = ResolveReverseNameParams{} }
+func (m *ResolveReverseNameParams) String() string { return proto.CompactTextString(m) }
+func (*ResolveReverseNameParams) ProtoMessage()    {}
+func (*ResolveReverseNameParams) Descriptor() ([]byte, []int) {
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{0}
+}
+func (m *ResolveReverseNameParams) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResolveReverseNameParams.Unmarshal(m, b)
+}
+func (m *ResolveReverseNameParams) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResolveReverseNameParams.Marshal(b, m, deterministic)
+}
+func (dst *ResolveReverseNameParams) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResolveReverseNameParams.Merge(dst, src)
+}
+func (m *ResolveReverseNameParams) XXX_Size() int {
+	return xxx_messageInfo_ResolveReverseNameParams.Size(m)
+}
+func (m *ResolveReverseNameParams) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResolveReverseNameParams.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResolveReverseNameParams proto.InternalMessageInfo
+
+func (m *ResolveReverseNameParams) GetPerspective() *Perspective {
+	if m != nil {
+		return m.Perspective
+	}
+	return nil
+}
+
+func (m *ResolveReverseNameParams) GetHash() []byte {
+	if m != nil {
+		return m.Hash
+	}
+	return nil
+}
+
+type ResolveReverseNameResponse struct {
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Name                 string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ResolveReverseNameResponse) Reset()         { *m = ResolveReverseNameResponse{} }
+func (m *ResolveReverseNameResponse) String() string { return proto.CompactTextString(m) }
+func (*ResolveReverseNameResponse) ProtoMessage()    {}
+func (*ResolveReverseNameResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{1}
+}
+func (m *ResolveReverseNameResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResolveReverseNameResponse.Unmarshal(m, b)
+}
+func (m *ResolveReverseNameResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResolveReverseNameResponse.Marshal(b, m, deterministic)
+}
+func (dst *ResolveReverseNameResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResolveReverseNameResponse.Merge(dst, src)
+}
+func (m *ResolveReverseNameResponse) XXX_Size() int {
+	return xxx_messageInfo_ResolveReverseNameResponse.Size(m)
+}
+func (m *ResolveReverseNameResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResolveReverseNameResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResolveReverseNameResponse proto.InternalMessageInfo
+
+func (m *ResolveReverseNameResponse) GetError() *Error {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+func (m *ResolveReverseNameResponse) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 type MarkEntityInterestingParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	Entity               []byte       `protobuf:"bytes,2,opt,name=entity,proto3" json:"entity,omitempty"`
-	EntityLocation       *Location    `protobuf:"bytes,3,opt,name=entityLocation" json:"entityLocation,omitempty"`
+	EntityLocation       *Location    `protobuf:"bytes,3,opt,name=entityLocation,proto3" json:"entityLocation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -40,7 +132,7 @@ func (m *MarkEntityInterestingParams) Reset()         { *m = MarkEntityInteresti
 func (m *MarkEntityInterestingParams) String() string { return proto.CompactTextString(m) }
 func (*MarkEntityInterestingParams) ProtoMessage()    {}
 func (*MarkEntityInterestingParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{0}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{2}
 }
 func (m *MarkEntityInterestingParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MarkEntityInterestingParams.Unmarshal(m, b)
@@ -82,7 +174,7 @@ func (m *MarkEntityInterestingParams) GetEntityLocation() *Location {
 }
 
 type MarkEntityInterestingResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -92,7 +184,7 @@ func (m *MarkEntityInterestingResponse) Reset()         { *m = MarkEntityInteres
 func (m *MarkEntityInterestingResponse) String() string { return proto.CompactTextString(m) }
 func (*MarkEntityInterestingResponse) ProtoMessage()    {}
 func (*MarkEntityInterestingResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{1}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{3}
 }
 func (m *MarkEntityInterestingResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MarkEntityInterestingResponse.Unmarshal(m, b)
@@ -120,17 +212,17 @@ func (m *MarkEntityInterestingResponse) GetError() *Error {
 }
 
 type CreateNameDeclarationParams struct {
-	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
-	Name            string       `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	Name            string       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Subject         []byte       `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
-	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	// ms since epoch, if omitted default = now
-	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom" json:"validFrom,omitempty"`
+	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
 	// ms since epoch if omitted default = now+3 years
-	ValidUntil int64 `protobuf:"varint,6,opt,name=validUntil" json:"validUntil,omitempty"`
+	ValidUntil int64 `protobuf:"varint,6,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	// if specified, the name declaration will be encrypted
 	Namespace            []byte    `protobuf:"bytes,7,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	NamespaceLocation    *Location `protobuf:"bytes,8,opt,name=namespaceLocation" json:"namespaceLocation,omitempty"`
+	NamespaceLocation    *Location `protobuf:"bytes,8,opt,name=namespaceLocation,proto3" json:"namespaceLocation,omitempty"`
 	Partition            [][]byte  `protobuf:"bytes,9,rep,name=partition,proto3" json:"partition,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
@@ -141,7 +233,7 @@ func (m *CreateNameDeclarationParams) Reset()         { *m = CreateNameDeclarati
 func (m *CreateNameDeclarationParams) String() string { return proto.CompactTextString(m) }
 func (*CreateNameDeclarationParams) ProtoMessage()    {}
 func (*CreateNameDeclarationParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{2}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{4}
 }
 func (m *CreateNameDeclarationParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateNameDeclarationParams.Unmarshal(m, b)
@@ -225,7 +317,7 @@ func (m *CreateNameDeclarationParams) GetPartition() [][]byte {
 }
 
 type CreateNameDeclarationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	DER                  []byte   `protobuf:"bytes,2,opt,name=DER,proto3" json:"DER,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -237,7 +329,7 @@ func (m *CreateNameDeclarationResponse) Reset()         { *m = CreateNameDeclara
 func (m *CreateNameDeclarationResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateNameDeclarationResponse) ProtoMessage()    {}
 func (*CreateNameDeclarationResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{3}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{5}
 }
 func (m *CreateNameDeclarationResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateNameDeclarationResponse.Unmarshal(m, b)
@@ -279,8 +371,8 @@ func (m *CreateNameDeclarationResponse) GetHash() []byte {
 }
 
 type ResolveNameParams struct {
-	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
-	Name        string       `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	Name        string       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// If omitted, the perspective entity is used
 	TopLevelAttester     []byte   `protobuf:"bytes,3,opt,name=topLevelAttester,proto3" json:"topLevelAttester,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -292,7 +384,7 @@ func (m *ResolveNameParams) Reset()         { *m = ResolveNameParams{} }
 func (m *ResolveNameParams) String() string { return proto.CompactTextString(m) }
 func (*ResolveNameParams) ProtoMessage()    {}
 func (*ResolveNameParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{4}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{6}
 }
 func (m *ResolveNameParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveNameParams.Unmarshal(m, b)
@@ -335,17 +427,17 @@ func (m *ResolveNameParams) GetTopLevelAttester() []byte {
 
 type NameDeclaration struct {
 	Hash                 []byte                   `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	Name                 string                   `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Name                 string                   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Subject              []byte                   `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
-	SubjectLocation      *Location                `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation      *Location                `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	Attester             []byte                   `protobuf:"bytes,5,opt,name=attester,proto3" json:"attester,omitempty"`
-	AttesterLocation     *Location                `protobuf:"bytes,6,opt,name=attesterLocation" json:"attesterLocation,omitempty"`
-	ValidFrom            int64                    `protobuf:"varint,7,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64                    `protobuf:"varint,8,opt,name=validUntil" json:"validUntil,omitempty"`
+	AttesterLocation     *Location                `protobuf:"bytes,6,opt,name=attesterLocation,proto3" json:"attesterLocation,omitempty"`
+	ValidFrom            int64                    `protobuf:"varint,7,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64                    `protobuf:"varint,8,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	Namespace            []byte                   `protobuf:"bytes,9,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	NamespaceLocation    *Location                `protobuf:"bytes,10,opt,name=namespaceLocation" json:"namespaceLocation,omitempty"`
+	NamespaceLocation    *Location                `protobuf:"bytes,10,opt,name=namespaceLocation,proto3" json:"namespaceLocation,omitempty"`
 	Partition            [][]byte                 `protobuf:"bytes,11,rep,name=partition,proto3" json:"partition,omitempty"`
-	Validity             *NameDeclarationValidity `protobuf:"bytes,12,opt,name=validity" json:"validity,omitempty"`
+	Validity             *NameDeclarationValidity `protobuf:"bytes,12,opt,name=validity,proto3" json:"validity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
 	XXX_unrecognized     []byte                   `json:"-"`
 	XXX_sizecache        int32                    `json:"-"`
@@ -355,7 +447,7 @@ func (m *NameDeclaration) Reset()         { *m = NameDeclaration{} }
 func (m *NameDeclaration) String() string { return proto.CompactTextString(m) }
 func (*NameDeclaration) ProtoMessage()    {}
 func (*NameDeclaration) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{5}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{7}
 }
 func (m *NameDeclaration) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NameDeclaration.Unmarshal(m, b)
@@ -460,9 +552,10 @@ func (m *NameDeclaration) GetValidity() *NameDeclarationValidity {
 }
 
 type ResolveNameResponse struct {
-	Error                *Error             `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Entity               *Entity            `protobuf:"bytes,2,opt,name=entity" json:"entity,omitempty"`
-	Derivation           []*NameDeclaration `protobuf:"bytes,3,rep,name=derivation" json:"derivation,omitempty"`
+	Error                *Error             `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Entity               *Entity            `protobuf:"bytes,2,opt,name=entity,proto3" json:"entity,omitempty"`
+	Derivation           []*NameDeclaration `protobuf:"bytes,3,rep,name=derivation,proto3" json:"derivation,omitempty"`
+	Location             *Location          `protobuf:"bytes,4,opt,name=location,proto3" json:"location,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`
@@ -472,7 +565,7 @@ func (m *ResolveNameResponse) Reset()         { *m = ResolveNameResponse{} }
 func (m *ResolveNameResponse) String() string { return proto.CompactTextString(m) }
 func (*ResolveNameResponse) ProtoMessage()    {}
 func (*ResolveNameResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{6}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{8}
 }
 func (m *ResolveNameResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveNameResponse.Unmarshal(m, b)
@@ -513,9 +606,16 @@ func (m *ResolveNameResponse) GetDerivation() []*NameDeclaration {
 	return nil
 }
 
+func (m *ResolveNameResponse) GetLocation() *Location {
+	if m != nil {
+		return m.Location
+	}
+	return nil
+}
+
 type ResolveHashParams struct {
 	Hash                 []byte       `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	Perspective          *Perspective `protobuf:"bytes,2,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,2,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -525,7 +625,7 @@ func (m *ResolveHashParams) Reset()         { *m = ResolveHashParams{} }
 func (m *ResolveHashParams) String() string { return proto.CompactTextString(m) }
 func (*ResolveHashParams) ProtoMessage()    {}
 func (*ResolveHashParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{7}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{9}
 }
 func (m *ResolveHashParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveHashParams.Unmarshal(m, b)
@@ -560,10 +660,10 @@ func (m *ResolveHashParams) GetPerspective() *Perspective {
 }
 
 type ResolveHashResponse struct {
-	Error                *Error       `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Location             *Location    `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
-	Entity               *Entity      `protobuf:"bytes,3,opt,name=entity" json:"entity,omitempty"`
-	Attestation          *Attestation `protobuf:"bytes,4,opt,name=attestation" json:"attestation,omitempty"`
+	Error                *Error       `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Location             *Location    `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	Entity               *Entity      `protobuf:"bytes,3,opt,name=entity,proto3" json:"entity,omitempty"`
+	Attestation          *Attestation `protobuf:"bytes,4,opt,name=attestation,proto3" json:"attestation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -573,7 +673,7 @@ func (m *ResolveHashResponse) Reset()         { *m = ResolveHashResponse{} }
 func (m *ResolveHashResponse) String() string { return proto.CompactTextString(m) }
 func (*ResolveHashResponse) ProtoMessage()    {}
 func (*ResolveHashResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{8}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{10}
 }
 func (m *ResolveHashResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveHashResponse.Unmarshal(m, b)
@@ -634,7 +734,7 @@ func (m *InspectParams) Reset()         { *m = InspectParams{} }
 func (m *InspectParams) String() string { return proto.CompactTextString(m) }
 func (*InspectParams) ProtoMessage()    {}
 func (*InspectParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{9}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{11}
 }
 func (m *InspectParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InspectParams.Unmarshal(m, b)
@@ -676,9 +776,9 @@ func (m *InspectParams) GetVerifierKey() []byte {
 }
 
 type InspectResponse struct {
-	Error                *Error       `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Entity               *Entity      `protobuf:"bytes,2,opt,name=entity" json:"entity,omitempty"`
-	Attestation          *Attestation `protobuf:"bytes,3,opt,name=attestation" json:"attestation,omitempty"`
+	Error                *Error       `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Entity               *Entity      `protobuf:"bytes,2,opt,name=entity,proto3" json:"entity,omitempty"`
+	Attestation          *Attestation `protobuf:"bytes,3,opt,name=attestation,proto3" json:"attestation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -688,7 +788,7 @@ func (m *InspectResponse) Reset()         { *m = InspectResponse{} }
 func (m *InspectResponse) String() string { return proto.CompactTextString(m) }
 func (*InspectResponse) ProtoMessage()    {}
 func (*InspectResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{10}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{12}
 }
 func (m *InspectResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InspectResponse.Unmarshal(m, b)
@@ -739,7 +839,7 @@ func (m *ListLocationsParams) Reset()         { *m = ListLocationsParams{} }
 func (m *ListLocationsParams) String() string { return proto.CompactTextString(m) }
 func (*ListLocationsParams) ProtoMessage()    {}
 func (*ListLocationsParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{11}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{13}
 }
 func (m *ListLocationsParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListLocationsParams.Unmarshal(m, b)
@@ -760,8 +860,8 @@ func (m *ListLocationsParams) XXX_DiscardUnknown() {
 var xxx_messageInfo_ListLocationsParams proto.InternalMessageInfo
 
 type ListLocationsResponse struct {
-	Error                *Error               `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	AgentLocations       map[string]*Location `protobuf:"bytes,2,rep,name=agentLocations" json:"agentLocations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Error                *Error               `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	AgentLocations       map[string]*Location `protobuf:"bytes,2,rep,name=agentLocations,proto3" json:"agentLocations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -771,7 +871,7 @@ func (m *ListLocationsResponse) Reset()         { *m = ListLocationsResponse{} }
 func (m *ListLocationsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListLocationsResponse) ProtoMessage()    {}
 func (*ListLocationsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{12}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{14}
 }
 func (m *ListLocationsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListLocationsResponse.Unmarshal(m, b)
@@ -807,10 +907,10 @@ func (m *ListLocationsResponse) GetAgentLocations() map[string]*Location {
 
 type CreateEntityParams struct {
 	// Milliseconds since the epoch
-	ValidFrom            int64     `protobuf:"varint,1,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64     `protobuf:"varint,2,opt,name=validUntil" json:"validUntil,omitempty"`
-	RevocationLocation   *Location `protobuf:"bytes,3,opt,name=revocationLocation" json:"revocationLocation,omitempty"`
-	SecretPassphrase     string    `protobuf:"bytes,4,opt,name=SecretPassphrase" json:"SecretPassphrase,omitempty"`
+	ValidFrom            int64     `protobuf:"varint,1,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64     `protobuf:"varint,2,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
+	RevocationLocation   *Location `protobuf:"bytes,3,opt,name=revocationLocation,proto3" json:"revocationLocation,omitempty"`
+	SecretPassphrase     string    `protobuf:"bytes,4,opt,name=SecretPassphrase,proto3" json:"SecretPassphrase,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -820,7 +920,7 @@ func (m *CreateEntityParams) Reset()         { *m = CreateEntityParams{} }
 func (m *CreateEntityParams) String() string { return proto.CompactTextString(m) }
 func (*CreateEntityParams) ProtoMessage()    {}
 func (*CreateEntityParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{13}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{15}
 }
 func (m *CreateEntityParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateEntityParams.Unmarshal(m, b)
@@ -869,7 +969,7 @@ func (m *CreateEntityParams) GetSecretPassphrase() string {
 }
 
 type CreateEntityResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	PublicDER            []byte   `protobuf:"bytes,2,opt,name=PublicDER,proto3" json:"PublicDER,omitempty"`
 	SecretDER            []byte   `protobuf:"bytes,3,opt,name=SecretDER,proto3" json:"SecretDER,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,4,opt,name=hash,proto3" json:"hash,omitempty"`
@@ -882,7 +982,7 @@ func (m *CreateEntityResponse) Reset()         { *m = CreateEntityResponse{} }
 func (m *CreateEntityResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateEntityResponse) ProtoMessage()    {}
 func (*CreateEntityResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{14}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{16}
 }
 func (m *CreateEntityResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateEntityResponse.Unmarshal(m, b)
@@ -932,9 +1032,9 @@ func (m *CreateEntityResponse) GetHash() []byte {
 
 type Entity struct {
 	Hash                 []byte          `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	ValidFrom            int64           `protobuf:"varint,2,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64           `protobuf:"varint,3,opt,name=validUntil" json:"validUntil,omitempty"`
-	Validity             *EntityValidity `protobuf:"bytes,4,opt,name=validity" json:"validity,omitempty"`
+	ValidFrom            int64           `protobuf:"varint,2,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64           `protobuf:"varint,3,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
+	Validity             *EntityValidity `protobuf:"bytes,4,opt,name=validity,proto3" json:"validity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -944,7 +1044,7 @@ func (m *Entity) Reset()         { *m = Entity{} }
 func (m *Entity) String() string { return proto.CompactTextString(m) }
 func (*Entity) ProtoMessage()    {}
 func (*Entity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{15}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{17}
 }
 func (m *Entity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Entity.Unmarshal(m, b)
@@ -993,15 +1093,15 @@ func (m *Entity) GetValidity() *EntityValidity {
 }
 
 type CreateAttestationParams struct {
-	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
-	BodyScheme      string       `protobuf:"bytes,2,opt,name=bodyScheme" json:"bodyScheme,omitempty"`
+	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	BodyScheme      string       `protobuf:"bytes,2,opt,name=bodyScheme,proto3" json:"bodyScheme,omitempty"`
 	SubjectHash     []byte       `protobuf:"bytes,3,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
-	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	// If 0, will be set to time.Now. Ms since epoch
-	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom" json:"validFrom,omitempty"`
+	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
 	// If 0, will be set to some arbitrary default. Ms since epoch
-	ValidUntil           int64    `protobuf:"varint,6,opt,name=validUntil" json:"validUntil,omitempty"`
-	Policy               *Policy  `protobuf:"bytes,7,opt,name=policy" json:"policy,omitempty"`
+	ValidUntil           int64    `protobuf:"varint,6,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
+	Policy               *Policy  `protobuf:"bytes,7,opt,name=policy,proto3" json:"policy,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1011,7 +1111,7 @@ func (m *CreateAttestationParams) Reset()         { *m = CreateAttestationParams
 func (m *CreateAttestationParams) String() string { return proto.CompactTextString(m) }
 func (*CreateAttestationParams) ProtoMessage()    {}
 func (*CreateAttestationParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{16}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{18}
 }
 func (m *CreateAttestationParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateAttestationParams.Unmarshal(m, b)
@@ -1081,7 +1181,7 @@ func (m *CreateAttestationParams) GetPolicy() *Policy {
 }
 
 type ResyncPerspectiveGraphParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -1091,7 +1191,7 @@ func (m *ResyncPerspectiveGraphParams) Reset()         { *m = ResyncPerspectiveG
 func (m *ResyncPerspectiveGraphParams) String() string { return proto.CompactTextString(m) }
 func (*ResyncPerspectiveGraphParams) ProtoMessage()    {}
 func (*ResyncPerspectiveGraphParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{17}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{19}
 }
 func (m *ResyncPerspectiveGraphParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResyncPerspectiveGraphParams.Unmarshal(m, b)
@@ -1119,7 +1219,7 @@ func (m *ResyncPerspectiveGraphParams) GetPerspective() *Perspective {
 }
 
 type ResyncPerspectiveGraphResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1129,7 +1229,7 @@ func (m *ResyncPerspectiveGraphResponse) Reset()         { *m = ResyncPerspectiv
 func (m *ResyncPerspectiveGraphResponse) String() string { return proto.CompactTextString(m) }
 func (*ResyncPerspectiveGraphResponse) ProtoMessage()    {}
 func (*ResyncPerspectiveGraphResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{18}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{20}
 }
 func (m *ResyncPerspectiveGraphResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResyncPerspectiveGraphResponse.Unmarshal(m, b)
@@ -1157,7 +1257,7 @@ func (m *ResyncPerspectiveGraphResponse) GetError() *Error {
 }
 
 type SyncParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -1167,7 +1267,7 @@ func (m *SyncParams) Reset()         { *m = SyncParams{} }
 func (m *SyncParams) String() string { return proto.CompactTextString(m) }
 func (*SyncParams) ProtoMessage()    {}
 func (*SyncParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{19}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{21}
 }
 func (m *SyncParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SyncParams.Unmarshal(m, b)
@@ -1195,20 +1295,20 @@ func (m *SyncParams) GetPerspective() *Perspective {
 }
 
 type EncryptMessageParams struct {
-	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	// The payload of the message
 	Content []byte `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
 	// If present, a direct decryption key will be generated
 	SubjectHash     []byte    `protobuf:"bytes,3,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
-	SubjectLocation *Location `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation *Location `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	// If present, an OAQUE decryption key will be generated
 	Namespace         []byte    `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	NamespaceLocation *Location `protobuf:"bytes,6,opt,name=namespaceLocation" json:"namespaceLocation,omitempty"`
+	NamespaceLocation *Location `protobuf:"bytes,6,opt,name=namespaceLocation,proto3" json:"namespaceLocation,omitempty"`
 	Partition         [][]byte  `protobuf:"bytes,7,rep,name=partition,proto3" json:"partition,omitempty"`
 	// ms since epoch, if zero set to now
-	ValidFrom int64 `protobuf:"varint,8,opt,name=validFrom" json:"validFrom,omitempty"`
+	ValidFrom int64 `protobuf:"varint,8,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
 	// ms since epoch, if zero set to now
-	ValidUntil           int64    `protobuf:"varint,9,opt,name=validUntil" json:"validUntil,omitempty"`
+	ValidUntil           int64    `protobuf:"varint,9,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1218,7 +1318,7 @@ func (m *EncryptMessageParams) Reset()         { *m = EncryptMessageParams{} }
 func (m *EncryptMessageParams) String() string { return proto.CompactTextString(m) }
 func (*EncryptMessageParams) ProtoMessage()    {}
 func (*EncryptMessageParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{20}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{22}
 }
 func (m *EncryptMessageParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EncryptMessageParams.Unmarshal(m, b)
@@ -1302,7 +1402,7 @@ func (m *EncryptMessageParams) GetValidUntil() int64 {
 }
 
 type EncryptMessageResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Ciphertext           []byte   `protobuf:"bytes,2,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1313,7 +1413,7 @@ func (m *EncryptMessageResponse) Reset()         { *m = EncryptMessageResponse{}
 func (m *EncryptMessageResponse) String() string { return proto.CompactTextString(m) }
 func (*EncryptMessageResponse) ProtoMessage()    {}
 func (*EncryptMessageResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{21}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{23}
 }
 func (m *EncryptMessageResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EncryptMessageResponse.Unmarshal(m, b)
@@ -1348,7 +1448,7 @@ func (m *EncryptMessageResponse) GetCiphertext() []byte {
 }
 
 type DecryptMessageParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	Ciphertext           []byte       `protobuf:"bytes,2,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
@@ -1359,7 +1459,7 @@ func (m *DecryptMessageParams) Reset()         { *m = DecryptMessageParams{} }
 func (m *DecryptMessageParams) String() string { return proto.CompactTextString(m) }
 func (*DecryptMessageParams) ProtoMessage()    {}
 func (*DecryptMessageParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{22}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{24}
 }
 func (m *DecryptMessageParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DecryptMessageParams.Unmarshal(m, b)
@@ -1394,7 +1494,7 @@ func (m *DecryptMessageParams) GetCiphertext() []byte {
 }
 
 type DecryptMessageResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Content              []byte   `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1405,7 +1505,7 @@ func (m *DecryptMessageResponse) Reset()         { *m = DecryptMessageResponse{}
 func (m *DecryptMessageResponse) String() string { return proto.CompactTextString(m) }
 func (*DecryptMessageResponse) ProtoMessage()    {}
 func (*DecryptMessageResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{23}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{25}
 }
 func (m *DecryptMessageResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DecryptMessageResponse.Unmarshal(m, b)
@@ -1440,10 +1540,10 @@ func (m *DecryptMessageResponse) GetContent() []byte {
 }
 
 type SyncResponse struct {
-	Error                *Error                          `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	StorageStatus        map[string]*StorageDriverStatus `protobuf:"bytes,2,rep,name=storageStatus" json:"storageStatus,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	TotalSyncRequests    int64                           `protobuf:"varint,3,opt,name=totalSyncRequests" json:"totalSyncRequests,omitempty"`
-	CompletedSyncs       int64                           `protobuf:"varint,4,opt,name=completedSyncs" json:"completedSyncs,omitempty"`
+	Error                *Error                          `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	StorageStatus        map[string]*StorageDriverStatus `protobuf:"bytes,2,rep,name=storageStatus,proto3" json:"storageStatus,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	TotalSyncRequests    int64                           `protobuf:"varint,3,opt,name=totalSyncRequests,proto3" json:"totalSyncRequests,omitempty"`
+	CompletedSyncs       int64                           `protobuf:"varint,4,opt,name=completedSyncs,proto3" json:"completedSyncs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
 	XXX_unrecognized     []byte                          `json:"-"`
 	XXX_sizecache        int32                           `json:"-"`
@@ -1453,7 +1553,7 @@ func (m *SyncResponse) Reset()         { *m = SyncResponse{} }
 func (m *SyncResponse) String() string { return proto.CompactTextString(m) }
 func (*SyncResponse) ProtoMessage()    {}
 func (*SyncResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{24}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{26}
 }
 func (m *SyncResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SyncResponse.Unmarshal(m, b)
@@ -1502,8 +1602,8 @@ func (m *SyncResponse) GetCompletedSyncs() int64 {
 }
 
 type StorageDriverStatus struct {
-	Operational          bool              `protobuf:"varint,1,opt,name=operational" json:"operational,omitempty"`
-	Info                 map[string]string `protobuf:"bytes,2,rep,name=info" json:"info,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Operational          bool              `protobuf:"varint,1,opt,name=operational,proto3" json:"operational,omitempty"`
+	Info                 map[string]string `protobuf:"bytes,2,rep,name=info,proto3" json:"info,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -1513,7 +1613,7 @@ func (m *StorageDriverStatus) Reset()         { *m = StorageDriverStatus{} }
 func (m *StorageDriverStatus) String() string { return proto.CompactTextString(m) }
 func (*StorageDriverStatus) ProtoMessage()    {}
 func (*StorageDriverStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{25}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{27}
 }
 func (m *StorageDriverStatus) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StorageDriverStatus.Unmarshal(m, b)
@@ -1548,7 +1648,7 @@ func (m *StorageDriverStatus) GetInfo() map[string]string {
 }
 
 type CreateAttestationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	DER                  []byte   `protobuf:"bytes,2,opt,name=DER,proto3" json:"DER,omitempty"`
 	VerifierKey          []byte   `protobuf:"bytes,3,opt,name=verifierKey,proto3" json:"verifierKey,omitempty"`
 	ProverKey            []byte   `protobuf:"bytes,4,opt,name=proverKey,proto3" json:"proverKey,omitempty"`
@@ -1562,7 +1662,7 @@ func (m *CreateAttestationResponse) Reset()         { *m = CreateAttestationResp
 func (m *CreateAttestationResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateAttestationResponse) ProtoMessage()    {}
 func (*CreateAttestationResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{26}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{28}
 }
 func (m *CreateAttestationResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateAttestationResponse.Unmarshal(m, b)
@@ -1619,7 +1719,7 @@ func (m *CreateAttestationResponse) GetHash() []byte {
 
 type PublishEntityParams struct {
 	DER                  []byte    `protobuf:"bytes,1,opt,name=DER,proto3" json:"DER,omitempty"`
-	Location             *Location `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
+	Location             *Location `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -1629,7 +1729,7 @@ func (m *PublishEntityParams) Reset()         { *m = PublishEntityParams{} }
 func (m *PublishEntityParams) String() string { return proto.CompactTextString(m) }
 func (*PublishEntityParams) ProtoMessage()    {}
 func (*PublishEntityParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{27}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{29}
 }
 func (m *PublishEntityParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PublishEntityParams.Unmarshal(m, b)
@@ -1664,7 +1764,7 @@ func (m *PublishEntityParams) GetLocation() *Location {
 }
 
 type PublishEntityResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1675,7 +1775,7 @@ func (m *PublishEntityResponse) Reset()         { *m = PublishEntityResponse{} }
 func (m *PublishEntityResponse) String() string { return proto.CompactTextString(m) }
 func (*PublishEntityResponse) ProtoMessage()    {}
 func (*PublishEntityResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{28}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{30}
 }
 func (m *PublishEntityResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PublishEntityResponse.Unmarshal(m, b)
@@ -1720,7 +1820,7 @@ func (m *PublishAttestationParams) Reset()         { *m = PublishAttestationPara
 func (m *PublishAttestationParams) String() string { return proto.CompactTextString(m) }
 func (*PublishAttestationParams) ProtoMessage()    {}
 func (*PublishAttestationParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{29}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{31}
 }
 func (m *PublishAttestationParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PublishAttestationParams.Unmarshal(m, b)
@@ -1748,7 +1848,7 @@ func (m *PublishAttestationParams) GetDER() []byte {
 }
 
 type PublishAttestationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1759,7 +1859,7 @@ func (m *PublishAttestationResponse) Reset()         { *m = PublishAttestationRe
 func (m *PublishAttestationResponse) String() string { return proto.CompactTextString(m) }
 func (*PublishAttestationResponse) ProtoMessage()    {}
 func (*PublishAttestationResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{30}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{32}
 }
 func (m *PublishAttestationResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PublishAttestationResponse.Unmarshal(m, b)
@@ -1794,7 +1894,7 @@ func (m *PublishAttestationResponse) GetHash() []byte {
 }
 
 type AddAttestationParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	DER                  []byte       `protobuf:"bytes,2,opt,name=DER,proto3" json:"DER,omitempty"`
 	ProverKey            []byte       `protobuf:"bytes,3,opt,name=proverKey,proto3" json:"proverKey,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
@@ -1806,7 +1906,7 @@ func (m *AddAttestationParams) Reset()         { *m = AddAttestationParams{} }
 func (m *AddAttestationParams) String() string { return proto.CompactTextString(m) }
 func (*AddAttestationParams) ProtoMessage()    {}
 func (*AddAttestationParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{31}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{33}
 }
 func (m *AddAttestationParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddAttestationParams.Unmarshal(m, b)
@@ -1848,7 +1948,7 @@ func (m *AddAttestationParams) GetProverKey() []byte {
 }
 
 type AddAttestationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1858,7 +1958,7 @@ func (m *AddAttestationResponse) Reset()         { *m = AddAttestationResponse{}
 func (m *AddAttestationResponse) String() string { return proto.CompactTextString(m) }
 func (*AddAttestationResponse) ProtoMessage()    {}
 func (*AddAttestationResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{32}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{34}
 }
 func (m *AddAttestationResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddAttestationResponse.Unmarshal(m, b)
@@ -1886,7 +1986,7 @@ func (m *AddAttestationResponse) GetError() *Error {
 }
 
 type LookupAttestationsParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	FromEntity           []byte       `protobuf:"bytes,2,opt,name=fromEntity,proto3" json:"fromEntity,omitempty"`
 	ToEntity             []byte       `protobuf:"bytes,3,opt,name=toEntity,proto3" json:"toEntity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
@@ -1898,7 +1998,7 @@ func (m *LookupAttestationsParams) Reset()         { *m = LookupAttestationsPara
 func (m *LookupAttestationsParams) String() string { return proto.CompactTextString(m) }
 func (*LookupAttestationsParams) ProtoMessage()    {}
 func (*LookupAttestationsParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{33}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{35}
 }
 func (m *LookupAttestationsParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LookupAttestationsParams.Unmarshal(m, b)
@@ -1940,8 +2040,8 @@ func (m *LookupAttestationsParams) GetToEntity() []byte {
 }
 
 type LookupAttestationsResponse struct {
-	Error                *Error         `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Results              []*Attestation `protobuf:"bytes,2,rep,name=results" json:"results,omitempty"`
+	Error                *Error         `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Results              []*Attestation `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -1951,7 +2051,7 @@ func (m *LookupAttestationsResponse) Reset()         { *m = LookupAttestationsRe
 func (m *LookupAttestationsResponse) String() string { return proto.CompactTextString(m) }
 func (*LookupAttestationsResponse) ProtoMessage()    {}
 func (*LookupAttestationsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{34}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{36}
 }
 func (m *LookupAttestationsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LookupAttestationsResponse.Unmarshal(m, b)
@@ -1986,8 +2086,8 @@ func (m *LookupAttestationsResponse) GetResults() []*Attestation {
 }
 
 type Error struct {
-	Code                 int32    `protobuf:"varint,1,opt,name=code" json:"code,omitempty"`
-	Message              string   `protobuf:"bytes,2,opt,name=message" json:"message,omitempty"`
+	Code                 int32    `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Message              string   `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1997,7 +2097,7 @@ func (m *Error) Reset()         { *m = Error{} }
 func (m *Error) String() string { return proto.CompactTextString(m) }
 func (*Error) ProtoMessage()    {}
 func (*Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{35}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{37}
 }
 func (m *Error) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Error.Unmarshal(m, b)
@@ -2032,8 +2132,8 @@ func (m *Error) GetMessage() string {
 }
 
 type Perspective struct {
-	EntitySecret         *EntitySecret `protobuf:"bytes,1,opt,name=entitySecret" json:"entitySecret,omitempty"`
-	Location             *Location     `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
+	EntitySecret         *EntitySecret `protobuf:"bytes,1,opt,name=entitySecret,proto3" json:"entitySecret,omitempty"`
+	Location             *Location     `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
 	XXX_unrecognized     []byte        `json:"-"`
 	XXX_sizecache        int32         `json:"-"`
@@ -2043,7 +2143,7 @@ func (m *Perspective) Reset()         { *m = Perspective{} }
 func (m *Perspective) String() string { return proto.CompactTextString(m) }
 func (*Perspective) ProtoMessage()    {}
 func (*Perspective) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{36}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{38}
 }
 func (m *Perspective) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Perspective.Unmarshal(m, b)
@@ -2079,9 +2179,9 @@ func (m *Perspective) GetLocation() *Location {
 
 type Location struct {
 	// One of the following
-	LocationURI *LocationURI `protobuf:"bytes,1,opt,name=locationURI" json:"locationURI,omitempty"`
+	LocationURI *LocationURI `protobuf:"bytes,1,opt,name=locationURI,proto3" json:"locationURI,omitempty"`
 	// The name of a location in the agent config
-	AgentLocation        string   `protobuf:"bytes,2,opt,name=agentLocation" json:"agentLocation,omitempty"`
+	AgentLocation        string   `protobuf:"bytes,2,opt,name=agentLocation,proto3" json:"agentLocation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2091,7 +2191,7 @@ func (m *Location) Reset()         { *m = Location{} }
 func (m *Location) String() string { return proto.CompactTextString(m) }
 func (*Location) ProtoMessage()    {}
 func (*Location) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{37}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{39}
 }
 func (m *Location) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Location.Unmarshal(m, b)
@@ -2126,8 +2226,8 @@ func (m *Location) GetAgentLocation() string {
 }
 
 type LocationURI struct {
-	URI                  string   `protobuf:"bytes,1,opt,name=URI" json:"URI,omitempty"`
-	Version              int32    `protobuf:"varint,2,opt,name=version" json:"version,omitempty"`
+	URI                  string   `protobuf:"bytes,1,opt,name=URI,proto3" json:"URI,omitempty"`
+	Version              int32    `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2137,7 +2237,7 @@ func (m *LocationURI) Reset()         { *m = LocationURI{} }
 func (m *LocationURI) String() string { return proto.CompactTextString(m) }
 func (*LocationURI) ProtoMessage()    {}
 func (*LocationURI) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{38}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{40}
 }
 func (m *LocationURI) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LocationURI.Unmarshal(m, b)
@@ -2183,7 +2283,7 @@ func (m *EntitySecret) Reset()         { *m = EntitySecret{} }
 func (m *EntitySecret) String() string { return proto.CompactTextString(m) }
 func (*EntitySecret) ProtoMessage()    {}
 func (*EntitySecret) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{39}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{41}
 }
 func (m *EntitySecret) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EntitySecret.Unmarshal(m, b)
@@ -2220,12 +2320,12 @@ func (m *EntitySecret) GetPassphrase() []byte {
 type Attestation struct {
 	DER                  []byte               `protobuf:"bytes,1,opt,name=DER,proto3" json:"DER,omitempty"`
 	Hash                 []byte               `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
-	Body                 *AttestationBody     `protobuf:"bytes,3,opt,name=body" json:"body,omitempty"`
+	Body                 *AttestationBody     `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
 	VerifierKey          []byte               `protobuf:"bytes,4,opt,name=verifierKey,proto3" json:"verifierKey,omitempty"`
 	ProverKey            []byte               `protobuf:"bytes,5,opt,name=proverKey,proto3" json:"proverKey,omitempty"`
 	SubjectHash          []byte               `protobuf:"bytes,6,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
-	SubjectLocation      *Location            `protobuf:"bytes,7,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
-	Validity             *AttestationValidity `protobuf:"bytes,8,opt,name=validity" json:"validity,omitempty"`
+	SubjectLocation      *Location            `protobuf:"bytes,7,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
+	Validity             *AttestationValidity `protobuf:"bytes,8,opt,name=validity,proto3" json:"validity,omitempty"`
 	Partition            [][]byte             `protobuf:"bytes,9,rep,name=partition,proto3" json:"partition,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
@@ -2236,7 +2336,7 @@ func (m *Attestation) Reset()         { *m = Attestation{} }
 func (m *Attestation) String() string { return proto.CompactTextString(m) }
 func (*Attestation) ProtoMessage()    {}
 func (*Attestation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{40}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{42}
 }
 func (m *Attestation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Attestation.Unmarshal(m, b)
@@ -2322,10 +2422,10 @@ func (m *Attestation) GetPartition() [][]byte {
 type AttestationBody struct {
 	DecodedBodyDER       []byte    `protobuf:"bytes,1,opt,name=DecodedBodyDER,proto3" json:"DecodedBodyDER,omitempty"`
 	AttesterHash         []byte    `protobuf:"bytes,2,opt,name=attesterHash,proto3" json:"attesterHash,omitempty"`
-	AttesterLocation     *Location `protobuf:"bytes,3,opt,name=attesterLocation" json:"attesterLocation,omitempty"`
-	Policy               *Policy   `protobuf:"bytes,4,opt,name=policy" json:"policy,omitempty"`
-	ValidFrom            int64     `protobuf:"varint,5,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64     `protobuf:"varint,6,opt,name=validUntil" json:"validUntil,omitempty"`
+	AttesterLocation     *Location `protobuf:"bytes,3,opt,name=attesterLocation,proto3" json:"attesterLocation,omitempty"`
+	Policy               *Policy   `protobuf:"bytes,4,opt,name=policy,proto3" json:"policy,omitempty"`
+	ValidFrom            int64     `protobuf:"varint,5,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64     `protobuf:"varint,6,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -2335,7 +2435,7 @@ func (m *AttestationBody) Reset()         { *m = AttestationBody{} }
 func (m *AttestationBody) String() string { return proto.CompactTextString(m) }
 func (*AttestationBody) ProtoMessage()    {}
 func (*AttestationBody) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{41}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{43}
 }
 func (m *AttestationBody) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AttestationBody.Unmarshal(m, b)
@@ -2398,15 +2498,15 @@ func (m *AttestationBody) GetValidUntil() int64 {
 }
 
 type AttestationValidity struct {
-	Valid                bool     `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
-	Revoked              bool     `protobuf:"varint,2,opt,name=revoked" json:"revoked,omitempty"`
-	Expired              bool     `protobuf:"varint,3,opt,name=expired" json:"expired,omitempty"`
-	Malformed            bool     `protobuf:"varint,4,opt,name=malformed" json:"malformed,omitempty"`
-	NotDecrypted         bool     `protobuf:"varint,5,opt,name=notDecrypted" json:"notDecrypted,omitempty"`
-	SrcInvalid           bool     `protobuf:"varint,6,opt,name=srcInvalid" json:"srcInvalid,omitempty"`
-	DstInvalid           bool     `protobuf:"varint,7,opt,name=dstInvalid" json:"dstInvalid,omitempty"`
-	Message              string   `protobuf:"bytes,8,opt,name=message" json:"message,omitempty"`
-	NotValidYet          bool     `protobuf:"varint,9,opt,name=notValidYet" json:"notValidYet,omitempty"`
+	Valid                bool     `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Revoked              bool     `protobuf:"varint,2,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	Expired              bool     `protobuf:"varint,3,opt,name=expired,proto3" json:"expired,omitempty"`
+	Malformed            bool     `protobuf:"varint,4,opt,name=malformed,proto3" json:"malformed,omitempty"`
+	NotDecrypted         bool     `protobuf:"varint,5,opt,name=notDecrypted,proto3" json:"notDecrypted,omitempty"`
+	SrcInvalid           bool     `protobuf:"varint,6,opt,name=srcInvalid,proto3" json:"srcInvalid,omitempty"`
+	DstInvalid           bool     `protobuf:"varint,7,opt,name=dstInvalid,proto3" json:"dstInvalid,omitempty"`
+	Message              string   `protobuf:"bytes,8,opt,name=message,proto3" json:"message,omitempty"`
+	NotValidYet          bool     `protobuf:"varint,9,opt,name=notValidYet,proto3" json:"notValidYet,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2416,7 +2516,7 @@ func (m *AttestationValidity) Reset()         { *m = AttestationValidity{} }
 func (m *AttestationValidity) String() string { return proto.CompactTextString(m) }
 func (*AttestationValidity) ProtoMessage()    {}
 func (*AttestationValidity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{42}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{44}
 }
 func (m *AttestationValidity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AttestationValidity.Unmarshal(m, b)
@@ -2500,12 +2600,12 @@ func (m *AttestationValidity) GetNotValidYet() bool {
 }
 
 type EntityValidity struct {
-	Valid                bool     `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
-	Revoked              bool     `protobuf:"varint,2,opt,name=revoked" json:"revoked,omitempty"`
-	Expired              bool     `protobuf:"varint,3,opt,name=expired" json:"expired,omitempty"`
-	Malformed            bool     `protobuf:"varint,4,opt,name=malformed" json:"malformed,omitempty"`
-	Message              string   `protobuf:"bytes,5,opt,name=message" json:"message,omitempty"`
-	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet" json:"notValidYet,omitempty"`
+	Valid                bool     `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Revoked              bool     `protobuf:"varint,2,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	Expired              bool     `protobuf:"varint,3,opt,name=expired,proto3" json:"expired,omitempty"`
+	Malformed            bool     `protobuf:"varint,4,opt,name=malformed,proto3" json:"malformed,omitempty"`
+	Message              string   `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet,proto3" json:"notValidYet,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2515,7 +2615,7 @@ func (m *EntityValidity) Reset()         { *m = EntityValidity{} }
 func (m *EntityValidity) String() string { return proto.CompactTextString(m) }
 func (*EntityValidity) ProtoMessage()    {}
 func (*EntityValidity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{43}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{45}
 }
 func (m *EntityValidity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EntityValidity.Unmarshal(m, b)
@@ -2578,12 +2678,12 @@ func (m *EntityValidity) GetNotValidYet() bool {
 }
 
 type NameDeclarationValidity struct {
-	Valid                bool     `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
-	Revoked              bool     `protobuf:"varint,2,opt,name=revoked" json:"revoked,omitempty"`
-	Expired              bool     `protobuf:"varint,3,opt,name=expired" json:"expired,omitempty"`
-	Malformed            bool     `protobuf:"varint,4,opt,name=malformed" json:"malformed,omitempty"`
-	Message              string   `protobuf:"bytes,5,opt,name=message" json:"message,omitempty"`
-	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet" json:"notValidYet,omitempty"`
+	Valid                bool     `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Revoked              bool     `protobuf:"varint,2,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	Expired              bool     `protobuf:"varint,3,opt,name=expired,proto3" json:"expired,omitempty"`
+	Malformed            bool     `protobuf:"varint,4,opt,name=malformed,proto3" json:"malformed,omitempty"`
+	Message              string   `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet,proto3" json:"notValidYet,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2593,7 +2693,7 @@ func (m *NameDeclarationValidity) Reset()         { *m = NameDeclarationValidity
 func (m *NameDeclarationValidity) String() string { return proto.CompactTextString(m) }
 func (*NameDeclarationValidity) ProtoMessage()    {}
 func (*NameDeclarationValidity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{44}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{46}
 }
 func (m *NameDeclarationValidity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NameDeclarationValidity.Unmarshal(m, b)
@@ -2656,8 +2756,8 @@ func (m *NameDeclarationValidity) GetNotValidYet() bool {
 }
 
 type Policy struct {
-	TrustLevelPolicy     *TrustLevelPolicy `protobuf:"bytes,1,opt,name=trustLevelPolicy" json:"trustLevelPolicy,omitempty"`
-	RTreePolicy          *RTreePolicy      `protobuf:"bytes,2,opt,name=rTreePolicy" json:"rTreePolicy,omitempty"`
+	TrustLevelPolicy     *TrustLevelPolicy `protobuf:"bytes,1,opt,name=trustLevelPolicy,proto3" json:"trustLevelPolicy,omitempty"`
+	RTreePolicy          *RTreePolicy      `protobuf:"bytes,2,opt,name=rTreePolicy,proto3" json:"rTreePolicy,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -2667,7 +2767,7 @@ func (m *Policy) Reset()         { *m = Policy{} }
 func (m *Policy) String() string { return proto.CompactTextString(m) }
 func (*Policy) ProtoMessage()    {}
 func (*Policy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{45}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{47}
 }
 func (m *Policy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Policy.Unmarshal(m, b)
@@ -2702,7 +2802,7 @@ func (m *Policy) GetRTreePolicy() *RTreePolicy {
 }
 
 type TrustLevelPolicy struct {
-	Trust                int32    `protobuf:"varint,1,opt,name=trust" json:"trust,omitempty"`
+	Trust                int32    `protobuf:"varint,1,opt,name=trust,proto3" json:"trust,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2712,7 +2812,7 @@ func (m *TrustLevelPolicy) Reset()         { *m = TrustLevelPolicy{} }
 func (m *TrustLevelPolicy) String() string { return proto.CompactTextString(m) }
 func (*TrustLevelPolicy) ProtoMessage()    {}
 func (*TrustLevelPolicy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{46}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{48}
 }
 func (m *TrustLevelPolicy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TrustLevelPolicy.Unmarshal(m, b)
@@ -2741,8 +2841,8 @@ func (m *TrustLevelPolicy) GetTrust() int32 {
 
 type RTreePolicy struct {
 	Namespace            []byte                  `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Indirections         uint32                  `protobuf:"varint,2,opt,name=indirections" json:"indirections,omitempty"`
-	Statements           []*RTreePolicyStatement `protobuf:"bytes,3,rep,name=statements" json:"statements,omitempty"`
+	Indirections         uint32                  `protobuf:"varint,2,opt,name=indirections,proto3" json:"indirections,omitempty"`
+	Statements           []*RTreePolicyStatement `protobuf:"bytes,3,rep,name=statements,proto3" json:"statements,omitempty"`
 	VisibilityURI        [][]byte                `protobuf:"bytes,4,rep,name=visibilityURI,proto3" json:"visibilityURI,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
@@ -2753,7 +2853,7 @@ func (m *RTreePolicy) Reset()         { *m = RTreePolicy{} }
 func (m *RTreePolicy) String() string { return proto.CompactTextString(m) }
 func (*RTreePolicy) ProtoMessage()    {}
 func (*RTreePolicy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{47}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{49}
 }
 func (m *RTreePolicy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RTreePolicy.Unmarshal(m, b)
@@ -2803,8 +2903,8 @@ func (m *RTreePolicy) GetVisibilityURI() [][]byte {
 
 type RTreePolicyStatement struct {
 	PermissionSet        []byte   `protobuf:"bytes,1,opt,name=permissionSet,proto3" json:"permissionSet,omitempty"`
-	Permissions          []string `protobuf:"bytes,2,rep,name=permissions" json:"permissions,omitempty"`
-	Resource             string   `protobuf:"bytes,3,opt,name=resource" json:"resource,omitempty"`
+	Permissions          []string `protobuf:"bytes,2,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	Resource             string   `protobuf:"bytes,3,opt,name=resource,proto3" json:"resource,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2814,7 +2914,7 @@ func (m *RTreePolicyStatement) Reset()         { *m = RTreePolicyStatement{} }
 func (m *RTreePolicyStatement) String() string { return proto.CompactTextString(m) }
 func (*RTreePolicyStatement) ProtoMessage()    {}
 func (*RTreePolicyStatement) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{48}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{50}
 }
 func (m *RTreePolicyStatement) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RTreePolicyStatement.Unmarshal(m, b)
@@ -2856,10 +2956,10 @@ func (m *RTreePolicyStatement) GetResource() string {
 }
 
 type BuildRTreeParams struct {
-	Perspective          *Perspective            `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective            `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	SubjectHash          []byte                  `protobuf:"bytes,2,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
 	RtreeNamespace       []byte                  `protobuf:"bytes,3,opt,name=rtreeNamespace,proto3" json:"rtreeNamespace,omitempty"`
-	Statements           []*RTreePolicyStatement `protobuf:"bytes,4,rep,name=statements" json:"statements,omitempty"`
+	Statements           []*RTreePolicyStatement `protobuf:"bytes,4,rep,name=statements,proto3" json:"statements,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
 	XXX_sizecache        int32                   `json:"-"`
@@ -2869,7 +2969,7 @@ func (m *BuildRTreeParams) Reset()         { *m = BuildRTreeParams{} }
 func (m *BuildRTreeParams) String() string { return proto.CompactTextString(m) }
 func (*BuildRTreeParams) ProtoMessage()    {}
 func (*BuildRTreeParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{49}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{51}
 }
 func (m *BuildRTreeParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuildRTreeParams.Unmarshal(m, b)
@@ -2918,8 +3018,8 @@ func (m *BuildRTreeParams) GetStatements() []*RTreePolicyStatement {
 }
 
 type BuildRTreeResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Result               *Proof   `protobuf:"bytes,2,opt,name=result" json:"result,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Result               *Proof   `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
 	ProofDER             []byte   `protobuf:"bytes,3,opt,name=proofDER,proto3" json:"proofDER,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -2930,7 +3030,7 @@ func (m *BuildRTreeResponse) Reset()         { *m = BuildRTreeResponse{} }
 func (m *BuildRTreeResponse) String() string { return proto.CompactTextString(m) }
 func (*BuildRTreeResponse) ProtoMessage()    {}
 func (*BuildRTreeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{50}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{52}
 }
 func (m *BuildRTreeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuildRTreeResponse.Unmarshal(m, b)
@@ -2982,7 +3082,7 @@ func (m *VerifyProofParams) Reset()         { *m = VerifyProofParams{} }
 func (m *VerifyProofParams) String() string { return proto.CompactTextString(m) }
 func (*VerifyProofParams) ProtoMessage()    {}
 func (*VerifyProofParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{51}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{53}
 }
 func (m *VerifyProofParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VerifyProofParams.Unmarshal(m, b)
@@ -3010,8 +3110,8 @@ func (m *VerifyProofParams) GetProofDER() []byte {
 }
 
 type VerifyProofResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Result               *Proof   `protobuf:"bytes,2,opt,name=result" json:"result,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Result               *Proof   `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3021,7 +3121,7 @@ func (m *VerifyProofResponse) Reset()         { *m = VerifyProofResponse{} }
 func (m *VerifyProofResponse) String() string { return proto.CompactTextString(m) }
 func (*VerifyProofResponse) ProtoMessage()    {}
 func (*VerifyProofResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{52}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{54}
 }
 func (m *VerifyProofResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VerifyProofResponse.Unmarshal(m, b)
@@ -3056,12 +3156,12 @@ func (m *VerifyProofResponse) GetResult() *Proof {
 }
 
 type Proof struct {
-	Elements             []*Attestation `protobuf:"bytes,1,rep,name=elements" json:"elements,omitempty"`
-	Paths                []*ProofPath   `protobuf:"bytes,2,rep,name=paths" json:"paths,omitempty"`
-	Policy               *Policy        `protobuf:"bytes,3,opt,name=policy" json:"policy,omitempty"`
-	Expiry               int64          `protobuf:"varint,4,opt,name=expiry" json:"expiry,omitempty"`
+	Elements             []*Attestation `protobuf:"bytes,1,rep,name=elements,proto3" json:"elements,omitempty"`
+	Paths                []*ProofPath   `protobuf:"bytes,2,rep,name=paths,proto3" json:"paths,omitempty"`
+	Policy               *Policy        `protobuf:"bytes,3,opt,name=policy,proto3" json:"policy,omitempty"`
+	Expiry               int64          `protobuf:"varint,4,opt,name=expiry,proto3" json:"expiry,omitempty"`
 	Subject              []byte         `protobuf:"bytes,5,opt,name=subject,proto3" json:"subject,omitempty"`
-	SubjectLocation      *Location      `protobuf:"bytes,6,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation      *Location      `protobuf:"bytes,6,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -3071,7 +3171,7 @@ func (m *Proof) Reset()         { *m = Proof{} }
 func (m *Proof) String() string { return proto.CompactTextString(m) }
 func (*Proof) ProtoMessage()    {}
 func (*Proof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{53}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{55}
 }
 func (m *Proof) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Proof.Unmarshal(m, b)
@@ -3134,7 +3234,7 @@ func (m *Proof) GetSubjectLocation() *Location {
 }
 
 type ProofPath struct {
-	Elements             []int32  `protobuf:"varint,1,rep,packed,name=elements" json:"elements,omitempty"`
+	Elements             []int32  `protobuf:"varint,1,rep,packed,name=elements,proto3" json:"elements,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3144,7 +3244,7 @@ func (m *ProofPath) Reset()         { *m = ProofPath{} }
 func (m *ProofPath) String() string { return proto.CompactTextString(m) }
 func (*ProofPath) ProtoMessage()    {}
 func (*ProofPath) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_7a0b7c370880a23f, []int{54}
+	return fileDescriptor_eapi_ab574ca9e6d5db88, []int{56}
 }
 func (m *ProofPath) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ProofPath.Unmarshal(m, b)
@@ -3172,6 +3272,8 @@ func (m *ProofPath) GetElements() []int32 {
 }
 
 func init() {
+	proto.RegisterType((*ResolveReverseNameParams)(nil), "pb.ResolveReverseNameParams")
+	proto.RegisterType((*ResolveReverseNameResponse)(nil), "pb.ResolveReverseNameResponse")
 	proto.RegisterType((*MarkEntityInterestingParams)(nil), "pb.MarkEntityInterestingParams")
 	proto.RegisterType((*MarkEntityInterestingResponse)(nil), "pb.MarkEntityInterestingResponse")
 	proto.RegisterType((*CreateNameDeclarationParams)(nil), "pb.CreateNameDeclarationParams")
@@ -3269,6 +3371,7 @@ type WAVEClient interface {
 	CreateNameDeclaration(ctx context.Context, in *CreateNameDeclarationParams, opts ...grpc.CallOption) (*CreateNameDeclarationResponse, error)
 	ResolveName(ctx context.Context, in *ResolveNameParams, opts ...grpc.CallOption) (*ResolveNameResponse, error)
 	MarkEntityInteresting(ctx context.Context, in *MarkEntityInterestingParams, opts ...grpc.CallOption) (*MarkEntityInterestingResponse, error)
+	ResolveReverseName(ctx context.Context, in *ResolveReverseNameParams, opts ...grpc.CallOption) (*ResolveReverseNameResponse, error)
 }
 
 type wAVEClient struct {
@@ -3473,6 +3576,15 @@ func (c *wAVEClient) MarkEntityInteresting(ctx context.Context, in *MarkEntityIn
 	return out, nil
 }
 
+func (c *wAVEClient) ResolveReverseName(ctx context.Context, in *ResolveReverseNameParams, opts ...grpc.CallOption) (*ResolveReverseNameResponse, error) {
+	out := new(ResolveReverseNameResponse)
+	err := c.cc.Invoke(ctx, "/pb.WAVE/ResolveReverseName", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WAVEServer is the server API for WAVE service.
 type WAVEServer interface {
 	// Create a new WAVE entity, but do not publish it
@@ -3500,6 +3612,7 @@ type WAVEServer interface {
 	CreateNameDeclaration(context.Context, *CreateNameDeclarationParams) (*CreateNameDeclarationResponse, error)
 	ResolveName(context.Context, *ResolveNameParams) (*ResolveNameResponse, error)
 	MarkEntityInteresting(context.Context, *MarkEntityInterestingParams) (*MarkEntityInterestingResponse, error)
+	ResolveReverseName(context.Context, *ResolveReverseNameParams) (*ResolveReverseNameResponse, error)
 }
 
 func RegisterWAVEServer(s *grpc.Server, srv WAVEServer) {
@@ -3851,6 +3964,24 @@ func _WAVE_MarkEntityInteresting_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WAVE_ResolveReverseName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveReverseNameParams)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WAVEServer).ResolveReverseName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.WAVE/ResolveReverseName",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WAVEServer).ResolveReverseName(ctx, req.(*ResolveReverseNameParams))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _WAVE_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pb.WAVE",
 	HandlerType: (*WAVEServer)(nil),
@@ -3927,6 +4058,10 @@ var _WAVE_serviceDesc = grpc.ServiceDesc{
 			MethodName: "MarkEntityInteresting",
 			Handler:    _WAVE_MarkEntityInteresting_Handler,
 		},
+		{
+			MethodName: "ResolveReverseName",
+			Handler:    _WAVE_ResolveReverseName_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -3938,166 +4073,170 @@ var _WAVE_serviceDesc = grpc.ServiceDesc{
 	Metadata: "eapi.proto",
 }
 
-func init() { proto.RegisterFile("eapi.proto", fileDescriptor_eapi_7a0b7c370880a23f) }
+func init() { proto.RegisterFile("eapi.proto", fileDescriptor_eapi_ab574ca9e6d5db88) }
 
-var fileDescriptor_eapi_7a0b7c370880a23f = []byte{
-	// 2527 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x1a, 0x4d, 0x6f, 0x24, 0x47,
-	0x55, 0x3d, 0xe3, 0x19, 0xcf, 0xbc, 0xf1, 0x67, 0x8d, 0xed, 0x9d, 0x1d, 0x7b, 0x1d, 0x6f, 0x25,
-	0x24, 0x26, 0x24, 0x5e, 0x76, 0x93, 0x90, 0xdd, 0x15, 0x12, 0xeb, 0x64, 0x1d, 0xd6, 0xc2, 0x01,
-	0x6f, 0x3b, 0xbb, 0xd1, 0x22, 0x21, 0xd4, 0x9e, 0x29, 0x7b, 0x9a, 0x9d, 0xe9, 0xee, 0x54, 0xd7,
-	0x8c, 0x32, 0x48, 0x1c, 0x40, 0x02, 0x14, 0x2e, 0x1c, 0x72, 0x86, 0x03, 0x17, 0x90, 0x38, 0x70,
-	0x41, 0xe2, 0x02, 0x3f, 0x20, 0x37, 0x24, 0xfe, 0x00, 0x07, 0x24, 0x2e, 0xdc, 0x38, 0x71, 0x43,
-	0xf5, 0xd1, 0xdd, 0x55, 0xdd, 0x65, 0xbb, 0xf1, 0x2e, 0x41, 0xdc, 0xba, 0x5e, 0xbd, 0x7e, 0xdf,
-	0xf5, 0x3e, 0xaa, 0x1b, 0x80, 0x78, 0x91, 0xbf, 0x13, 0xd1, 0x90, 0x85, 0xa8, 0x12, 0x1d, 0x77,
-	0x37, 0x4e, 0xc3, 0xf0, 0x74, 0x48, 0x6e, 0x78, 0x91, 0x7f, 0xc3, 0x0b, 0x82, 0x90, 0x79, 0xcc,
-	0x0f, 0x83, 0x58, 0x62, 0xe0, 0x5f, 0x3a, 0xb0, 0xfe, 0xbe, 0x47, 0x9f, 0xee, 0x05, 0xcc, 0x67,
-	0xd3, 0xfd, 0x80, 0x11, 0x4a, 0x62, 0xe6, 0x07, 0xa7, 0x87, 0x1e, 0xf5, 0x46, 0x31, 0xba, 0x09,
-	0xad, 0x88, 0xd0, 0x38, 0x22, 0x3d, 0xe6, 0x4f, 0x48, 0xc7, 0xd9, 0x72, 0xb6, 0x5b, 0xb7, 0x16,
-	0x77, 0xa2, 0xe3, 0x9d, 0xc3, 0x0c, 0xec, 0xea, 0x38, 0x68, 0x0d, 0xea, 0x44, 0x50, 0xeb, 0x54,
-	0xb6, 0x9c, 0xed, 0x39, 0x57, 0xad, 0xd0, 0x9b, 0xb0, 0x20, 0x9f, 0x0e, 0xc2, 0x9e, 0x90, 0xa1,
-	0x53, 0x15, 0xd4, 0xe6, 0x38, 0xb5, 0x04, 0xe6, 0xe6, 0x70, 0xf0, 0x3d, 0xb8, 0x66, 0x95, 0xcf,
-	0x25, 0x71, 0x14, 0x06, 0x31, 0x41, 0x2f, 0x40, 0x8d, 0x50, 0x1a, 0x52, 0x25, 0x5b, 0x93, 0x53,
-	0xdb, 0xe3, 0x00, 0x57, 0xc2, 0xf1, 0x3f, 0x2a, 0xb0, 0xfe, 0x2e, 0x25, 0x1e, 0x23, 0xdf, 0xf4,
-	0x46, 0xe4, 0x3e, 0xe9, 0x0d, 0x3d, 0x2a, 0x68, 0x5f, 0x5e, 0x45, 0x04, 0x33, 0x81, 0x37, 0x22,
-	0x42, 0xc1, 0xa6, 0x2b, 0x9e, 0x51, 0x07, 0x66, 0xe3, 0xf1, 0xf1, 0xf7, 0x48, 0x8f, 0x09, 0xbd,
-	0xe6, 0xdc, 0x64, 0x89, 0xbe, 0x02, 0x8b, 0xea, 0x31, 0xd5, 0x7c, 0xc6, 0xa2, 0x79, 0x1e, 0x09,
-	0x6d, 0x40, 0x73, 0xe2, 0x0d, 0xfd, 0xfe, 0x7b, 0x34, 0x1c, 0x75, 0x6a, 0x5b, 0xce, 0x76, 0xd5,
-	0xcd, 0x00, 0x68, 0x13, 0x40, 0x2c, 0x1e, 0x05, 0xcc, 0x1f, 0x76, 0xea, 0x62, 0x5b, 0x83, 0xf0,
-	0xb7, 0xb9, 0x5c, 0x71, 0xe4, 0xf5, 0x48, 0x67, 0x56, 0x48, 0x94, 0x01, 0xd0, 0x5d, 0x58, 0x4e,
-	0x17, 0xa9, 0x54, 0x0d, 0x8b, 0x54, 0x45, 0x34, 0x4e, 0x39, 0xf2, 0x28, 0xf3, 0xc5, 0x3b, 0xcd,
-	0xad, 0x2a, 0xa7, 0x9c, 0x02, 0xf0, 0x09, 0x5c, 0xb3, 0x5a, 0xbb, 0xb4, 0xc3, 0xd0, 0x12, 0x54,
-	0xef, 0xef, 0xb9, 0x2a, 0x7a, 0xf8, 0x23, 0xb7, 0xf7, 0xc0, 0x8b, 0x07, 0xca, 0xb0, 0xe2, 0x19,
-	0xff, 0xc4, 0x81, 0x65, 0x97, 0xc4, 0xe1, 0x70, 0x22, 0x38, 0x3d, 0x5f, 0x67, 0xbe, 0x0a, 0x4b,
-	0x2c, 0x8c, 0x0e, 0xc8, 0x84, 0x0c, 0x77, 0x19, 0x23, 0x31, 0x23, 0x54, 0x31, 0x2f, 0xc0, 0xf1,
-	0x9f, 0xab, 0xb0, 0x98, 0xd3, 0x35, 0x15, 0xd8, 0xc9, 0x04, 0xfe, 0x9c, 0x82, 0xa6, 0x0b, 0x0d,
-	0x2f, 0x91, 0xb8, 0x26, 0x48, 0xa6, 0x6b, 0x74, 0x1b, 0x96, 0x92, 0xe7, 0x94, 0x68, 0xdd, 0x42,
-	0xb4, 0x80, 0x65, 0x86, 0xe2, 0xec, 0xf9, 0xa1, 0xd8, 0x38, 0x3f, 0x14, 0x9b, 0xa5, 0x42, 0x11,
-	0x2e, 0x11, 0x8a, 0xad, 0x5c, 0x28, 0xa2, 0xb7, 0xa1, 0x21, 0xa4, 0xe0, 0xb9, 0x68, 0x4e, 0x10,
-	0x5c, 0xe7, 0x04, 0x73, 0xce, 0x7a, 0xac, 0x50, 0xdc, 0x14, 0x19, 0xff, 0xdc, 0x81, 0xb6, 0x16,
-	0x5b, 0xe5, 0x43, 0x17, 0x1b, 0xb9, 0xaf, 0x75, 0x0b, 0x04, 0x86, 0x80, 0xa4, 0x79, 0xf0, 0x0d,
-	0x80, 0x3e, 0xa1, 0xfe, 0x24, 0xc9, 0x81, 0xd5, 0xed, 0xd6, 0xad, 0xb6, 0x45, 0x2e, 0x57, 0x43,
-	0xc3, 0xdf, 0x4e, 0x83, 0xfd, 0x81, 0x17, 0x0f, 0x54, 0xb0, 0xdb, 0xa2, 0x2c, 0x77, 0x00, 0x2a,
-	0x17, 0x1f, 0x00, 0xfc, 0x87, 0x4c, 0x5b, 0x4e, 0xbc, 0xbc, 0xb6, 0xdb, 0xd0, 0x18, 0x26, 0x0e,
-	0xab, 0x58, 0x1c, 0x96, 0xee, 0x6a, 0x76, 0xa9, 0x9e, 0x69, 0x97, 0x9b, 0xd0, 0x92, 0x71, 0xa7,
-	0x47, 0xbb, 0x90, 0x7c, 0x37, 0x03, 0xbb, 0x3a, 0x0e, 0xf6, 0x61, 0x7e, 0x3f, 0x10, 0x7a, 0x28,
-	0x8b, 0x74, 0x60, 0xb6, 0x17, 0x06, 0x8c, 0x04, 0x4c, 0x19, 0x25, 0x59, 0x8a, 0x48, 0xa1, 0xe1,
-	0x84, 0xd0, 0x6f, 0x90, 0xa4, 0x30, 0x65, 0x00, 0xb4, 0x05, 0xad, 0x09, 0xa1, 0xfe, 0x89, 0x2f,
-	0xf7, 0xe5, 0x59, 0xd4, 0x41, 0xf8, 0x13, 0x07, 0x16, 0x15, 0xaf, 0xe7, 0x1b, 0x0e, 0x39, 0xb5,
-	0xab, 0x25, 0xd4, 0x5e, 0x85, 0xf6, 0x81, 0x1f, 0xa7, 0x67, 0x3e, 0x96, 0xca, 0xe3, 0xbf, 0x3a,
-	0xb0, 0x6a, 0xc0, 0xcb, 0x0b, 0xfa, 0x08, 0x16, 0xbc, 0x53, 0x12, 0x64, 0xaf, 0x76, 0x2a, 0x22,
-	0x2e, 0x5f, 0x17, 0xfe, 0xb4, 0xd1, 0xdc, 0xd9, 0x35, 0xf0, 0xf7, 0x02, 0x46, 0xa7, 0x6e, 0x8e,
-	0x48, 0xf7, 0x5b, 0xd0, 0xb6, 0xa0, 0xf1, 0x04, 0xff, 0x94, 0x4c, 0x85, 0x30, 0x4d, 0x97, 0x3f,
-	0x22, 0x0c, 0xb5, 0x89, 0x37, 0x1c, 0x13, 0x6b, 0x18, 0xc9, 0xad, 0xbb, 0x95, 0xdb, 0x0e, 0xfe,
-	0xa3, 0x03, 0x48, 0x56, 0x17, 0x69, 0x45, 0xe5, 0x76, 0x23, 0x3d, 0x39, 0xe7, 0xa7, 0xa7, 0x4a,
-	0x21, 0x3d, 0x7d, 0x15, 0x10, 0x25, 0x13, 0xc5, 0xed, 0xdc, 0xe6, 0xc4, 0x82, 0xc7, 0x4b, 0xc5,
-	0x11, 0xe9, 0x51, 0xc2, 0x0e, 0xbd, 0x38, 0x8e, 0x06, 0xd4, 0x8b, 0x89, 0x88, 0xdd, 0xa6, 0x5b,
-	0x80, 0xe3, 0x9f, 0x3a, 0xb0, 0xa2, 0x8b, 0x5f, 0xde, 0x41, 0x1b, 0xd0, 0x3c, 0x1c, 0x1f, 0x0f,
-	0xfd, 0x5e, 0x56, 0x19, 0x33, 0x00, 0xdf, 0x95, 0xbc, 0xf8, 0xae, 0x0c, 0xde, 0x0c, 0x90, 0xa6,
-	0x89, 0x19, 0xad, 0x7a, 0xfe, 0xcc, 0x81, 0xba, 0x94, 0xc1, 0x9a, 0x45, 0x0c, 0x83, 0x56, 0xce,
-	0x37, 0x68, 0xb5, 0x60, 0xd0, 0x1d, 0x2d, 0xef, 0xca, 0x63, 0x8c, 0xb2, 0xc0, 0xb7, 0xa4, 0xdb,
-	0xdf, 0x54, 0xe0, 0x8a, 0x34, 0x8b, 0x16, 0xf2, 0x97, 0x2f, 0xe8, 0x9b, 0x00, 0xc7, 0x61, 0x7f,
-	0x7a, 0xd4, 0x1b, 0x90, 0xb4, 0xdc, 0x6a, 0x10, 0x7e, 0xd8, 0x55, 0xd5, 0x7c, 0x90, 0x35, 0x15,
-	0x3a, 0xe8, 0x7f, 0xd4, 0xb1, 0x61, 0xa8, 0x47, 0xe1, 0xd0, 0xef, 0x4d, 0x45, 0x85, 0x55, 0xd9,
-	0xe2, 0x50, 0x40, 0x5c, 0xb5, 0x83, 0x1f, 0xc2, 0x86, 0x4b, 0xe2, 0x69, 0xd0, 0xd3, 0xb4, 0xff,
-	0x3a, 0xf5, 0xa2, 0xc1, 0xa5, 0xcd, 0x85, 0x77, 0x61, 0xd3, 0x4e, 0xb2, 0x7c, 0x8b, 0xfd, 0x35,
-	0x80, 0x23, 0x4e, 0xe0, 0xd2, 0x32, 0xfc, 0xb3, 0x02, 0x2b, 0x7b, 0x41, 0x8f, 0x4e, 0x23, 0xf6,
-	0x3e, 0x89, 0x63, 0xef, 0xf4, 0x19, 0xfa, 0x39, 0xad, 0x06, 0x54, 0xcc, 0x1a, 0xf0, 0x5f, 0x75,
-	0x7c, 0xd6, 0xe1, 0xd4, 0x4a, 0x75, 0x38, 0xf5, 0x4b, 0x74, 0x38, 0xb3, 0xf9, 0x0e, 0xc7, 0x08,
-	0xb8, 0xc6, 0xf9, 0x01, 0xd7, 0xcc, 0x07, 0x1c, 0x7e, 0x02, 0x6b, 0xa6, 0xd1, 0xcb, 0xe7, 0xa3,
-	0x4d, 0x80, 0x9e, 0x1f, 0x0d, 0x08, 0x65, 0xe4, 0xe3, 0xc4, 0xce, 0x1a, 0x04, 0xfb, 0xb0, 0x72,
-	0x9f, 0x3c, 0x1f, 0x7f, 0x5e, 0xc4, 0xea, 0x08, 0xd6, 0x4c, 0x56, 0xe5, 0xb5, 0x38, 0x33, 0x54,
-	0xf0, 0x6f, 0x2b, 0x30, 0xc7, 0x43, 0xba, 0x3c, 0xad, 0x7d, 0x98, 0x8f, 0x59, 0x48, 0xbd, 0x53,
-	0x72, 0xc4, 0x3c, 0x36, 0x4e, 0x2a, 0xe8, 0x8b, 0x1c, 0x51, 0xa7, 0xb4, 0x73, 0xa4, 0x63, 0xc9,
-	0xba, 0x69, 0xbe, 0x89, 0x5e, 0x83, 0x65, 0x16, 0x32, 0x6f, 0x28, 0x5f, 0xfb, 0x68, 0x4c, 0x62,
-	0x16, 0xab, 0x34, 0x5b, 0xdc, 0x40, 0x2f, 0xc3, 0x42, 0x2f, 0x1c, 0x45, 0x43, 0xc2, 0x48, 0x9f,
-	0x6f, 0xc4, 0x22, 0x64, 0xab, 0x6e, 0x0e, 0xda, 0x7d, 0x02, 0xa8, 0xc8, 0xda, 0x52, 0x8b, 0x5f,
-	0x37, 0x6b, 0xf1, 0x15, 0xa1, 0x80, 0x7c, 0xf1, 0x3e, 0xf5, 0x27, 0x84, 0xca, 0xd7, 0xf5, 0xb2,
-	0xfc, 0x6b, 0x07, 0xda, 0x16, 0x14, 0x7e, 0xe0, 0xc2, 0x88, 0xc8, 0x76, 0xd6, 0x1b, 0x0a, 0x26,
-	0x0d, 0x57, 0x07, 0xa1, 0xb7, 0x60, 0xc6, 0x0f, 0x4e, 0x42, 0x65, 0xac, 0xeb, 0x67, 0xf0, 0xda,
-	0xd9, 0x0f, 0x4e, 0x42, 0x69, 0x2a, 0x81, 0xde, 0x7d, 0x1b, 0x9a, 0x29, 0xc8, 0xa2, 0xc2, 0x8a,
-	0xae, 0x42, 0x53, 0x97, 0xf4, 0x57, 0x0e, 0x5c, 0x2d, 0x94, 0x9a, 0x67, 0x19, 0x4d, 0x2f, 0xec,
-	0x1c, 0xcd, 0xce, 0x73, 0x26, 0xdf, 0x79, 0x26, 0xd5, 0xb7, 0xa6, 0x15, 0xe7, 0x87, 0xd0, 0x16,
-	0xb5, 0x3d, 0x1e, 0x18, 0x5d, 0x8e, 0x62, 0xee, 0x64, 0xcc, 0x4b, 0x37, 0xe0, 0xf8, 0x00, 0x56,
-	0x0d, 0x92, 0xe5, 0x55, 0x4e, 0x04, 0xac, 0x68, 0x02, 0xbe, 0x06, 0x1d, 0x45, 0xad, 0x58, 0xb0,
-	0x0b, 0x52, 0xe2, 0x87, 0xd0, 0x2d, 0x62, 0x3f, 0x9b, 0x00, 0x53, 0x58, 0xd9, 0xed, 0xf7, 0x9f,
-	0x4b, 0xb7, 0x50, 0x74, 0xa9, 0xe1, 0xb0, 0x6a, 0xce, 0x61, 0xf8, 0x0e, 0xac, 0x99, 0xac, 0xcb,
-	0x97, 0xc9, 0x4f, 0x1c, 0xe8, 0x1c, 0x84, 0xe1, 0xd3, 0x71, 0xa4, 0xbd, 0x1e, 0x3f, 0x53, 0x66,
-	0x3c, 0xa1, 0xe1, 0x68, 0x4f, 0xbf, 0x6d, 0xd3, 0x20, 0xa8, 0x0b, 0x0d, 0x16, 0xee, 0x65, 0x73,
-	0xd7, 0x9c, 0x9b, 0xae, 0xf1, 0x00, 0xba, 0x45, 0x51, 0xca, 0x3b, 0xe5, 0x8b, 0x30, 0x4b, 0x49,
-	0x3c, 0x1e, 0xb2, 0x24, 0xcf, 0x15, 0x26, 0x96, 0x64, 0x1f, 0xbf, 0x05, 0xb5, 0xbd, 0xc4, 0x91,
-	0xbd, 0xb0, 0x2f, 0x55, 0xab, 0xb9, 0xe2, 0x99, 0x67, 0xe0, 0x91, 0xcc, 0xda, 0xea, 0xac, 0x26,
-	0x4b, 0x3c, 0x82, 0x96, 0xa6, 0x38, 0x7a, 0x13, 0xe6, 0xe4, 0xc0, 0x24, 0xfb, 0x5a, 0x25, 0xd8,
-	0x52, 0xd6, 0x57, 0x4a, 0xb8, 0x6b, 0x60, 0xfd, 0x07, 0x07, 0xa4, 0x07, 0x8d, 0xb4, 0xe6, 0xde,
-	0x84, 0x56, 0x02, 0x7f, 0xe4, 0xee, 0xeb, 0xae, 0x38, 0xc8, 0xc0, 0xae, 0x8e, 0x83, 0x5e, 0x82,
-	0x79, 0x63, 0xf6, 0x51, 0xda, 0x98, 0x40, 0x7c, 0x07, 0x5a, 0x1a, 0x05, 0x1e, 0x7a, 0x09, 0xfd,
-	0xa6, 0xcb, 0x1f, 0xb9, 0x39, 0x26, 0x84, 0xc6, 0x09, 0x81, 0x9a, 0x9b, 0x2c, 0xf1, 0x3d, 0x98,
-	0xd3, 0xf5, 0xb4, 0x24, 0x83, 0x4d, 0x80, 0x28, 0x1b, 0x41, 0x54, 0x34, 0x64, 0x10, 0xfc, 0x59,
-	0x05, 0x5a, 0x9a, 0x83, 0x2c, 0x14, 0x2c, 0x27, 0x0d, 0xbd, 0x02, 0x33, 0xbc, 0x75, 0x56, 0xe3,
-	0x50, 0x3b, 0xe7, 0xe5, 0x77, 0xc2, 0xfe, 0xd4, 0x15, 0x08, 0xf9, 0x44, 0x38, 0x73, 0x41, 0x22,
-	0xac, 0x59, 0x46, 0x70, 0xbd, 0x39, 0xab, 0x97, 0x6a, 0xce, 0x66, 0xcb, 0x34, 0x67, 0x6f, 0x68,
-	0xe3, 0x48, 0x23, 0xab, 0x69, 0x9a, 0x1a, 0xc5, 0x99, 0xe4, 0x82, 0x4b, 0xce, 0x7f, 0x39, 0xb0,
-	0x98, 0x33, 0x03, 0xaf, 0xc3, 0xf7, 0x09, 0x0f, 0xea, 0x3e, 0x5f, 0x66, 0xa6, 0xcd, 0x41, 0x11,
-	0x86, 0xb9, 0xe4, 0x7e, 0xed, 0x41, 0x66, 0x6d, 0x03, 0x66, 0xbd, 0xa9, 0xab, 0x96, 0xba, 0xa9,
-	0xcb, 0x86, 0x88, 0x99, 0xb3, 0x86, 0x88, 0x67, 0x1b, 0x53, 0xf0, 0x2f, 0x2a, 0xd0, 0xb6, 0xd8,
-	0x4e, 0x15, 0x5d, 0xbf, 0xaf, 0xca, 0xbc, 0x5c, 0xf0, 0x88, 0xe6, 0x43, 0xf3, 0x53, 0xd2, 0x17,
-	0x8a, 0x36, 0xdc, 0x64, 0xc9, 0x77, 0xc8, 0xc7, 0x91, 0x4f, 0x49, 0x5f, 0xa8, 0xd6, 0x70, 0x93,
-	0x25, 0x97, 0x6f, 0xe4, 0x0d, 0x4f, 0x42, 0x3a, 0x22, 0x7d, 0xa1, 0x46, 0xc3, 0xcd, 0x00, 0xdc,
-	0x7e, 0x41, 0xc8, 0x54, 0xcb, 0x47, 0xfa, 0x42, 0x81, 0x86, 0x6b, 0xc0, 0xb8, 0x0e, 0x31, 0xed,
-	0xed, 0x07, 0x52, 0xa0, 0xba, 0xc0, 0xd0, 0x20, 0x7c, 0xbf, 0x1f, 0xb3, 0x64, 0x7f, 0x56, 0xee,
-	0x67, 0x10, 0x3d, 0x2d, 0x35, 0x8c, 0xb4, 0xc4, 0xc3, 0x34, 0x08, 0x99, 0x50, 0xfa, 0x09, 0x61,
-	0xa2, 0xa9, 0x6e, 0xb8, 0x3a, 0x08, 0xff, 0xde, 0x81, 0x05, 0x73, 0xd4, 0xfd, 0xdc, 0x4c, 0xa3,
-	0x89, 0x5d, 0x3b, 0x57, 0xec, 0x7a, 0x51, 0xec, 0x3f, 0x39, 0x70, 0xe5, 0x8c, 0x9b, 0xd1, 0xff,
-	0x0b, 0xf9, 0x7f, 0x00, 0x75, 0x19, 0xe6, 0xe8, 0x1e, 0x2c, 0x31, 0x3a, 0x8e, 0x99, 0xb8, 0xa6,
-	0x97, 0x30, 0x95, 0xc3, 0x57, 0xf8, 0x61, 0xf8, 0x20, 0xb7, 0xe7, 0x16, 0xb0, 0x79, 0x01, 0xa0,
-	0x1f, 0x50, 0x42, 0xd4, 0xcb, 0xda, 0x25, 0xaa, 0x9b, 0x81, 0x5d, 0x1d, 0x07, 0x6f, 0xc3, 0x52,
-	0x9e, 0x30, 0x37, 0x9b, 0x20, 0xad, 0x2a, 0x9e, 0x5c, 0xe0, 0xdf, 0x39, 0xd0, 0xd2, 0xc8, 0x98,
-	0xb3, 0xa3, 0x93, 0x9f, 0x1d, 0x31, 0xcc, 0xf9, 0x41, 0xdf, 0xa7, 0xbc, 0x0c, 0xca, 0x7b, 0x39,
-	0x67, 0x7b, 0xde, 0x35, 0x60, 0xe8, 0x36, 0x00, 0x3f, 0x8c, 0x64, 0x44, 0x02, 0x31, 0x28, 0xf0,
-	0x7a, 0xdc, 0xc9, 0x49, 0x7b, 0x94, 0x20, 0xb8, 0x1a, 0x2e, 0x2f, 0x5b, 0x13, 0x3f, 0xf6, 0x8f,
-	0xfd, 0xa1, 0xcf, 0xa6, 0xbc, 0x16, 0xcd, 0x88, 0x4c, 0x67, 0x02, 0xf1, 0xf7, 0x61, 0xc5, 0x46,
-	0x89, 0xbf, 0x1d, 0x11, 0x3a, 0xf2, 0x63, 0x5e, 0xa1, 0x8e, 0x48, 0x72, 0xe7, 0x6a, 0x02, 0xb9,
-	0xeb, 0x32, 0x80, 0x6c, 0x17, 0x9a, 0xae, 0x0e, 0xe2, 0x7d, 0x0a, 0x25, 0x71, 0x38, 0xa6, 0x3d,
-	0x22, 0xe2, 0xa5, 0xe9, 0xa6, 0x6b, 0xfc, 0x99, 0x03, 0x4b, 0xef, 0x8c, 0xfd, 0x61, 0x5f, 0x4a,
-	0x70, 0xe9, 0x5e, 0x29, 0x57, 0x5e, 0x2a, 0xc5, 0xf2, 0xf2, 0x32, 0x2c, 0x50, 0x46, 0x89, 0xb8,
-	0xf1, 0x97, 0xce, 0x90, 0x3d, 0x53, 0x0e, 0x9a, 0xb3, 0xf6, 0x4c, 0x79, 0x6b, 0x63, 0x06, 0x28,
-	0x53, 0xa5, 0x7c, 0xaf, 0x75, 0x1d, 0xea, 0xb2, 0x97, 0x52, 0x81, 0x28, 0x30, 0x0e, 0x69, 0x18,
-	0x9e, 0xb8, 0x6a, 0x83, 0x5b, 0x30, 0xe2, 0x80, 0xec, 0xfe, 0x2f, 0x5d, 0xe3, 0x1b, 0xb0, 0xfc,
-	0x98, 0x57, 0xe1, 0xa9, 0x78, 0x45, 0x59, 0x50, 0x7f, 0xc1, 0xc9, 0xbd, 0xf0, 0x04, 0xda, 0xda,
-	0x0b, 0xcf, 0x53, 0x4e, 0xfc, 0x77, 0x07, 0x6a, 0x02, 0x82, 0xbe, 0x04, 0x0d, 0x32, 0x54, 0x36,
-	0x74, 0xec, 0x1d, 0x64, 0x8a, 0x80, 0x5e, 0x84, 0x5a, 0xe4, 0xb1, 0x41, 0xd2, 0x6b, 0xce, 0xa7,
-	0x84, 0x0f, 0x3d, 0x36, 0x70, 0xe5, 0x9e, 0x56, 0xf9, 0xaa, 0x67, 0x56, 0xbe, 0x35, 0xa8, 0x8b,
-	0x4c, 0x34, 0x55, 0x33, 0xb2, 0x5a, 0xe9, 0xdf, 0xe1, 0x6a, 0x17, 0x7e, 0x87, 0xab, 0x97, 0x68,
-	0x3a, 0xf0, 0x2b, 0xd0, 0x4c, 0x25, 0xe4, 0xd6, 0x36, 0x94, 0xad, 0x65, 0xba, 0xdd, 0xfa, 0x74,
-	0x11, 0x66, 0x3e, 0xdc, 0x7d, 0xbc, 0x87, 0xbe, 0x03, 0x73, 0xfa, 0xdd, 0x30, 0x5a, 0xe3, 0x0c,
-	0x8a, 0x97, 0xdd, 0xdd, 0x4e, 0x1e, 0x9e, 0x78, 0x08, 0xaf, 0xff, 0xe8, 0x2f, 0x7f, 0xfb, 0xb4,
-	0xb2, 0x8a, 0x97, 0x6e, 0x4c, 0x6e, 0xde, 0xd0, 0x31, 0xee, 0x3a, 0xaf, 0xa2, 0x8f, 0x60, 0xb9,
-	0x30, 0xf8, 0xa2, 0xf5, 0x8c, 0x56, 0x61, 0x98, 0xea, 0x5e, 0xb3, 0x6e, 0xa6, 0xdc, 0xb6, 0x04,
-	0xb7, 0x2e, 0x5e, 0xcd, 0xb8, 0x69, 0x68, 0x9c, 0xa5, 0x07, 0xf3, 0xc6, 0xd0, 0x89, 0x44, 0xdf,
-	0x65, 0x19, 0x6d, 0xbb, 0x57, 0x0b, 0x1b, 0x29, 0x9b, 0x0d, 0xc1, 0x66, 0x0d, 0x2f, 0x73, 0x36,
-	0x06, 0x0a, 0x67, 0x31, 0x06, 0x54, 0x9c, 0x2d, 0xd1, 0x86, 0x46, 0xae, 0xa8, 0xd7, 0xa6, 0x7d,
-	0x37, 0xe5, 0x78, 0x5d, 0x70, 0x5c, 0xc7, 0x6b, 0x1a, 0xc7, 0x9c, 0x66, 0x04, 0x16, 0xcc, 0x21,
-	0x10, 0x09, 0xaf, 0xd8, 0x66, 0xd2, 0x6e, 0xb7, 0xb8, 0x93, 0xb2, 0xba, 0x26, 0x58, 0x5d, 0xc1,
-	0x88, 0xb3, 0x32, 0x71, 0x38, 0x1b, 0x06, 0xa8, 0x38, 0xa4, 0x49, 0xed, 0xce, 0x9a, 0x23, 0xa5,
-	0x76, 0x67, 0x8f, 0x76, 0xa6, 0xdb, 0x0a, 0x78, 0x9c, 0xeb, 0x8f, 0x1d, 0x58, 0xb3, 0xdf, 0x08,
-	0xa3, 0x2d, 0x91, 0xe7, 0xce, 0xb9, 0x80, 0xee, 0xe2, 0xb3, 0x31, 0x52, 0x11, 0xbe, 0x20, 0x44,
-	0x78, 0x01, 0x77, 0xb9, 0x08, 0x76, 0x5c, 0x2e, 0xc7, 0xbe, 0xbc, 0x55, 0x56, 0x77, 0x49, 0x0b,
-	0xc9, 0x45, 0x9a, 0x62, 0xb4, 0x94, 0xbf, 0x58, 0xc3, 0x57, 0x05, 0xd9, 0x36, 0x5e, 0xe0, 0x64,
-	0xb3, 0x37, 0x39, 0xa9, 0x3b, 0xd0, 0xfe, 0xd0, 0xf3, 0xd9, 0x7b, 0x21, 0xe5, 0xf0, 0x77, 0xd5,
-	0xc5, 0xd8, 0xc5, 0x34, 0xbf, 0xec, 0xa0, 0xef, 0xc2, 0xa2, 0x56, 0x7f, 0x44, 0xee, 0x12, 0x6d,
-	0x44, 0xbe, 0x28, 0x75, 0xd7, 0x4c, 0x68, 0x2a, 0xd6, 0xa6, 0x10, 0xab, 0x83, 0xdb, 0x5c, 0xac,
-	0x1c, 0x29, 0x2e, 0xdb, 0x13, 0x68, 0x69, 0xe9, 0x16, 0xad, 0x72, 0x32, 0x85, 0x84, 0xdd, 0xbd,
-	0x92, 0x03, 0xa7, 0xe4, 0xbb, 0x82, 0xfc, 0x0a, 0x5e, 0xe4, 0xe4, 0x35, 0x04, 0x75, 0x00, 0x8d,
-	0x8f, 0x77, 0xf2, 0x00, 0x5a, 0xbe, 0x1d, 0xca, 0x03, 0x68, 0xfd, 0xd0, 0x67, 0x1e, 0x40, 0x03,
-	0x45, 0x3a, 0x69, 0x56, 0x7d, 0x16, 0x45, 0xcb, 0x9c, 0x86, 0xf1, 0x3d, 0xb6, 0xdb, 0xd6, 0x40,
-	0x29, 0xc1, 0x35, 0x41, 0x70, 0x09, 0xb7, 0x38, 0x41, 0xb5, 0xa9, 0x0c, 0xa1, 0x7d, 0x86, 0x96,
-	0x86, 0x28, 0x7c, 0xf4, 0x96, 0x86, 0xb0, 0x7c, 0xae, 0x36, 0x0d, 0xa1, 0x21, 0xa8, 0xf3, 0x6a,
-	0xde, 0x74, 0xcb, 0xf3, 0x6a, 0xfb, 0xe4, 0x20, 0xcf, 0xab, 0xfd, 0x5e, 0xdc, 0x3c, 0xaf, 0x26,
-	0x8e, 0x62, 0x63, 0x5e, 0x45, 0x4b, 0x36, 0xb6, 0x9b, 0x70, 0xc9, 0xc6, 0x7e, 0x71, 0x6d, 0xb2,
-	0x31, 0x71, 0x38, 0x9b, 0x1f, 0x3a, 0xb0, 0x6a, 0xfd, 0xc7, 0x06, 0xbd, 0x90, 0xa5, 0x6c, 0xeb,
-	0xcf, 0x4e, 0xdd, 0xeb, 0x67, 0x22, 0xa4, 0xcc, 0x5f, 0x12, 0xcc, 0x37, 0xf1, 0xd5, 0x2c, 0xaf,
-	0xe7, 0x50, 0x4d, 0x67, 0xf1, 0x4d, 0xc3, 0x59, 0xd9, 0xef, 0x38, 0x86, 0xb3, 0xf4, 0x3f, 0x29,
-	0xac, 0xce, 0xe2, 0x08, 0x89, 0x7a, 0xd6, 0x7f, 0xbe, 0xa4, 0x7a, 0xe7, 0xfc, 0xae, 0x26, 0xd5,
-	0x3b, 0xf7, 0x7f, 0x31, 0x53, 0x3d, 0x2b, 0xea, 0x5d, 0xe7, 0xd5, 0xe3, 0xba, 0xf8, 0x3d, 0xee,
-	0x8d, 0x7f, 0x07, 0x00, 0x00, 0xff, 0xff, 0xda, 0x1e, 0x33, 0xd9, 0x4e, 0x27, 0x00, 0x00,
+var fileDescriptor_eapi_ab574ca9e6d5db88 = []byte{
+	// 2581 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x3a, 0xcd, 0x6f, 0x24, 0x47,
+	0xf5, 0xea, 0x19, 0xcf, 0x78, 0xe6, 0x8d, 0x3f, 0x6b, 0x6c, 0xef, 0x6c, 0xdb, 0xeb, 0x78, 0x2b,
+	0xf9, 0x25, 0xfe, 0x2d, 0x89, 0x97, 0xdd, 0x4d, 0xc8, 0xee, 0x0a, 0x89, 0x75, 0xb2, 0x0e, 0x6b,
+	0xe1, 0x80, 0xb7, 0x9d, 0xdd, 0x68, 0x91, 0x10, 0x6a, 0xcf, 0x94, 0xed, 0x66, 0x67, 0xba, 0x3b,
+	0xd5, 0x35, 0xa3, 0x0c, 0x12, 0x07, 0x90, 0x00, 0x25, 0x57, 0xce, 0x70, 0xe0, 0x02, 0x12, 0x07,
+	0x2e, 0x48, 0x08, 0x09, 0xfe, 0x80, 0xdc, 0x90, 0xf8, 0x07, 0x38, 0x20, 0x71, 0xe1, 0xc6, 0x89,
+	0x1b, 0xaa, 0x8f, 0xee, 0xae, 0xea, 0xee, 0x19, 0x77, 0xec, 0x25, 0x88, 0x5b, 0xd7, 0xab, 0xd7,
+	0xef, 0xab, 0x5e, 0xbd, 0xaf, 0x6e, 0x00, 0xe2, 0x86, 0xde, 0x4e, 0x48, 0x03, 0x16, 0xa0, 0x4a,
+	0x78, 0x6c, 0x6f, 0x9c, 0x06, 0xc1, 0x69, 0x9f, 0xdc, 0x74, 0x43, 0xef, 0xa6, 0xeb, 0xfb, 0x01,
+	0x73, 0x99, 0x17, 0xf8, 0x91, 0xc4, 0xc0, 0x2e, 0x74, 0x1c, 0x12, 0x05, 0xfd, 0x11, 0x71, 0xc8,
+	0x88, 0xd0, 0x88, 0x7c, 0xd3, 0x1d, 0x90, 0x43, 0x97, 0xba, 0x83, 0x08, 0xdd, 0x82, 0x56, 0x48,
+	0x68, 0x14, 0x92, 0x2e, 0xf3, 0x46, 0xa4, 0x63, 0x6d, 0x59, 0xdb, 0xad, 0xdb, 0x8b, 0x3b, 0xe1,
+	0xf1, 0xce, 0x61, 0x0a, 0x76, 0x74, 0x1c, 0x84, 0x60, 0xe6, 0xcc, 0x8d, 0xce, 0x3a, 0x95, 0x2d,
+	0x6b, 0x7b, 0xce, 0x11, 0xcf, 0xf8, 0x31, 0xd8, 0x79, 0x16, 0x0e, 0x89, 0xc2, 0xc0, 0x8f, 0x08,
+	0x7a, 0x09, 0x6a, 0x84, 0xd2, 0x80, 0x2a, 0xf2, 0x4d, 0x4e, 0x7e, 0x8f, 0x03, 0x1c, 0x09, 0xe7,
+	0x24, 0x7d, 0x77, 0x40, 0x04, 0xc9, 0xa6, 0x23, 0x9e, 0xf1, 0x2f, 0x2c, 0x58, 0x7f, 0xdf, 0xa5,
+	0xcf, 0xf7, 0x7c, 0xe6, 0xb1, 0xf1, 0xbe, 0xcf, 0x08, 0x25, 0x11, 0xf3, 0xfc, 0xd3, 0x8b, 0x4b,
+	0xbe, 0x06, 0x75, 0x22, 0xa8, 0x29, 0xd9, 0xd5, 0x0a, 0xbd, 0x09, 0x0b, 0xf2, 0xe9, 0x20, 0xe8,
+	0x0a, 0xcb, 0x75, 0xaa, 0x82, 0xda, 0x1c, 0xa7, 0x16, 0xc3, 0x9c, 0x0c, 0x0e, 0x7e, 0x00, 0xd7,
+	0x0a, 0xe5, 0x2b, 0xad, 0x36, 0xfe, 0x47, 0x05, 0xd6, 0xdf, 0xa5, 0xc4, 0x65, 0xc2, 0x5c, 0x0f,
+	0x49, 0xb7, 0xef, 0x52, 0x41, 0xfb, 0x52, 0x87, 0x93, 0xb5, 0x24, 0xea, 0xc0, 0x6c, 0x34, 0x3c,
+	0xfe, 0x1e, 0xe9, 0x32, 0xa1, 0xd7, 0x9c, 0x13, 0x2f, 0xd1, 0x57, 0x60, 0x51, 0x3d, 0x26, 0x9a,
+	0xcf, 0x14, 0x68, 0x9e, 0x45, 0x42, 0x1b, 0xd0, 0x1c, 0xb9, 0x7d, 0xaf, 0xf7, 0x1e, 0x0d, 0x06,
+	0x9d, 0xda, 0x96, 0xb5, 0x5d, 0x75, 0x52, 0x00, 0xda, 0x04, 0x10, 0x8b, 0x27, 0x3e, 0xf3, 0xfa,
+	0x9d, 0xba, 0xd8, 0xd6, 0x20, 0xfc, 0x6d, 0x2e, 0x57, 0x14, 0xba, 0x5d, 0xd2, 0x99, 0x15, 0x12,
+	0xa5, 0x00, 0x74, 0x1f, 0x96, 0x93, 0x45, 0x22, 0x55, 0xa3, 0x40, 0xaa, 0x3c, 0x1a, 0xa7, 0x1c,
+	0xba, 0x94, 0x79, 0xe2, 0x9d, 0xe6, 0x56, 0x95, 0x53, 0x4e, 0x00, 0xf8, 0x04, 0xae, 0x15, 0x5a,
+	0xbb, 0xbc, 0x9f, 0x2e, 0x41, 0xf5, 0xe1, 0x9e, 0xa3, 0xbc, 0x87, 0x3f, 0x26, 0x97, 0xa1, 0xaa,
+	0x5d, 0x86, 0x9f, 0x58, 0xb0, 0xac, 0x6e, 0xc3, 0xa5, 0x6f, 0x5a, 0xee, 0x30, 0x6f, 0xc0, 0x12,
+	0x0b, 0xc2, 0x03, 0x32, 0x22, 0xfd, 0x5d, 0xc6, 0x48, 0xc4, 0x08, 0x55, 0xcc, 0x73, 0x70, 0xfc,
+	0xe7, 0x2a, 0x2c, 0x66, 0x74, 0x4d, 0x04, 0xb6, 0x52, 0x81, 0xbf, 0x20, 0xa7, 0xb1, 0xa1, 0xe1,
+	0xc6, 0x12, 0xd7, 0x04, 0xc9, 0x64, 0x8d, 0xee, 0xc2, 0x52, 0xfc, 0x9c, 0x10, 0xad, 0x17, 0x10,
+	0xcd, 0x61, 0x99, 0xae, 0x38, 0x3b, 0xdd, 0x15, 0x1b, 0xd3, 0x5d, 0xb1, 0x59, 0xca, 0x15, 0xe1,
+	0x02, 0xae, 0xd8, 0xca, 0xb8, 0x22, 0x7a, 0x1b, 0x1a, 0x42, 0x0a, 0x1e, 0x8b, 0xe6, 0x04, 0xc1,
+	0x75, 0x4e, 0x30, 0x73, 0x58, 0x4f, 0x15, 0x8a, 0x93, 0x20, 0xe3, 0x3f, 0x58, 0xd0, 0xd6, 0x7c,
+	0xab, 0xbc, 0xeb, 0x62, 0x23, 0xf6, 0xb5, 0x6e, 0x83, 0xc0, 0x10, 0x90, 0x24, 0x0e, 0xde, 0x01,
+	0xe8, 0x11, 0xea, 0x8d, 0xe2, 0x18, 0x58, 0xdd, 0x6e, 0xdd, 0x6e, 0x17, 0xc8, 0xe5, 0x68, 0x68,
+	0x68, 0x1b, 0x1a, 0xfd, 0x69, 0x7e, 0x90, 0xec, 0xe2, 0x6f, 0x27, 0xd7, 0xe2, 0x91, 0x1b, 0x9d,
+	0xa9, 0x6b, 0x51, 0xe4, 0x8f, 0x99, 0xab, 0x52, 0x39, 0xff, 0xaa, 0xe0, 0xdf, 0xa7, 0x76, 0xe1,
+	0xc4, 0xcb, 0xdb, 0x45, 0x17, 0xbf, 0x32, 0x4d, 0x7c, 0xcd, 0x82, 0xd5, 0x89, 0x16, 0xbc, 0x05,
+	0x2d, 0xe9, 0xa1, 0xba, 0x3d, 0x84, 0xe4, 0xbb, 0x29, 0xd8, 0xd1, 0x71, 0xb0, 0x07, 0xf3, 0xfb,
+	0xbe, 0xd0, 0x43, 0x59, 0xa4, 0x03, 0xb3, 0xdd, 0xc0, 0x67, 0xc4, 0x67, 0xca, 0x28, 0xf1, 0x52,
+	0xf8, 0x14, 0x0d, 0x46, 0x84, 0x7e, 0x83, 0xc4, 0x29, 0x2c, 0x05, 0xa0, 0x2d, 0x68, 0x8d, 0x08,
+	0xf5, 0x4e, 0x3c, 0xb9, 0x2f, 0x6f, 0xad, 0x0e, 0xc2, 0x9f, 0x58, 0xb0, 0xa8, 0x78, 0xbd, 0x58,
+	0xc7, 0xc9, 0xa8, 0x5d, 0x2d, 0xa1, 0xf6, 0x2a, 0xb4, 0x0f, 0xbc, 0x28, 0x89, 0x0e, 0x91, 0x54,
+	0x1e, 0xff, 0xd5, 0x82, 0x55, 0x03, 0x5e, 0x5e, 0xd0, 0x27, 0xb0, 0xe0, 0x9e, 0x12, 0x3f, 0x7d,
+	0xb5, 0x53, 0x11, 0x1e, 0xfc, 0x86, 0x38, 0xcf, 0x22, 0x9a, 0x3b, 0xbb, 0x06, 0xfe, 0x9e, 0xcf,
+	0xe8, 0xd8, 0xc9, 0x10, 0xb1, 0xbf, 0x05, 0xed, 0x02, 0x34, 0x9e, 0x0a, 0x9e, 0x93, 0xb1, 0x10,
+	0xa6, 0xe9, 0xf0, 0x47, 0x84, 0xa1, 0x36, 0x72, 0xfb, 0x43, 0x52, 0xe8, 0x46, 0x72, 0xeb, 0x7e,
+	0xe5, 0xae, 0x85, 0xff, 0x68, 0x01, 0x92, 0x79, 0x48, 0x5a, 0x51, 0x1d, 0xbb, 0x11, 0xc8, 0xac,
+	0xe9, 0x81, 0xac, 0x92, 0x0b, 0x64, 0x5f, 0x05, 0x44, 0xc9, 0x48, 0x71, 0x9b, 0x5a, 0xc6, 0x14,
+	0xe0, 0xf1, 0xa4, 0x72, 0x44, 0xba, 0x94, 0xb0, 0x43, 0x37, 0x8a, 0xc2, 0x33, 0xea, 0x46, 0x44,
+	0xf8, 0x6e, 0xd3, 0xc9, 0xc1, 0xf1, 0x4f, 0x2d, 0x58, 0xd1, 0xc5, 0x2f, 0x7f, 0x40, 0x1b, 0xd0,
+	0x3c, 0x1c, 0x1e, 0xf7, 0xbd, 0x6e, 0x9a, 0x43, 0x53, 0x00, 0xdf, 0x95, 0xbc, 0xf8, 0xae, 0x74,
+	0xde, 0x14, 0x90, 0x84, 0x89, 0x19, 0x2d, 0xcf, 0x7e, 0x6a, 0x41, 0x5d, 0xca, 0x50, 0x18, 0x45,
+	0x0c, 0x83, 0x56, 0xa6, 0x1b, 0xb4, 0x9a, 0x33, 0xe8, 0x8e, 0x16, 0xa1, 0xe5, 0x35, 0x46, 0xa9,
+	0xe3, 0x17, 0x04, 0xe6, 0x5f, 0x57, 0xe0, 0x8a, 0x34, 0x8b, 0xe6, 0xf2, 0x17, 0x4f, 0xfd, 0x9b,
+	0x00, 0xc7, 0x41, 0x6f, 0x7c, 0xd4, 0x3d, 0x23, 0x49, 0x62, 0xd6, 0x20, 0xfc, 0xb2, 0xab, 0xfc,
+	0xfa, 0x28, 0x2d, 0x3f, 0x74, 0xd0, 0x7f, 0xa9, 0xb6, 0xc3, 0x50, 0x0f, 0x83, 0xbe, 0xd7, 0x1d,
+	0x8b, 0x5c, 0xac, 0xa2, 0xc5, 0xa1, 0x80, 0x38, 0x6a, 0x07, 0x3f, 0x86, 0x0d, 0x87, 0x44, 0x63,
+	0xbf, 0xab, 0x69, 0xff, 0x75, 0xea, 0x86, 0x67, 0x17, 0x36, 0x17, 0xde, 0x85, 0xcd, 0x62, 0x92,
+	0xe5, 0x8b, 0xf1, 0xaf, 0x01, 0x1c, 0x71, 0x02, 0x17, 0x96, 0xe1, 0x9f, 0x15, 0x58, 0xd9, 0xf3,
+	0xbb, 0x74, 0x1c, 0xb2, 0xf7, 0x49, 0x14, 0xb9, 0xa7, 0x97, 0xa8, 0xfc, 0xb4, 0x1c, 0x50, 0x31,
+	0x73, 0xc0, 0x7f, 0xf4, 0xe0, 0xd3, 0x5a, 0xa8, 0x56, 0xaa, 0x16, 0xaa, 0x5f, 0xa0, 0x16, 0x9a,
+	0xcd, 0xd6, 0x42, 0x86, 0xc3, 0x35, 0xa6, 0x3b, 0x5c, 0x33, 0xeb, 0x70, 0xf8, 0x19, 0xac, 0x99,
+	0x46, 0x2f, 0x1f, 0x8f, 0x36, 0x01, 0xba, 0x5e, 0x78, 0x46, 0x28, 0x23, 0x1f, 0xc7, 0x76, 0xd6,
+	0x20, 0xd8, 0x83, 0x95, 0x87, 0xe4, 0xc5, 0x9c, 0xe7, 0x79, 0xac, 0x8e, 0x60, 0xcd, 0x64, 0x55,
+	0x5e, 0x8b, 0x89, 0xae, 0x82, 0x7f, 0x53, 0x81, 0x39, 0xee, 0xd2, 0xe5, 0x69, 0xed, 0xc3, 0x7c,
+	0xc4, 0x02, 0xea, 0x9e, 0x92, 0x23, 0xe6, 0xb2, 0x61, 0x9c, 0x41, 0x5f, 0xe6, 0x88, 0x3a, 0xa5,
+	0x9d, 0x23, 0x1d, 0x4b, 0xe6, 0x4d, 0xf3, 0x4d, 0xf4, 0x3a, 0x2c, 0xb3, 0x80, 0xb9, 0x7d, 0xf9,
+	0xda, 0x47, 0x43, 0x12, 0xb1, 0x48, 0x85, 0xd9, 0xfc, 0x06, 0x7a, 0x15, 0x16, 0xba, 0xc1, 0x20,
+	0xec, 0x13, 0x46, 0x7a, 0x7c, 0x23, 0x12, 0x2e, 0x5b, 0x75, 0x32, 0x50, 0xfb, 0x19, 0xa0, 0x3c,
+	0xeb, 0x82, 0x5c, 0xfc, 0x86, 0x99, 0x8b, 0xaf, 0x08, 0x05, 0xe4, 0x8b, 0x0f, 0xa9, 0x37, 0x22,
+	0x54, 0xbe, 0xae, 0xa7, 0xe5, 0x5f, 0x59, 0xd0, 0x2e, 0x40, 0xe1, 0x17, 0x2e, 0x08, 0x89, 0x2c,
+	0x7c, 0xdd, 0xbe, 0x60, 0xd2, 0x70, 0x74, 0x10, 0x7a, 0x0b, 0x66, 0x3c, 0xff, 0x24, 0x50, 0xc6,
+	0xba, 0x3e, 0x81, 0xd7, 0xce, 0xbe, 0x7f, 0x12, 0x48, 0x53, 0x09, 0x74, 0xfb, 0x6d, 0x68, 0x26,
+	0xa0, 0x02, 0x15, 0x56, 0x74, 0x15, 0x9a, 0xba, 0xa4, 0xbf, 0xb4, 0xe0, 0x6a, 0x2e, 0xd5, 0x5c,
+	0xa6, 0x89, 0x3d, 0xb7, 0x72, 0x34, 0x2b, 0xcf, 0x99, 0x6c, 0xe5, 0x19, 0x67, 0xdf, 0x9a, 0x31,
+	0x11, 0x6a, 0x8b, 0xdc, 0x1e, 0x9d, 0x19, 0x55, 0x8e, 0x62, 0x6e, 0xa5, 0xcc, 0x4b, 0x17, 0xe0,
+	0xf8, 0x00, 0x56, 0x0d, 0x92, 0x9f, 0x6b, 0xbe, 0x94, 0x1b, 0x59, 0xbd, 0x0e, 0x1d, 0x45, 0x2d,
+	0x9f, 0xb0, 0x73, 0x52, 0xe2, 0xc7, 0x60, 0xe7, 0xb1, 0x2f, 0x27, 0xc0, 0x18, 0x56, 0x76, 0x7b,
+	0xbd, 0x17, 0x52, 0x2d, 0xe4, 0x8f, 0xd4, 0x38, 0xb0, 0x6a, 0xe6, 0xc0, 0xf0, 0x3d, 0x58, 0x33,
+	0x59, 0x97, 0x4f, 0x93, 0x9f, 0x58, 0xd0, 0x39, 0x08, 0x82, 0xe7, 0xc3, 0x50, 0x7b, 0x3d, 0xba,
+	0x54, 0x64, 0x3c, 0xa1, 0xc1, 0x60, 0x4f, 0x9f, 0xcb, 0x69, 0x10, 0x64, 0x43, 0x83, 0x05, 0x7b,
+	0x69, 0xdf, 0x35, 0xe7, 0x24, 0x6b, 0x7c, 0x06, 0x76, 0x5e, 0x94, 0xf2, 0x87, 0xf2, 0xff, 0x30,
+	0x4b, 0x49, 0x34, 0xec, 0xb3, 0x38, 0xce, 0xe5, 0x3a, 0x96, 0x78, 0x1f, 0xbf, 0x05, 0xb5, 0xbd,
+	0xf8, 0x20, 0xbb, 0x41, 0x4f, 0xaa, 0x56, 0x73, 0xc4, 0x33, 0x8f, 0xc0, 0x03, 0x19, 0xb5, 0xd5,
+	0x5d, 0x8d, 0x97, 0x78, 0x00, 0x2d, 0x4d, 0x71, 0xf4, 0x26, 0xcc, 0xc9, 0x86, 0x49, 0xd6, 0xb5,
+	0x4a, 0xb0, 0xa5, 0xb4, 0xae, 0x94, 0x70, 0xc7, 0xc0, 0xfa, 0x1c, 0x17, 0xa4, 0x0b, 0x8d, 0x24,
+	0xe7, 0xde, 0x82, 0x56, 0x0c, 0x7f, 0xe2, 0xec, 0xeb, 0x47, 0x71, 0x90, 0x82, 0x1d, 0x1d, 0x07,
+	0xbd, 0x02, 0xf3, 0x46, 0xef, 0xa3, 0xb4, 0x31, 0x81, 0xf8, 0x1e, 0xb4, 0x34, 0x0a, 0xdc, 0xf5,
+	0x62, 0xfa, 0x4d, 0x87, 0x3f, 0x72, 0x73, 0x8c, 0x08, 0x8d, 0x62, 0x02, 0x35, 0x27, 0x5e, 0xe2,
+	0x07, 0x30, 0xa7, 0xeb, 0x59, 0x10, 0x0c, 0x36, 0x01, 0xc2, 0xb4, 0x05, 0x51, 0xde, 0x90, 0x42,
+	0xf0, 0x67, 0x15, 0x68, 0x69, 0x07, 0x54, 0x40, 0xa1, 0xe0, 0xa6, 0xa1, 0xd7, 0x60, 0x86, 0x97,
+	0xce, 0xaa, 0x1d, 0x6a, 0x67, 0x4e, 0xf9, 0x9d, 0xa0, 0x37, 0x76, 0x04, 0x42, 0x36, 0x10, 0xce,
+	0x9c, 0x13, 0x08, 0x6b, 0x05, 0x2d, 0xb8, 0x5e, 0x9c, 0xd5, 0x4b, 0x15, 0x67, 0xb3, 0x65, 0x8a,
+	0xb3, 0x3b, 0x5a, 0x3b, 0xd2, 0x48, 0x73, 0x9a, 0xa6, 0x46, 0xbe, 0x27, 0x39, 0x67, 0x1c, 0xfa,
+	0x2f, 0x0b, 0x16, 0x33, 0x66, 0xe0, 0x79, 0xf8, 0x21, 0xe1, 0x4e, 0xdd, 0xe3, 0xcb, 0xd4, 0xb4,
+	0x19, 0x28, 0xc2, 0x30, 0x17, 0x4f, 0xe2, 0x1e, 0xa5, 0xd6, 0x36, 0x60, 0x85, 0x33, 0xbd, 0x6a,
+	0xa9, 0x99, 0x5e, 0xda, 0x44, 0xcc, 0x4c, 0x6a, 0x22, 0x2e, 0xd7, 0xa6, 0xe0, 0x9f, 0x57, 0xa0,
+	0x5d, 0x60, 0x3b, 0x95, 0x74, 0xbd, 0x9e, 0x4a, 0xf3, 0x72, 0xc1, 0x3d, 0x9a, 0x37, 0xcd, 0xcf,
+	0x49, 0x4f, 0x28, 0xda, 0x70, 0xe2, 0x25, 0xdf, 0x21, 0x1f, 0x87, 0x1e, 0x25, 0x3d, 0xa1, 0x5a,
+	0xc3, 0x89, 0x97, 0x5c, 0xbe, 0x81, 0xdb, 0x3f, 0x09, 0xe8, 0x80, 0xf4, 0x84, 0x1a, 0x0d, 0x27,
+	0x05, 0x70, 0xfb, 0xf9, 0x01, 0x53, 0x25, 0x1f, 0xe9, 0x09, 0x05, 0x1a, 0x8e, 0x01, 0xe3, 0x3a,
+	0x44, 0xb4, 0xbb, 0xef, 0x4b, 0x81, 0xea, 0x02, 0x43, 0x83, 0xf0, 0xfd, 0x5e, 0xc4, 0xe2, 0xfd,
+	0x59, 0xb9, 0x9f, 0x42, 0xf4, 0xb0, 0xd4, 0x30, 0xc2, 0x12, 0x77, 0x53, 0x3f, 0x60, 0x42, 0xe9,
+	0x67, 0x84, 0x89, 0xa2, 0xba, 0xe1, 0xe8, 0x20, 0xfc, 0x3b, 0x0b, 0x16, 0xcc, 0x56, 0xf7, 0x0b,
+	0x33, 0x8d, 0x26, 0x76, 0x6d, 0xaa, 0xd8, 0xf5, 0xbc, 0xd8, 0x7f, 0xb2, 0xe0, 0xca, 0x84, 0x19,
+	0xea, 0xff, 0x84, 0xfc, 0x3f, 0x80, 0xba, 0x74, 0x73, 0xf4, 0x00, 0x96, 0x18, 0x1d, 0x46, 0x4c,
+	0x0c, 0xf4, 0x25, 0x4c, 0xc5, 0xf0, 0x15, 0x7e, 0x19, 0x3e, 0xc8, 0xec, 0x39, 0x39, 0x6c, 0x9e,
+	0x00, 0xe8, 0x07, 0x94, 0x10, 0xf5, 0xb2, 0x36, 0x44, 0x75, 0x52, 0xb0, 0xa3, 0xe3, 0xe0, 0x6d,
+	0x58, 0xca, 0x12, 0xe6, 0x66, 0x13, 0xa4, 0x55, 0xc6, 0x93, 0x0b, 0xfc, 0x5b, 0x0b, 0x5a, 0x1a,
+	0x19, 0xb3, 0x77, 0xb4, 0xb2, 0xbd, 0x23, 0x86, 0x39, 0xcf, 0xef, 0x79, 0x94, 0xa7, 0x41, 0x39,
+	0x97, 0xb3, 0xb6, 0xe7, 0x1d, 0x03, 0x86, 0xee, 0x02, 0xf0, 0xcb, 0x48, 0x06, 0xc4, 0x17, 0x8d,
+	0x02, 0xcf, 0xc7, 0x9d, 0x8c, 0xb4, 0x47, 0x31, 0x82, 0xa3, 0xe1, 0xf2, 0xb4, 0x35, 0xf2, 0x22,
+	0xef, 0xd8, 0xeb, 0x7b, 0x6c, 0xcc, 0x73, 0xd1, 0x8c, 0x88, 0x74, 0x26, 0x10, 0x7f, 0x1f, 0x56,
+	0x8a, 0x28, 0xf1, 0xb7, 0x43, 0x42, 0x07, 0x5e, 0xc4, 0x33, 0xd4, 0x11, 0x89, 0x67, 0xae, 0x26,
+	0x90, 0x1f, 0x5d, 0x0a, 0x90, 0xe5, 0x42, 0xd3, 0xd1, 0x41, 0xbc, 0x4e, 0xa1, 0x24, 0x0a, 0x86,
+	0xb4, 0x4b, 0x84, 0xbf, 0x34, 0x9d, 0x64, 0x8d, 0x3f, 0xb3, 0x60, 0xe9, 0x9d, 0xa1, 0xd7, 0xef,
+	0x49, 0x09, 0x2e, 0x5c, 0x2b, 0x65, 0xd2, 0x4b, 0x25, 0x9f, 0x5e, 0x5e, 0x85, 0x05, 0xca, 0x28,
+	0x11, 0xdf, 0x06, 0xe4, 0x61, 0xc8, 0x9a, 0x29, 0x03, 0xcd, 0x58, 0x7b, 0xa6, 0xbc, 0xb5, 0x31,
+	0x03, 0x94, 0xaa, 0x52, 0xbe, 0xd6, 0xba, 0x0e, 0x75, 0x59, 0x4b, 0x29, 0x47, 0x14, 0x18, 0x87,
+	0x34, 0x08, 0x4e, 0x1c, 0xb5, 0xc1, 0x2d, 0x18, 0x72, 0x40, 0x3a, 0xff, 0x4b, 0xd6, 0xf8, 0x26,
+	0x2c, 0x3f, 0xe5, 0x59, 0x78, 0x2c, 0x5e, 0x51, 0x16, 0xd4, 0x5f, 0xb0, 0x32, 0x2f, 0x3c, 0x83,
+	0xb6, 0xf6, 0xc2, 0x8b, 0x94, 0x13, 0xff, 0xdd, 0x82, 0x9a, 0x80, 0xa0, 0x2f, 0x41, 0x83, 0xf4,
+	0x95, 0x0d, 0xad, 0xe2, 0x0a, 0x32, 0x41, 0x40, 0x2f, 0x43, 0x2d, 0x74, 0xd9, 0x59, 0x5c, 0x6b,
+	0xce, 0x27, 0x84, 0x0f, 0x5d, 0x76, 0xe6, 0xc8, 0x3d, 0x2d, 0xf3, 0x55, 0x27, 0x66, 0xbe, 0x35,
+	0xa8, 0x8b, 0x48, 0x34, 0x56, 0x3d, 0xb2, 0x5a, 0xe9, 0x5f, 0xec, 0x6a, 0xe7, 0x7e, 0xb1, 0xab,
+	0x97, 0x28, 0x3a, 0xf0, 0x6b, 0xd0, 0x4c, 0x24, 0xe4, 0xd6, 0x36, 0x94, 0xad, 0xa5, 0xba, 0xdd,
+	0xfe, 0x74, 0x09, 0x66, 0x3e, 0xdc, 0x7d, 0xba, 0x87, 0xbe, 0x03, 0x73, 0xfa, 0x6c, 0x18, 0xad,
+	0x71, 0x06, 0xf9, 0x61, 0xb7, 0xdd, 0xc9, 0xc2, 0xe3, 0x13, 0xc2, 0xeb, 0x3f, 0xfa, 0xcb, 0xdf,
+	0x7e, 0x56, 0x59, 0xc5, 0x4b, 0x37, 0x47, 0xb7, 0x6e, 0xea, 0x18, 0xf7, 0xad, 0x1b, 0xe8, 0x23,
+	0x58, 0xce, 0x35, 0xbe, 0x68, 0x3d, 0xa5, 0x95, 0x6b, 0xa6, 0xec, 0x6b, 0x85, 0x9b, 0x09, 0xb7,
+	0x2d, 0xc1, 0xcd, 0xc6, 0xab, 0x29, 0x37, 0x0d, 0x8d, 0xb3, 0x74, 0x61, 0xde, 0x68, 0x3a, 0x91,
+	0xa8, 0xbb, 0x0a, 0x5a, 0x5b, 0xfb, 0x6a, 0x6e, 0x23, 0x61, 0xb3, 0x21, 0xd8, 0xac, 0xe1, 0x65,
+	0xce, 0xc6, 0x40, 0xe1, 0x2c, 0x86, 0x80, 0xf2, 0xbd, 0x25, 0xda, 0xd0, 0xc8, 0xe5, 0xf5, 0xda,
+	0x2c, 0xde, 0x4d, 0x38, 0x5e, 0x17, 0x1c, 0xd7, 0xf1, 0x9a, 0xc6, 0x31, 0xa3, 0x19, 0x81, 0x05,
+	0xb3, 0x09, 0x44, 0xe2, 0x54, 0x8a, 0x7a, 0x52, 0xdb, 0xce, 0xef, 0x24, 0xac, 0xae, 0x09, 0x56,
+	0x57, 0x30, 0xe2, 0xac, 0x4c, 0x1c, 0xce, 0x86, 0x01, 0xca, 0x37, 0x69, 0x52, 0xbb, 0x49, 0x7d,
+	0xa4, 0xd4, 0x6e, 0x72, 0x6b, 0x67, 0x1e, 0x5b, 0x0e, 0x8f, 0x73, 0xfd, 0xb1, 0x05, 0x6b, 0xc5,
+	0x13, 0x61, 0xb4, 0x25, 0xe2, 0xdc, 0x94, 0x01, 0xb4, 0x8d, 0x27, 0x63, 0x24, 0x22, 0xfc, 0x9f,
+	0x10, 0xe1, 0x25, 0x6c, 0x73, 0x11, 0x8a, 0x71, 0xb9, 0x1c, 0xfb, 0x72, 0xaa, 0xac, 0x66, 0x49,
+	0x0b, 0xf1, 0x20, 0x4d, 0x31, 0x5a, 0xca, 0x0e, 0xd6, 0xf0, 0x55, 0x41, 0xb6, 0x8d, 0x17, 0x38,
+	0xd9, 0xf4, 0x4d, 0x4e, 0xea, 0x1e, 0xb4, 0x3f, 0x74, 0x3d, 0xf6, 0x5e, 0x40, 0x39, 0xfc, 0x5d,
+	0x35, 0x18, 0x3b, 0x9f, 0xe6, 0x97, 0x2d, 0xf4, 0x5d, 0x58, 0xd4, 0xf2, 0x8f, 0x88, 0x5d, 0xa2,
+	0x8c, 0xc8, 0x26, 0x25, 0x7b, 0xcd, 0x84, 0x26, 0x62, 0x6d, 0x0a, 0xb1, 0x3a, 0xb8, 0xcd, 0xc5,
+	0xca, 0x90, 0xe2, 0xb2, 0x3d, 0x83, 0x96, 0x16, 0x6e, 0xd1, 0x2a, 0x27, 0x93, 0x0b, 0xd8, 0xf6,
+	0x95, 0x0c, 0x38, 0x21, 0x6f, 0x0b, 0xf2, 0x2b, 0x78, 0x91, 0x93, 0xd7, 0x10, 0xd4, 0x05, 0x34,
+	0x3e, 0xde, 0xc9, 0x0b, 0x58, 0xf0, 0xed, 0x50, 0x5e, 0xc0, 0xc2, 0x0f, 0x7d, 0xe6, 0x05, 0x34,
+	0x50, 0xe4, 0x21, 0xcd, 0xaa, 0xcf, 0xa2, 0x68, 0x99, 0xd3, 0x30, 0xbe, 0xc7, 0xda, 0x6d, 0x0d,
+	0x94, 0x10, 0x5c, 0x13, 0x04, 0x97, 0x70, 0x8b, 0x13, 0x54, 0x9b, 0xca, 0x10, 0xda, 0x67, 0x68,
+	0x69, 0x88, 0xdc, 0x47, 0x6f, 0x69, 0x88, 0x82, 0xcf, 0xd5, 0xa6, 0x21, 0x34, 0x04, 0x75, 0x5f,
+	0xcd, 0x49, 0xb7, 0xbc, 0xaf, 0x45, 0x9f, 0x1c, 0xe4, 0x7d, 0x2d, 0x9e, 0x8b, 0x9b, 0xf7, 0xd5,
+	0xc4, 0x51, 0x6c, 0xcc, 0x51, 0xb4, 0x64, 0x53, 0x34, 0x09, 0x97, 0x6c, 0x8a, 0x07, 0xd7, 0x26,
+	0x1b, 0x13, 0x87, 0xb3, 0xf9, 0xa1, 0x05, 0xab, 0x85, 0x7f, 0xe3, 0xa0, 0x97, 0xd2, 0x90, 0x5d,
+	0xf8, 0x5b, 0x94, 0x7d, 0x7d, 0x22, 0x42, 0xc2, 0xfc, 0x15, 0xc1, 0x7c, 0x13, 0x5f, 0x4d, 0xe3,
+	0x7a, 0x06, 0xd5, 0x3c, 0x2c, 0xbe, 0x69, 0x1c, 0x56, 0xfa, 0xe3, 0x8e, 0x71, 0x58, 0xfa, 0x3f,
+	0x17, 0x85, 0x87, 0xc5, 0x11, 0x62, 0xf5, 0x0a, 0xff, 0x0e, 0x93, 0xea, 0x4d, 0xf9, 0xb1, 0x4d,
+	0xaa, 0x37, 0xf5, 0xcf, 0x32, 0x53, 0xbd, 0x42, 0x54, 0x95, 0x57, 0xf2, 0x3f, 0xe5, 0xc9, 0xc8,
+	0x3b, 0xe9, 0x7f, 0x40, 0x19, 0x79, 0x27, 0xff, 0xca, 0x67, 0xe6, 0x95, 0x3c, 0xde, 0x7d, 0xeb,
+	0xc6, 0x71, 0x5d, 0xfc, 0x75, 0x78, 0xe7, 0xdf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x83, 0xe7, 0x24,
+	0xbe, 0xa5, 0x28, 0x00, 0x00,
 }

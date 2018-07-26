@@ -87,6 +87,14 @@ func (dctx *EngineDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Con
 		}
 		dctx.populated[dst.MultihashString()] = true
 	}
+	//Return the key for our own namespace
+	own, err := dctx.e.perspective.WR1LabelKey(ctx, []byte(dctx.e.perspective.Entity.Keccak256HI().MultihashString()))
+	if err != nil {
+		return err
+	}
+	if !onResult(own) {
+		return nil
+	}
 	for _, k := range dctx.partitionSecrets {
 		more := onResult(k)
 		if !more {

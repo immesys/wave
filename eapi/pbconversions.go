@@ -3,9 +3,9 @@ package eapi
 import (
 	"context"
 	"encoding/asn1"
+	"encoding/pem"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
@@ -63,7 +63,6 @@ func ConvertNDWVal(nd *iapi.NameDeclaration, v *engine.Validity) *pb.NameDeclara
 		Validity:         ndv,
 	}
 	if nd.WR1Extra != nil {
-		spew.Dump(nd.WR1Extra)
 		rv.Namespace = nd.WR1Extra.Namespace.Multihash()
 		rv.NamespaceLocation = ToPbLocation(nd.WR1Extra.NamespaceLocation)
 		rv.Partition = nd.WR1Extra.Partition
@@ -309,8 +308,14 @@ func ConvertBodyScheme(in string) iapi.AttestationBodyScheme {
 }
 func ConvertEntitySecret(ctx context.Context, in *pb.EntitySecret) (*iapi.EntitySecrets, wve.WVE) {
 	passphrase := string(in.Passphrase)
+	//Bit of a hack: users might accidentally send us PEM instead of DER. Check that first:
+	der := in.DER
+	pblock, _ := pem.Decode(in.DER)
+	if pblock != nil {
+		der = pblock.Bytes
+	}
 	ppae, err := iapi.ParseEntitySecrets(ctx, &iapi.PParseEntitySecrets{
-		DER:        in.DER,
+		DER:        der,
 		Passphrase: &passphrase,
 	})
 	if err != nil {

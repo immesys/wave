@@ -30,9 +30,6 @@ func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestatio
 	if err != nil {
 		return false, err
 	}
-	//spew.Dump(d)
-	//spew.Dump(attesterh)
-	//spew.Dump(attloc)
 	attester, srcvalid, err := e.LookupEntity(ctx, attesterh, attloc)
 	if err != nil {
 		return false, err
@@ -42,8 +39,6 @@ func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestatio
 		return false, err
 	}
 	subjecth, subjloc := d.Subject()
-	//spew.Dump(subjecth)
-	//spew.Dump(subjloc)
 	subject, dstvalid, err := e.LookupEntity(ctx, subjecth, subjloc)
 	if err != nil {
 		return false, err

@@ -26,15 +26,15 @@ func init() {
 	go memoryserver.Main()
 	time.Sleep(100 * time.Millisecond)
 	cfg := make(map[string]map[string]string)
-	cfg["inmem"] = make(map[string]string)
-	cfg["inmem"]["provider"] = "http_v1"
-	cfg["inmem"]["url"] = "http://localhost:8080/v1"
+	cfg["default"] = make(map[string]string)
+	cfg["default"]["provider"] = "http_v1"
+	cfg["default"]["url"] = "http://localhost:8080/v1"
 	//inmem := iapi.NewLocationSchemeInstanceURL(cfg["inmem"]["url"], 1)
 	inmem.LocationURI = &pb.LocationURI{
 		URI:     "http://localhost:8080/v1",
 		Version: 1,
 	}
-	inmem.AgentLocation = "inmem"
+	inmem.AgentLocation = "default"
 	si, err := overlay.NewOverlay(cfg)
 	if err != nil {
 		panic(err)
@@ -395,7 +395,7 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 		Content:           msg,
 		Namespace:         srcpub.Hash,
 		NamespaceLocation: &inmem,
-		Partition:         [][]byte{[]byte("foo"), []byte("bar")},
+		Partition:         iapi.Partition("foo", "bar"),
 	})
 	require.NoError(t, err)
 	require.Nil(t, encrv.Error)
@@ -412,7 +412,7 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 			},
 		},
 	}
-	policy.VisibilityURI = [][]byte{[]byte("foo"), []byte("bar")}
+	policy.VisibilityURI = iapi.Partition("foo", "bar")
 
 	att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
 		Perspective:     srcperspective,

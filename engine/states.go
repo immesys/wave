@@ -266,8 +266,9 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 		//fmt.Printf("MPLA 3\n")
 		dctx := NewEngineDecryptionContext(e)
 		dctx.SetPartitionSecrets(secretCache)
+		//fmt.Printf("MPLA 3.4\n")
 		e.partitionMutex.Lock()
-
+		//fmt.Printf("MPLA 3.5\n")
 		if res.A != nil {
 			//When we parse the attestation here, it is for a given set of
 			//partition keys available in the engine. The keys can't change because
@@ -325,9 +326,6 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				//fails
 				e.partitionMutex.Unlock()
 				continue
-			} else {
-				_, ok := rpa.ExtraInfo.(*iapi.WR1Extra)
-				fmt.Printf("NO WR1EXTRA, BUT %v\n", ok)
 			}
 			e.partitionMutex.Unlock()
 			//This attestation failed to decrypt at all
@@ -341,7 +339,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 			continue
 		} //this is an attestation
 		if res.N != nil {
-			fmt.Printf("parsing ND again in lab->active\n")
+			//fmt.Printf("parsing ND again in lab->active\n")
 			rpn, err := iapi.ParseNameDeclaration(subctx, &iapi.PParseNameDeclaration{
 				NameDeclaration: res.N,
 				Dctx:            dctx,
@@ -350,24 +348,23 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				panic(err)
 			}
 			if rpn.IsMalformed {
-				e.partitionMutex.Unlock()
 				//fmt.Printf("MPLA 5\n")
 				if err := e.ws.MoveNameDeclarationMalformedP(e.ctx, res.N.Keccak256HI()); err != nil {
 					return err
 				}
+				e.partitionMutex.Unlock()
 				continue
 			}
 			if rpn.Result.Decoded() {
-				fmt.Printf("ND decoded\n")
 				e.partitionMutex.Unlock()
+				//fmt.Printf("ND decoded\n")
 
 				err := e.insertActiveNameDeclaration(e.ctx, res.N)
 				if err != nil {
 					return err
 				}
+
 				continue
-			} else {
-				fmt.Printf("ND not decoded\n")
 			}
 			if rpn.Result.WR1Extra != nil && rpn.Result.WR1Extra.Partition != nil {
 				//It has been labelled
@@ -380,8 +377,12 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 			//We failed to make any headway, update key index
 			if !isdirect {
 				if err := e.ws.UpdateNameDeclarationPendingP(e.ctx, res.N, targetIndex); err != nil {
+					e.partitionMutex.Unlock()
 					return err
 				}
+				e.partitionMutex.Unlock()
+			} else {
+				e.partitionMutex.Unlock()
 			}
 			continue
 		}
@@ -582,7 +583,7 @@ func (e *Engine) moveAttestationToActiveWithoutProcessingKeys(d *iapi.Attestatio
 //of the dot is held
 func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	//fmt.Printf("XIAA 0\n")
-	//fmt.Printf("inserting active attestation\n")
+	fmt.Printf("inserting active attestation\n")
 
 	okay, err := e.checkAttestationAndSave(context.Background(), d)
 	if err != nil {

@@ -18,6 +18,7 @@ type Overlay struct {
 //config is a map of name->config map
 func NewOverlay(config map[string]map[string]string) (iapi.StorageInterface, error) {
 	rv := &Overlay{providers: make(map[string]iapi.StorageDriverInterface)}
+	foundDefault := false
 	for name, cfg := range config {
 		switch cfg["provider"] {
 		case "http_v1":
@@ -32,6 +33,12 @@ func NewOverlay(config map[string]map[string]string) (iapi.StorageInterface, err
 		default:
 			return nil, fmt.Errorf("storage driver type %q unknown", cfg["provider"])
 		}
+		if name == "default" {
+			foundDefault = true
+		}
+	}
+	if !foundDefault {
+		return nil, fmt.Errorf("storage config missing default provider")
 	}
 	return rv, nil
 }
@@ -42,6 +49,14 @@ func (ov *Overlay) LocationByName(ctx context.Context, name string) (iapi.Locati
 		return nil, fmt.Errorf("location %q is not registered on this agent", name)
 	}
 	return driver.Location(ctx), nil
+}
+
+func (ov *Overlay) DefaultLocation(ctx context.Context) iapi.LocationSchemeInstance {
+	rv, err := ov.LocationByName(ctx, "default")
+	if err != nil {
+		panic("trouble getting default location")
+	}
+	return rv
 }
 
 var MaximumTimeout = 5 * time.Second
@@ -75,6 +90,26 @@ func (ov *Overlay) Status(ctx context.Context) (map[string]iapi.StorageDriverSta
 	}
 	return rv, nil
 }
+
+func (ov *Overlay) PutBlob(ctx context.Context, loc iapi.LocationSchemeInstance, content []byte) (iapi.HashSchemeInstance, error) {
+	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
+	defer scancel()
+	p, err := ov.getProvider(sctx, loc)
+	if err != nil {
+		return nil, err
+	}
+	return p.Put(sctx, content)
+}
+func (ov *Overlay) GetBlob(ctx context.Context, loc iapi.LocationSchemeInstance, hash iapi.HashSchemeInstance) ([]byte, error) {
+	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
+	defer scancel()
+	p, err := ov.getProvider(sctx, loc)
+	if err != nil {
+		return nil, err
+	}
+	return p.Get(sctx, hash)
+}
+
 func (ov *Overlay) GetEntity(ctx context.Context, loc iapi.LocationSchemeInstance, hash iapi.HashSchemeInstance) (*iapi.Entity, error) {
 	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
 	defer scancel()
