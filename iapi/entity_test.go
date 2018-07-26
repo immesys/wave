@@ -54,5 +54,5 @@ func TestCreateEntityAndParseSecretsWithWrongPassphrase(t *testing.T) {
 		Passphrase: String("nothello"),
 	})
 	require.Error(t, err)
-	require.Nil(t, es)
+	require.Nil(t, es.EntitySecrets)
 }

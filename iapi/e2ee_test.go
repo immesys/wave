@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -51,6 +52,8 @@ func TestOAQUEE2EE(t *testing.T) {
 		NamespaceLocation: NewLocationSchemeInstanceURL("test", 1),
 		Content:           msg,
 		PartitionPrefix:   [][]byte{[]byte("foo")},
+		ValidAfter:        Time(time.Now()),
+		ValidBefore:       Time(time.Now().Add(30 * 24 * time.Hour)),
 	})
 	require.NoError(t, err)
 
