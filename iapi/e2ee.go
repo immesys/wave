@@ -198,7 +198,6 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 					//fmt.Printf("trying outer key\n")
 					contents, err := k.DecryptMessage(ctx, wr1key.EnvelopeKeyIBEBN256)
 					if err != nil {
-						fmt.Printf("outer key failed\n")
 						return true
 					}
 					envelopeKey = contents
@@ -243,10 +242,10 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 				}
 			}
 
-			if contentsKey != nil {
+			if contentsKey == nil {
+				//fmt.Printf("looking for keys on %s\n", WR1PartitionToIntString(realpartition))
 				p.Dctx.WR1OAQUEKeysForContent(ctx, ns, realpartition, func(k SlottedSecretKey) bool {
 					var err error
-
 					contentsKey, err = k.DecryptMessageAsChild(ctx, envelope.ContentsKey, realpartition)
 					if err == nil {
 						return false

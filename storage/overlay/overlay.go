@@ -90,6 +90,26 @@ func (ov *Overlay) Status(ctx context.Context) (map[string]iapi.StorageDriverSta
 	}
 	return rv, nil
 }
+
+func (ov *Overlay) PutBlob(ctx context.Context, loc iapi.LocationSchemeInstance, content []byte) (iapi.HashSchemeInstance, error) {
+	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
+	defer scancel()
+	p, err := ov.getProvider(sctx, loc)
+	if err != nil {
+		return nil, err
+	}
+	return p.Put(sctx, content)
+}
+func (ov *Overlay) GetBlob(ctx context.Context, loc iapi.LocationSchemeInstance, hash iapi.HashSchemeInstance) ([]byte, error) {
+	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
+	defer scancel()
+	p, err := ov.getProvider(sctx, loc)
+	if err != nil {
+		return nil, err
+	}
+	return p.Get(sctx, hash)
+}
+
 func (ov *Overlay) GetEntity(ctx context.Context, loc iapi.LocationSchemeInstance, hash iapi.HashSchemeInstance) (*iapi.Entity, error) {
 	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
 	defer scancel()

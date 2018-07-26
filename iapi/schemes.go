@@ -46,7 +46,12 @@ type PolicySchemeInstance interface {
 type PolicyAddendumSchemeInstance interface {
 	Scheme
 }
-
+type RevocationSchemeInstance interface {
+	Scheme
+	CanonicalForm() serdes.RevocationOption
+	IsRevoked(ctx context.Context, s StorageInterface) (bool, wve.WVE)
+	Critical() bool
+}
 type HashScheme interface {
 	Scheme
 	//Digest(ctx context.Context, input []byte) ([]byte, error)

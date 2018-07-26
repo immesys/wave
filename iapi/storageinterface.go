@@ -92,6 +92,8 @@ type GetResult struct {
 	NameDeclaration *NameDeclaration
 }
 type StorageInterface interface {
+	PutBlob(ctx context.Context, loc LocationSchemeInstance, content []byte) (HashSchemeInstance, error)
+	GetBlob(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) ([]byte, error)
 	GetEntity(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*Entity, error)
 	PutEntity(ctx context.Context, loc LocationSchemeInstance, ent *Entity) (HashSchemeInstance, error)
 	GetAttestation(ctx context.Context, loc LocationSchemeInstance, hash HashSchemeInstance) (*Attestation, error)

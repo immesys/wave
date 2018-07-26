@@ -57,8 +57,6 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	att.TBS.SubjectLocation = *subjloc
 
 	//TODO
-	//att.TBS.Revocations
-	//TODO
 	//att.TBS.Extensions
 
 	//Build up the body
@@ -100,6 +98,11 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 		panic(err)
 	}
 	ekpub := eks.Public()
+	rsecret := p.Attester.Keyring[0].SecretCanonicalForm().Private.Content.(serdes.EntitySecretEd25519)
+	rsecret2 := ekpub.CanonicalForm().Key.Content.(serdes.EntityPublicEd25519)
+
+	ro := NewCommitmentRevocationSchemeInstance(p.SubjectLocation, true, rsecret, rsecret2)
+	att.TBS.Revocations = append(att.TBS.Revocations, ro.CanonicalForm())
 
 	outersig := serdes.Ed25519OuterSignature{}
 	outersig.VerifyingKey = []byte(ekpub.(*EntityKey_Ed25519).PublicKey)

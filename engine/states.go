@@ -3,6 +3,7 @@ package engine
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"runtime"
 	"strconv"
 
@@ -582,7 +583,7 @@ func (e *Engine) moveAttestationToActiveWithoutProcessingKeys(d *iapi.Attestatio
 //of the dot is held
 func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	//fmt.Printf("XIAA 0\n")
-	//fmt.Printf("inserting active attestation\n")
+	fmt.Printf("inserting active attestation\n")
 
 	okay, err := e.checkAttestationAndSave(context.Background(), d)
 	if err != nil {
