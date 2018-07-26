@@ -25,10 +25,10 @@ func init() {
 	go memoryserver.Main()
 	time.Sleep(100 * time.Millisecond)
 	cfg := make(map[string]map[string]string)
-	cfg["inmem"] = make(map[string]string)
-	cfg["inmem"]["provider"] = "http_v1"
-	cfg["inmem"]["url"] = "http://localhost:8080/v1"
-	inmem = iapi.NewLocationSchemeInstanceURL(cfg["inmem"]["url"], 1)
+	cfg["default"] = make(map[string]string)
+	cfg["default"]["provider"] = "http_v1"
+	cfg["default"]["url"] = "http://localhost:8080/v1"
+	inmem = iapi.NewLocationSchemeInstanceURL(cfg["default"]["url"], 1)
 	si, err := overlay.NewOverlay(cfg)
 	if err != nil {
 		panic(err)
