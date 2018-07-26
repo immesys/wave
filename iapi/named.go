@@ -187,6 +187,24 @@ func CreateNameDeclaration(ctx context.Context, p *PCreateNameDeclaration) (*RCr
 	nd := NameDeclaration{}
 	nd.SetCanonicalForm(&outer)
 	nd.SetDecryptedBody(&body)
+
+	// {
+	// 	content, _, err := p.Attester.NameDeclarationRevocationDetails(&nd)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	hi := KECCAK256.Instance(content)
+	// 	if len(nd.Revocations) == 0 {
+	// 		panic("parsed nd no revocations\n")
+	// 	}
+	// 	expectedHash := HashSchemeInstanceFor(&nd.Revocations[0].(*CommitmentRevocationSchemeInstance).CRBody.Hash)
+	// 	if hi.MultihashString() != expectedHash.MultihashString() {
+	// 		panic("nd evocation mismatch")
+	// 	} else {
+	// 		fmt.Printf("nd revocation ok\n")
+	// 	}
+	// }
+
 	return &RCreateNameDeclaration{
 		NameDeclaration: &nd,
 		DER:             outerDER,

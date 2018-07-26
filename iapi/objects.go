@@ -33,11 +33,14 @@ func (nd *NameDeclaration) SetCanonicalForm(cf *serdes.WaveNameDeclaration) wve.
 	if !attloc.Supported() {
 		return wve.Err(wve.MalformedObject, "unsupported attester location scheme")
 	}
+	nd.CanonicalForm = cf
 	nd.Attester = att
 	nd.AttesterLocation = attloc
-	//TODO
-	//nd.Revocations = []RevocationScheme{}
-	nd.CanonicalForm = cf
+	for _, ro := range nd.CanonicalForm.TBS.Revocations {
+		inst := RevocationSchemeInstanceFor(&ro)
+		nd.Revocations = append(nd.Revocations, inst)
+	}
+
 	return nil
 }
 func (nd *NameDeclaration) DER() ([]byte, wve.WVE) {
