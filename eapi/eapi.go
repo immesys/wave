@@ -147,6 +147,11 @@ func (e *EAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.
 			Error: ToError(err),
 		}, nil
 	}
+	if revloc == nil || !revloc.Supported() {
+		return &pb.CreateEntityResponse{
+			Error: ToError(wve.Err(wve.InvalidParameter, "missing revocation location")),
+		}, nil
+	}
 	params := &iapi.PNewEntity{
 		ValidFrom:                    TimeFromInt64MillisWithDefault(p.ValidFrom, time.Now()),
 		ValidUntil:                   TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
