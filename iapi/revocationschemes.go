@@ -92,7 +92,11 @@ func NewCommitmentRevocationSchemeInstance(loc LocationSchemeInstance, critical 
 	for _, s := range secrets {
 		hash = append(hash, s...)
 	}
-	hi := KECCAK256.Instance(hash)
+    if loc == nil {
+        panic("nil location")
+    }
+	hi_inner := KECCAK256.Instance(hash)
+	hi := KECCAK256.Instance(hi_inner.Value())
 	hie := hi.CanonicalForm()
 	loce := loc.CanonicalForm()
 	RB := serdes.CommitmentRevocation{

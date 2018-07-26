@@ -20,7 +20,7 @@ type NameDeclaration struct {
 	Subject          HashSchemeInstance
 	SubjectLocation  LocationSchemeInstance
 	Name             string
-	Revocations      []RevocationScheme
+	Revocations      []RevocationSchemeInstance
 	WR1Extra         *WR1Extra
 }
 
@@ -36,7 +36,7 @@ func (nd *NameDeclaration) SetCanonicalForm(cf *serdes.WaveNameDeclaration) wve.
 	nd.Attester = att
 	nd.AttesterLocation = attloc
 	//TODO
-	nd.Revocations = []RevocationScheme{}
+	//nd.Revocations = []RevocationScheme{}
 	nd.CanonicalForm = cf
 	return nil
 }
@@ -103,7 +103,7 @@ type Entity struct {
 	CanonicalForm *serdes.WaveEntity
 	VerifyingKey  EntityKeySchemeInstance
 	Keys          []EntityKeySchemeInstance
-	Revocations   []RevocationScheme
+	Revocations   []RevocationSchemeInstance
 	Extensions    []ExtensionSchemeInstance
 }
 
@@ -151,6 +151,7 @@ func (e *Entity) WR1_DirectEncryptionKey() (EntityKeySchemeInstance, error) {
 	}
 	return nil, fmt.Errorf("no WR1 Curve25519 key found")
 }
+
 func (e *Entity) Keccak256() []byte {
 	hi := e.Hash(KECCAK256)
 	rv := hi.Value()
@@ -203,6 +204,45 @@ func (e *EntitySecrets) CommitmentRevocationDetails() (content []byte, loc []Loc
 	}
 	return hi.Value(), locs
 }
+func (e *EntitySecrets) AttestationRevocationDetails(att *Attestation) ([]byte, LocationSchemeInstance, wve.WVE) {
+	secret1 := e.Keyring[0].SecretCanonicalForm().Private.Content.(serdes.EntitySecretEd25519)
+	hash := []byte("revocation")
+	hash = append(hash, secret1...)
+	os, ok := att.CanonicalForm.OuterSignature.Content.(serdes.Ed25519OuterSignature)
+	if !ok {
+		return nil, nil, wve.Err(wve.InvalidParameter, "object does not use WR1 outer signature")
+	}
+	hash = append(hash, os.VerifyingKey...)
+	hi := KECCAK256.Instance(hash)
+	for _, ro := range att.CanonicalForm.TBS.Revocations {
+		cr, ok := ro.Scheme.Content.(serdes.CommitmentRevocation)
+		if !ok {
+			continue
+		}
+		exhi := HashSchemeInstanceFor(&cr.Hash)
+		if exhi.MultihashString() != hi.MultihashString() {
+			return nil, nil, wve.Err(wve.InvalidParameter, "attestation was not created by the given entity")
+		}
+	}
+	_, subjloc := att.Subject()
+	return hi.Value(), subjloc, nil
+}
+func (e *EntitySecrets) NameDeclarationRevocationDetails(nd *NameDeclaration) ([]byte, LocationSchemeInstance, wve.WVE) {
+	secret1 := e.Keyring[0].SecretCanonicalForm().Private.Content.(serdes.EntitySecretEd25519)
+
+	modified_tbs := nd.CanonicalForm.TBS
+	modified_tbs.Revocations = nil
+
+	tbsder, err := asn1.Marshal(modified_tbs)
+	if err != nil {
+		panic(err)
+	}
+	hash := []byte("revocation")
+	hash = append(hash, secret1...)
+	hash = append(hash, tbsder...)
+	hi := KECCAK256.Instance(hash)
+	return hi.Value(), nd.SubjectLocation, nil
+}
 func (e *EntitySecrets) PrimarySigningKey() EntitySecretKeySchemeInstance {
 	return e.Keyring[0]
 }
@@ -243,6 +283,8 @@ type Attestation struct {
 	CanonicalForm *serdes.WaveAttestation
 	//After we decrypted
 	DecryptedBody *serdes.AttestationBody
+	//Revocationbs
+	Revocations []RevocationSchemeInstance
 	//Extra information obtained if this is a WR1 dot
 	WR1Extra *WR1Extra
 	//Extra information obtained if this is a PSK dot

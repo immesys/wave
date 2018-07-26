@@ -18,4 +18,5 @@ func init() {
 	gob.Register(&LocationSchemeInstanceURL{})
 	gob.Register(&HashSchemeInstance_Keccak_256{})
 	gob.Register(&HashSchemeInstance_Sha3_256{})
+	gob.Register(&CommitmentRevocationSchemeInstance{})
 }

@@ -14,10 +14,6 @@ type Scheme interface {
 	Supported() bool
 }
 
-type RevocationScheme interface {
-	Scheme
-}
-
 type BodyDecryptionContext interface {
 	EntityByHashLoc(ctx context.Context, h HashSchemeInstance, loc LocationSchemeInstance) (*Entity, wve.WVE)
 }

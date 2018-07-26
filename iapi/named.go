@@ -155,10 +155,23 @@ func CreateNameDeclaration(ctx context.Context, p *PCreateNameDeclaration) (*RCr
 		wr1key.EnvelopeKey = envkeyciphertext
 		outer.TBS.Keys = append(outer.TBS.Keys, asn1.NewExternal(wr1key))
 	}
+
+	//First marshal: sans revocations
 	tbsDER, err := asn1.Marshal(outer.TBS)
 	if err != nil {
 		panic(err)
 	}
+
+	secret1 := p.Attester.Keyring[0].SecretCanonicalForm().Private.Content.(serdes.EntitySecretEd25519)
+	ro := NewCommitmentRevocationSchemeInstance(p.SubjectLocation, true, secret1, tbsDER)
+	outer.TBS.Revocations = append(outer.TBS.Revocations, ro.CanonicalForm())
+
+	//Second marshal: with revocation
+	tbsDER, err = asn1.Marshal(outer.TBS)
+	if err != nil {
+		panic(err)
+	}
+
 	sig, err := p.Attester.PrimarySigningKey().SignAttestation(ctx, tbsDER)
 	if err != nil {
 		panic(err)

@@ -26,7 +26,9 @@ type RNewEntity struct {
 //canonical representations
 func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 	en := serdes.WaveEntitySecret{}
-
+//    if p.CommitmentRevocationLocation == nil {
+//        return nil, wve.Err(wve.InvalidParameter, "missing revocation location parameter")
+//    }
 	if p.ValidFrom != nil {
 		en.Entity.TBS.Validity.NotBefore = *p.ValidFrom
 	} else {
@@ -111,9 +113,10 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 	//Put the canonical certification key in
 	en.Entity.TBS.VerifyingKey = kr.Keys[0].Public
 
+    if (p.CommitmentRevocationLocation != nil ) {
 	ro := NewCommitmentRevocationSchemeInstance(p.CommitmentRevocationLocation, true, rsecret)
 	en.Entity.TBS.Revocations = append(en.Entity.TBS.Revocations, ro.CanonicalForm())
-
+    }
 	//Serialize TBS and sign it
 	der, err := asn1.Marshal(en.Entity.TBS)
 	if err != nil {
@@ -173,10 +176,11 @@ func parseEntityFromObject(ctx context.Context, en *serdes.WaveEntity) (*Entity,
 	rv := &Entity{}
 	rv.CanonicalForm = en
 	rv.VerifyingKey = ks
-	//TODO
-	//rv.revocations
-	//TODO
-	//rv.extensions
+
+	for _, ro := range en.TBS.Revocations {
+		sch := RevocationSchemeInstanceFor(&ro)
+		rv.Revocations = append(rv.Revocations, sch)
+	}
 
 	for _, key := range en.TBS.Keys {
 		lkey := key
@@ -284,6 +288,17 @@ func ParseEntitySecrets(ctx context.Context, p *PParseEntitySecrets) (*RParseEnt
 		rv.Keyring = append(rv.Keyring, eks)
 	}
 
+	// Test revocation matches
+	// {
+	// 	content, _ := rv.CommitmentRevocationDetails()
+	// 	hi := KECCAK256.Instance(content)
+	// 	expectedHash := HashSchemeInstanceFor(&rv.Entity.Revocations[0].(*CommitmentRevocationSchemeInstance).CRBody.Hash)
+	// 	if hi.MultihashString() != expectedHash.MultihashString() {
+	// 		panic("revocation mismatch")
+	// 	} else {
+	// 		fmt.Printf("revocation ok\n")
+	// 	}
+	// }
 	return &RParseEntitySecrets{
 		Entity:        en,
 		EntitySecrets: &rv,
