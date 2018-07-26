@@ -47,6 +47,7 @@ type RevocationSchemeInstance interface {
 	CanonicalForm() serdes.RevocationOption
 	IsRevoked(ctx context.Context, s StorageInterface) (bool, wve.WVE)
 	Critical() bool
+	Id() string
 }
 type HashScheme interface {
 	Scheme

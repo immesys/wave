@@ -81,6 +81,11 @@ type WaveState interface {
 
 	//Perspective functions
 
+	//Set the last checked time for the given revocation option id
+	AddRevocationCheck(ctx context.Context, id string, ts int64) error
+	//Get the last checked time for the given revocation id, if available
+	GetRevocationCheck(ctx context.Context, id string) (*int64, error)
+
 	//This is idempotent, an entity in any state other than unknown will
 	//be ignored by this function
 	MoveEntityInterestingP(ctx context.Context, ent *Entity, loc LocationSchemeInstance) error

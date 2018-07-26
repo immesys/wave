@@ -38,6 +38,10 @@ func (rs *UnsupportedRevocationSchemeInstance) Critical() bool {
 	return rs.SerdesForm.Critical
 }
 
+func (rs *UnsupportedRevocationSchemeInstance) Id() string {
+	panic("Id called on unsupported revocation scheme instance")
+}
+
 func (rs *UnsupportedRevocationSchemeInstance) CanonicalForm() serdes.RevocationOption {
 	panic("canonical form called on unsupported revocation option")
 }
@@ -64,6 +68,10 @@ func (rs *CommitmentRevocationSchemeInstance) Critical() bool {
 
 func (rs *CommitmentRevocationSchemeInstance) CanonicalForm() serdes.RevocationOption {
 	return *rs.SerdesForm
+}
+
+func (rs *CommitmentRevocationSchemeInstance) Id() string {
+	return HashSchemeInstanceFor(&rs.CRBody.Hash).MultihashString()
 }
 
 func (rs *CommitmentRevocationSchemeInstance) IsRevoked(ctx context.Context, s StorageInterface) (bool, wve.WVE) {

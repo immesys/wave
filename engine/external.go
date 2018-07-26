@@ -291,6 +291,17 @@ func (e *Engine) CheckNameDeclaration(ctx context.Context, nd *iapi.NameDeclarat
 	if !nd.Decoded() {
 		return &Validity{NotDecrypted: true}, nil
 	}
+
+	// for _, r := range nd.Revocations {
+	// 	revoked, err := r.IsRevoked(ctx, iapi.SI())
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if revoked {
+	// 		return &Validity{Valid: false, Revoked: true, Message: "Name declaration has been revoked"}, nil
+	// 	}
+	// }
+
 	if time.Now().After(nd.DecryptedBody.Validity.NotAfter) {
 		return &Validity{Expired: true, Message: "Name declaration expired"}, nil
 	}
@@ -302,6 +313,17 @@ func (e *Engine) CheckNameDeclaration(ctx context.Context, nd *iapi.NameDeclarat
 
 //Unlike checkDot, this should not touch the DB, it is a read-only operation
 func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Validity, error) {
+
+	// for _, r := range d.Revocations {
+	// 	revoked, err := r.IsRevoked(ctx, iapi.SI())
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if revoked {
+	// 		return &Validity{Valid: false, Revoked: true, Message: "Attestation has been revoked"}, nil
+	// 	}
+	// }
+
 	subjecth, subjloc := d.Subject()
 	subject, subjvalidity, err := e.LookupEntity(ctx, subjecth, subjloc)
 	//subject, err := e.getEntityFromHashLoc(ctx, subjecth, subjloc)
@@ -378,13 +400,16 @@ func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, 
 	if ent.CanonicalForm.TBS.Validity.NotBefore.After(time.Now()) {
 		return &Validity{Valid: false, NotValidYet: true, Message: "Entity not valid yet"}, nil
 	}
-	// revoked, err := e.IsRevoked(e.ctx, ent.RevocationHash)
-	// if err != nil {
-	// 	return nil, err
+	// for _, r := range ent.Revocations {
+	// 	revoked, err := r.IsRevoked(ctx, iapi.SI())
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if revoked {
+	// 		return &Validity{Valid: false, Revoked: true, Message: "Entity has been revoked"}, nil
+	// 	}
 	// }
-	// if revoked {
-	// 	return &Validity{Valid: false, Revoked: true}, nil
-	// }
+
 	return &Validity{Valid: true}, nil
 }
 

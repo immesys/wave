@@ -3,11 +3,34 @@ package poc
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"strings"
 
 	"github.com/immesys/wave/iapi"
 )
+
+//Set the last checked time for the given revocation option id
+func (p *poc) AddRevocationCheck(ctx context.Context, id string, ts int64) error {
+	k := p.PKey(ctx, "rvk", id)
+	ba := make([]byte, 8)
+	binary.LittleEndian.PutUint64(ba, uint64(ts))
+	return p.u.Store(ctx, k, ba)
+}
+
+//Get the last checked time for the given revocation id, if available
+func (p *poc) GetRevocationCheck(ctx context.Context, id string) (*int64, error) {
+	k := p.PKey(ctx, "rvk", id)
+	ba, err := p.u.Load(ctx, k)
+	if err != nil {
+		return nil, err
+	}
+	if ba == nil {
+		return nil, nil
+	}
+	iv := int64(binary.LittleEndian.Uint64(ba))
+	return &iv, nil
+}
 
 func (p *poc) getPartitionLabelKeyP(ctx context.Context, dst []byte, index int) (*PLKState, error) {
 	k := p.PKey(ctx, "plk", ToB64(dst), fmt.Sprintf("%06d", index))
