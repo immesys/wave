@@ -591,11 +591,11 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	if !val.Valid {
 		fmt.Printf("XX 10\n")
 	}
-	okay, err := e.checkAttestationAndSave(e.ctx, d, val)
+	_, err = e.checkAttestationAndSave(e.ctx, d, val)
 	if err != nil {
 		return err
 	}
-	if !okay {
+	if val.Revoked {
 		return nil
 	}
 	attesterHI, attesterLoc, err := d.Attester()

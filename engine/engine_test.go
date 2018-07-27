@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bouk/monkey"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/localdb/lls"
 	"github.com/immesys/wave/localdb/poc"
@@ -629,7 +630,7 @@ loop2:
 			if !ok {
 				break loop2
 			}
-			//spew.Dump(c.Validity)
+			spew.Dump(c.Validity)
 			if c.Validity.Valid {
 				count++
 			}
