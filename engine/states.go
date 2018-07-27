@@ -73,7 +73,7 @@ nextlocation:
 			}
 
 			//Check if this object is a known attestation or namedecl
-			foundAtt, err := e.ws.GetAttestationP(e.ctx, object)
+			foundAtt, _, err := e.ws.GetAttestationP(e.ctx, object)
 			if err != nil {
 				return 0, err
 			}
@@ -584,41 +584,30 @@ func (e *Engine) moveAttestationToActiveWithoutProcessingKeys(d *iapi.Attestatio
 func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	//fmt.Printf("XIAA 0\n")
 	fmt.Printf("inserting active attestation\n")
-
-	okay, err := e.checkAttestationAndSave(context.Background(), d)
+	val, err := e.CheckAttestation(e.ctx, d)
 	if err != nil {
-		//fmt.Printf("IAA 1\n")
+		return err
+	}
+	okay, err := e.checkAttestationAndSave(e.ctx, d, val)
+	if err != nil {
 		return err
 	}
 	if !okay {
-		//fmt.Printf("IAA 2\n")
-		//checkdot will handle the repercussions, we can just return
 		return nil
 	}
-	//fmt.Printf("XIAA 1\n")
 	attesterHI, attesterLoc, err := d.Attester()
 	if err != nil {
-		//fmt.Printf("IAA 3\n")
 		return err
 	}
-	attester, validity, err := e.LookupEntity(context.Background(), attesterHI, attesterLoc)
+	attester, _, err := e.LookupEntity(context.Background(), attesterHI, attesterLoc)
 	if err != nil {
-		//fmt.Printf("IAA 4\n")
 		return err
 	}
-	if validity == nil || !validity.Valid {
-		//fmt.Printf("IAA 4.5\n")
-		e.ws.MoveAttestationEntRevokedP(e.ctx, d)
-		return nil
-	}
-	//fmt.Printf("XIAA 2\n")
 	//Make sure the storage knows the attester is interesting
 	err = e.ws.MoveEntityInterestingP(e.ctx, attester, attesterLoc)
 	if err != nil {
-		//fmt.Printf("IAA 5\n")
 		return err
 	}
-	//fmt.Printf("XIAA 3\n")
 	//Process the label keys
 	for _, k := range d.WR1DomainVisibilityKeys() {
 		_, err := e.ws.InsertPartitionLabelKeyP(e.ctx, attesterHI, k)
@@ -654,20 +643,15 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 //from the engine's main loop
 func (e *Engine) insertPendingAttestation(d *iapi.Attestation) error {
 	//We can't check entities, but we can ensure its not revoked
-	okay, err := e.checkPendingAttestationAndSave(d)
-	//fmt.Printf("checkpending %v %v\n", okay, err)
+	val, err := e.CheckAttestation(e.ctx, d)
+	okay, err := e.checkPendingAttestationAndSave(e.ctx, d, val)
 	if err != nil {
 		return err
 	}
 	if !okay {
-		//checkPendingDot will handle repercussions, just
-		//stop here
 		return nil
 	}
-	//Dot is not revoked, put it in pending
-	//We did not try any secrets on this dot yet, so SI = 0
-	//subj, _ := d.Subject()
-	//fmt.Printf("Inserted pending att (subd %x)\n", subj.Value())
+
 	return e.ws.MoveAttestationPendingP(e.ctx, d, 0)
 }
 

@@ -77,18 +77,23 @@ func (p *poc) MoveAttestationRevokedG(ctx context.Context, att *iapi.Attestation
 	hsh := keccakFromAtt(att)
 	return p.setAttestationStateField(ctx, hsh, StateRevoked)
 }
-func (p *poc) GetAttestationP(ctx context.Context, hi iapi.HashSchemeInstance) (d *iapi.Attestation, err error) {
+func (p *poc) GetAttestationP(ctx context.Context, hi iapi.HashSchemeInstance) (d *iapi.Attestation, s *iapi.State, err error) {
 	hsh := keccakFromHI(hi)
 	ds, err := p.loadAttestationState(ctx, hsh)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if ds == nil {
 		//We don't care anyway
-		return nil, nil
+		return nil, nil, nil
 	}
-
-	return ds.Attestation, nil
+	rvs := &iapi.State{
+		ValidActive: ds.State == StateActive,
+		Expired:     ds.State == StateExpired,
+		Revoked:     ds.State == StateRevoked,
+		EntRevoked:  ds.State == StateEntRevoked,
+	}
+	return ds.Attestation, rvs, nil
 }
 func (p *poc) MoveAttestationMalformedP(ctx context.Context, hi iapi.HashSchemeInstance) error {
 	hash := keccakFromHI(hi)

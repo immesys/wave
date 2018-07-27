@@ -227,14 +227,19 @@ func (p *poc) MoveEntityExpiredG(ctx context.Context, ent *iapi.Entity) error {
 	es.State = StateExpired
 	return p.saveEntityState(ctx, es)
 }
-func (p *poc) GetEntityByHashSchemeInstanceG(ctx context.Context, hi iapi.HashSchemeInstance) (*iapi.Entity, error) {
+func (p *poc) GetEntityByHashSchemeInstanceG(ctx context.Context, hi iapi.HashSchemeInstance) (*iapi.Entity, *iapi.State, error) {
 	hash := keccakFromHI(hi)
 	es, err := p.loadEntity(ctx, hash)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if es == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
-	return es.Entity, nil
+	rvs := &iapi.State{
+		ValidActive: es.State == StateActive,
+		Expired:     es.State == StateExpired,
+		Revoked:     es.State == StateRevoked || es.State == StateEntRevoked,
+	}
+	return es.Entity, rvs, nil
 }

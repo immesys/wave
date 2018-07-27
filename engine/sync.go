@@ -136,19 +136,22 @@ func (e *Engine) syncLoop() {
 		delete(queue, ent)
 		//We have our element, tell the reader to start
 		syncup <- true
-		resolvedEnt, err := e.ws.GetEntityByHashSchemeInstanceG(e.ctx, &iapi.HashSchemeInstance_Keccak_256{Val: ent[:]})
+		resolvedEnt, st, err := e.ws.GetEntityByHashSchemeInstanceG(e.ctx, &iapi.HashSchemeInstance_Keccak_256{Val: ent[:]})
 		if err != nil {
 			panic(err)
 		}
+
 		if resolvedEnt == nil {
 			panic("synchronize nil entity?")
 		}
-		fmt.Printf(">syncE\n")
-		err = e.synchronizeEntity(e.ctx, resolvedEnt)
-		if err != nil {
-			panic(err)
+		if st.ValidActive {
+			fmt.Printf(">syncE\n")
+			err = e.synchronizeEntity(e.ctx, resolvedEnt)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("<syncE\n")
 		}
-		fmt.Printf("<syncE\n")
 		e.totalMutex.Lock()
 		e.totalCompletedSyncs++
 		if e.totalCompletedSyncs > e.totalSyncRequests {

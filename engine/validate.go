@@ -2,117 +2,138 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	"github.com/immesys/wave/iapi"
 )
 
-//
-// func (e *Engine) getEntityFromHashLoc(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, error) {
-// 	//fmt.Printf("getEntityFromHashLoc: %x %v\n", hash, loc)
-// 	ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
-// 	ent, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if ent != nil {
-// 		return ent, nil
-// 	}
-// 	//Fall back to storage
-// 	ent, err = e.st.GetEntity(ctx, loc, hash)
-// 	return ent, err
-// }
-
 //Check for revocations
 //If decoded, check for expiry and entRevoked
 //This must be fairly fast as it gets called frequently on the same stuff
-func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestation) (okay bool, err error) {
-	attesterh, attloc, err := d.Attester()
-	if err != nil {
-		return false, err
-	}
-	attester, srcvalid, err := e.LookupEntity(ctx, attesterh, attloc)
-	if err != nil {
-		return false, err
-	}
-	srcokay, err := e.checkEntityAndSave(attester, srcvalid)
-	if err != nil {
-		return false, err
-	}
-	subjecth, subjloc := d.Subject()
-	subject, dstvalid, err := e.LookupEntity(ctx, subjecth, subjloc)
-	if err != nil {
-		return false, err
-	}
-	dstokay, err := e.checkEntityAndSave(subject, dstvalid)
-	if err != nil {
-		return false, err
-	}
-	expired, err := d.Expired()
-	if err != nil {
-		return false, err
-	}
-	//TODO
-	/*
-		revoked, err := e.IsRevoked(e.ctx, d.PlaintextHeader.RevocationHash)
-		if err != nil {
-			return false, err
-		}
-	*/
-
-	if !srcokay || !dstokay {
-		//This dot must move to EntRevoked
+func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestation, v *Validity) (bool, error) {
+	if v.DstInvalid || v.SrcInvalid {
 		return false, e.ws.MoveAttestationEntRevokedP(e.ctx, d)
 	}
-	// if revoked {
-	// 	return false, e.ws.MoveAttestationRevokedG(e.ctx, d)
-	// }
-	if expired {
+	if v.Revoked {
+		return false, e.ws.MoveAttestationRevokedG(e.ctx, d)
+	}
+	if v.Expired {
 		return false, e.ws.MoveAttestationExpiredP(e.ctx, d)
 	}
+	return v.Valid, nil
+}
+
+func (e *Engine) checkPendingAttestationAndSave(ctx context.Context, d *iapi.Attestation, v *Validity) (bool, error) {
+	if v.DstInvalid {
+		return false, e.ws.MoveAttestationEntRevokedP(e.ctx, d)
+	}
+	if v.Malformed {
+		return false, e.ws.MoveAttestationMalformedP(e.ctx, d.Keccak256HI())
+	}
 	return true, nil
 }
 
-func (e *Engine) checkPendingAttestationAndSave(d *iapi.Attestation) (okay bool, err error) {
-	//Like checkDot but don't check (nonexistant) content
-	subjecth, subjloc := d.Subject()
-	subject, dstvalid, err := e.LookupEntity(context.Background(), subjecth, subjloc)
-	if err != nil {
-		return false, err
-	}
-	dstokay, err := e.checkEntityAndSave(subject, dstvalid)
-	if err != nil {
-		return false, err
-	}
-	//TODO
-	/*
-		revoked, err := e.IsRevoked(e.ctx, d.PlaintextHeader.RevocationHash)
-		if err != nil {
-			return false, err
-		}
-	*/
-	if !dstokay {
-		//This dot must move to EntRevoked
-		return false, e.ws.MoveAttestationEntRevokedP(e.ctx, d)
-	}
-	// if revoked {
-	// 	return false, e.ws.MoveDotRevokedG(e.ctx, d)
-	// }
-	return true, nil
-}
+//
+// func (e *Engine) checkPendingAttestationAndSave(d *iapi.Attestation) (okay bool, err error) {
+// 	//Like checkDot but don't check (nonexistant) content
+// 	todo
+// 	subjecth, subjloc := d.Subject()
+// 	subject, dstvalid, err := e.LookupEntity(context.Background(), subjecth, subjloc)
+// 	if err != nil {
+// 		return false, err
+// 	}
+// 	dstokay, err := e.checkEntityAndSave(subject, dstvalid)
+// 	if err != nil {
+// 		return false, e.ws.MoveAttestationEntRevokedP(e.ctx, d)
+// 	}
+//
+// 	if !dstokay {
+// 		//This dot must move to EntRevoked
+// 		return false, e.ws.MoveAttestationEntRevokedP(e.ctx, d)
+// 	}
+// 	// if revoked {
+// 	// 	return false, e.ws.MoveDotRevokedG(e.ctx, d)
+// 	// }
+// 	return true, nil
+// }
 
 func (e *Engine) checkEntityAndSave(ent *iapi.Entity, v *Validity) (bool, error) {
 	if v.Expired {
 		return false, e.ws.MoveEntityExpiredG(e.ctx, ent)
 	}
-	//TODO
-	/*
-		revoked, err := e.IsRevoked(e.ctx, ent.RevocationHash)
+	if v.Revoked {
+		return false, e.ws.MoveEntityRevokedG(e.ctx, ent)
+	}
+	return v.Valid, nil
+}
+
+func (e *Engine) checkNameDeclarationAndSave(ctx context.Context, nd *iapi.NameDeclaration, v *Validity) (bool, error) {
+	if v.Revoked {
+		return false, e.ws.MoveNameDeclarationRevokedP(ctx, nd)
+	}
+	if v.Expired {
+		return false, e.ws.MoveNameDeclarationExpiredP(ctx, nd)
+	}
+	if v.Valid {
+		return true, nil
+	}
+	return false, nil
+}
+func (e *Engine) revoked(r iapi.RevocationSchemeInstance) (bool, error) {
+	ts, err := e.ws.GetRevocationCheck(e.ctx, r.Id())
+	if err != nil {
+		return false, err
+	}
+	docheck := false
+	if ts == nil {
+		docheck = true
+	} else {
+		if time.Unix(0, *ts).After(time.Now().Add(time.Hour)) {
+			docheck = true
+		}
+	}
+	if docheck {
+		isRevoked, err := r.IsRevoked(e.ctx, iapi.SI())
 		if err != nil {
 			return false, err
 		}
-		if revoked {
-			return false, e.ws.MoveEntityRevokedG(e.ctx, ent)
+		if !isRevoked {
+			err := e.ws.AddRevocationCheck(e.ctx, r.Id(), time.Now().UnixNano())
+			if err != nil {
+				return false, err
+			}
+		} else {
+			return true, nil
 		}
-	*/
-	return v.Valid, nil
+	}
+	return false, nil
+}
+
+func (e *Engine) IsEntityRevoked(ent *iapi.Entity) (bool, error) {
+	for _, r := range ent.Revocations {
+		revoked, err := e.revoked(r)
+		if err != nil || revoked == true {
+			return revoked, err
+		}
+	}
+	return false, nil
+}
+
+func (e *Engine) IsNameDeclarationRevoked(nd *iapi.NameDeclaration) (bool, error) {
+	for _, r := range nd.Revocations {
+		revoked, err := e.revoked(r)
+		if err != nil || revoked == true {
+			return revoked, err
+		}
+	}
+	return false, nil
+}
+func (e *Engine) IsAttestationRevoked(att *iapi.Attestation) (bool, error) {
+	for _, r := range att.Revocations {
+		revoked, err := e.revoked(r)
+		if err != nil || revoked == true {
+			return revoked, err
+		}
+	}
+	return false, nil
 }

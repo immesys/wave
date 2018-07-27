@@ -103,6 +103,13 @@ func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.Has
 			if err != nil {
 				return fin(err)
 			}
+			if !validity.Valid {
+				_, err := e.checkAttestationAndSave(subctx, res.Attestation, validity)
+				if err != nil {
+					return fin(err)
+				}
+				continue
+			}
 			select {
 			case rv <- &LookupResult{
 				Attestation: res.Attestation,
@@ -146,6 +153,13 @@ func (e *Engine) LookupAttestationsTo(ctx context.Context, entityHash iapi.HashS
 			validity, err := e.CheckAttestation(subctx, res.Attestation)
 			if err != nil {
 				return fin(err)
+			}
+			if !validity.Valid {
+				_, err := e.checkAttestationAndSave(subctx, res.Attestation, validity)
+				if err != nil {
+					return fin(err)
+				}
+				continue
 			}
 			select {
 			case rv <- &LookupResult{
@@ -248,12 +262,28 @@ func (e *Engine) LookupAttestationNoPerspective(ctx context.Context, hash iapi.H
 
 func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.HashSchemeInstance, location iapi.LocationSchemeInstance) (*iapi.Attestation, *Validity, error) {
 	subctx := context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
-	att, err := e.ws.GetAttestationP(subctx, hash)
+	att, st, err := e.ws.GetAttestationP(subctx, hash)
 	if err != nil {
 		return nil, nil, err
 	}
+	if st.EntRevoked {
+		return att, &Validity{Revoked: true, Message: "a linked entity is revoked"}, nil
+	}
+	if st.Expired {
+		return att, &Validity{Expired: true, Message: "the attestation is expired"}, nil
+	}
+	if st.Revoked {
+		return att, &Validity{Revoked: true, Message: "the attestation has been revoked"}, nil
+	}
 	if att != nil {
 		val, err := e.CheckAttestation(subctx, att)
+		if err != nil {
+			return nil, nil, err
+		}
+		_, err = e.checkAttestationAndSave(e.ctx, att, val)
+		if err != nil {
+			return nil, nil, err
+		}
 		return att, val, err
 	}
 
@@ -314,15 +344,13 @@ func (e *Engine) CheckNameDeclaration(ctx context.Context, nd *iapi.NameDeclarat
 //Unlike checkDot, this should not touch the DB, it is a read-only operation
 func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Validity, error) {
 
-	// for _, r := range d.Revocations {
-	// 	revoked, err := r.IsRevoked(ctx, iapi.SI())
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if revoked {
-	// 		return &Validity{Valid: false, Revoked: true, Message: "Attestation has been revoked"}, nil
-	// 	}
-	// }
+	revoked, err := e.IsAttestationRevoked(d)
+	if err != nil {
+		return nil, err
+	}
+	if revoked {
+		return &Validity{Revoked: true, Message: "attestation has been revoked"}, nil
+	}
 
 	subjecth, subjloc := d.Subject()
 	subject, subjvalidity, err := e.LookupEntity(ctx, subjecth, subjloc)
@@ -400,15 +428,13 @@ func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, 
 	if ent.CanonicalForm.TBS.Validity.NotBefore.After(time.Now()) {
 		return &Validity{Valid: false, NotValidYet: true, Message: "Entity not valid yet"}, nil
 	}
-	// for _, r := range ent.Revocations {
-	// 	revoked, err := r.IsRevoked(ctx, iapi.SI())
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if revoked {
-	// 		return &Validity{Valid: false, Revoked: true, Message: "Entity has been revoked"}, nil
-	// 	}
-	// }
+	revoked, err := e.IsEntityRevoked(ent)
+	if err != nil {
+		return nil, err
+	}
+	if revoked {
+		return &Validity{Valid: false, Revoked: true, Message: "Entity has been revoked"}, nil
+	}
 
 	return &Validity{Valid: true}, nil
 }
@@ -416,12 +442,28 @@ func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, 
 func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, *Validity, error) {
 	if e.perspective != nil {
 		ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
-		ent, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
+		ent, st, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
 		if err != nil {
 			return nil, nil, err
 		}
+		//Other checks are easier, so just redo them
 		if ent != nil {
+
+			if st.Revoked {
+				return ent, &Validity{Revoked: true, Message: "entity has been revoked"}, nil
+			}
+			if st.Expired {
+				return ent, &Validity{Expired: true, Message: "entity has expired"}, nil
+			}
+
 			val, err := e.CheckEntity(ctx, ent)
+			if err != nil {
+				return nil, nil, err
+			}
+			_, err = e.checkEntityAndSave(ent, val)
+			if err != nil {
+				return nil, nil, err
+			}
 			return ent, val, err
 		}
 	}
@@ -457,7 +499,12 @@ func (e *Engine) LookupName(ctx context.Context, attester iapi.HashSchemeInstanc
 		if err != nil {
 			return nil, wve.ErrW(wve.InternalError, "could not check ND", err)
 		}
-
+		if !validity.Valid {
+			_, err := e.checkNameDeclarationAndSave(ctx, nd, validity)
+			if err != nil {
+				return nil, wve.ErrW(wve.InternalError, "could not check ND", err)
+			}
+		}
 		if validity.Expired {
 			err := e.ws.MoveNameDeclarationExpiredP(ctx, nd)
 			if err != nil {

@@ -144,7 +144,7 @@ type WaveState interface {
 	GetNameDeclarationP(ctx context.Context, hi HashSchemeInstance) (nd *NameDeclaration, err error)
 
 	GetEntityPartitionLabelKeyIndexP(ctx context.Context, entHashSchemeInstance HashSchemeInstance) (bool, int, error)
-	GetAttestationP(ctx context.Context, HashSchemeInstance HashSchemeInstance) (at *Attestation, err error)
+	GetAttestationP(ctx context.Context, HashSchemeInstance HashSchemeInstance) (at *Attestation, s *State, err error)
 	GetActiveAttestationsFromP(ctx context.Context, attester HashSchemeInstance, filter *LookupFromFilter) chan LookupFromResult
 	GetActiveAttestationsToP(ctx context.Context, subject HashSchemeInstance, filter *LookupFromFilter) chan LookupFromResult
 	GetEntityQueueTokenP(ctx context.Context, loc LocationSchemeInstance, hsh HashSchemeInstance) (okay bool, token string, err error)
@@ -157,7 +157,7 @@ type WaveState interface {
 
 	//This only returns entities we happen to have because they were interesting
 	//to someone, so the caller must handle a nil,nil result and go hit the chain
-	GetEntityByHashSchemeInstanceG(ctx context.Context, hsh HashSchemeInstance) (*Entity, error)
+	GetEntityByHashSchemeInstanceG(ctx context.Context, hsh HashSchemeInstance) (*Entity, *State, error)
 }
 
 //TODO

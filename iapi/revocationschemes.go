@@ -84,8 +84,11 @@ func (rs *CommitmentRevocationSchemeInstance) IsRevoked(ctx context.Context, s S
 		return rs.Critical(), nil
 	}
 	rv, err := s.GetBlob(ctx, loc, hi)
-	if err != nil {
+	if err != nil && err != ErrObjectNotFound {
 		return false, wve.ErrW(wve.StorageError, "could not check revocation in storage", err)
+	}
+	if err == ErrObjectNotFound {
+		return false, nil
 	}
 	hs := HashSchemeFor(rs.CRBody.Hash)
 	readback := hs.Instance(rv)
