@@ -108,7 +108,6 @@ func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.Has
 				if err != nil {
 					return fin(err)
 				}
-				continue
 			}
 			select {
 			case rv <- &LookupResult{
@@ -159,7 +158,6 @@ func (e *Engine) LookupAttestationsTo(ctx context.Context, entityHash iapi.HashS
 				if err != nil {
 					return fin(err)
 				}
-				continue
 			}
 			select {
 			case rv <- &LookupResult{

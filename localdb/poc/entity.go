@@ -236,8 +236,9 @@ func (p *poc) GetEntityByHashSchemeInstanceG(ctx context.Context, hi iapi.HashSc
 	if es == nil {
 		return nil, nil, nil
 	}
+	fmt.Printf("state is %d\n", es.State)
 	rvs := &iapi.State{
-		ValidActive: es.State == StateActive,
+		ValidActive: es.State == StateInteresting,
 		Expired:     es.State == StateExpired,
 		Revoked:     es.State == StateRevoked || es.State == StateEntRevoked,
 	}

@@ -190,7 +190,7 @@ type attOrND struct {
 }
 
 func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
-	//fmt.Printf("MPLA 0\n")
+	fmt.Printf("MPLA 0\n")
 	var targetIndex int
 	isdirect := bytes.Equal(dest.Keccak256(), e.perspective.Entity.Keccak256())
 	okay, targetIndex, err := e.ws.GetEntityPartitionLabelKeyIndexP(e.ctx, dest.Keccak256HI())
@@ -205,7 +205,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 	subctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
 	//fmt.Printf("targetindex: %v\n", targetIndex)
-	//fmt.Printf("MPLA 1\n")
+	fmt.Printf("MPLA 1\n")
 	//fmt.Printf("subj MPLA: %x\n", dest.Keccak256HI())
 	getTargetIndex := targetIndex
 	if isdirect {
@@ -588,6 +588,9 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	if err != nil {
 		return err
 	}
+	if !val.Valid {
+		fmt.Printf("XX 10\n")
+	}
 	okay, err := e.checkAttestationAndSave(e.ctx, d, val)
 	if err != nil {
 		return err
@@ -644,6 +647,9 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 func (e *Engine) insertPendingAttestation(d *iapi.Attestation) error {
 	//We can't check entities, but we can ensure its not revoked
 	val, err := e.CheckAttestation(e.ctx, d)
+	if !val.Valid {
+		fmt.Printf("XX 20\n")
+	}
 	okay, err := e.checkPendingAttestationAndSave(e.ctx, d, val)
 	if err != nil {
 		return err

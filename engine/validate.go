@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/immesys/wave/iapi"
@@ -11,6 +12,7 @@ import (
 //If decoded, check for expiry and entRevoked
 //This must be fairly fast as it gets called frequently on the same stuff
 func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestation, v *Validity) (bool, error) {
+	fmt.Printf("check attestation: %#v\n", v)
 	if v.DstInvalid || v.SrcInvalid {
 		return false, e.ws.MoveAttestationEntRevokedP(e.ctx, d)
 	}
@@ -24,6 +26,7 @@ func (e *Engine) checkAttestationAndSave(ctx context.Context, d *iapi.Attestatio
 }
 
 func (e *Engine) checkPendingAttestationAndSave(ctx context.Context, d *iapi.Attestation, v *Validity) (bool, error) {
+	fmt.Printf("check pend attestation: %#v\n", v)
 	if v.DstInvalid {
 		return false, e.ws.MoveAttestationEntRevokedP(e.ctx, d)
 	}
