@@ -123,6 +123,36 @@ func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.Has
 	return rv, rve
 }
 
+func (e *Engine) LookupNameDeclaration(ctx context.Context, hi iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.NameDeclaration, *Validity, error) {
+	var nd *iapi.NameDeclaration
+	var err error
+
+	nd, err = e.ws.GetNameDeclarationP(ctx, hi)
+	if err != nil {
+		return nil, nil, err
+	}
+	if nd == nil {
+		//Get from storage
+		getresult, err := iapi.SI().GetAttestationOrDeclaration(ctx, loc, hi)
+		if err != nil {
+			return nil, nil, err
+		}
+		if getresult.NameDeclaration == nil {
+			return nil, nil, nil
+		}
+		nd = getresult.NameDeclaration
+	}
+
+	//Check the name declaration
+	val, err := e.CheckNameDeclaration(ctx, nd)
+	if err != nil {
+		return nil, nil, err
+	}
+	return nd, val, nil
+}
+func (e *Engine) ResetRevocationCache(ctx context.Context) {
+	e.rvkResetTime = time.Now()
+}
 func (e *Engine) LookupAttestationsTo(ctx context.Context, entityHash iapi.HashSchemeInstance, filter *iapi.LookupFromFilter) (chan *LookupResult, chan error) {
 	//The external context does not have our perspective, but we want it so the caller
 	//can cancel

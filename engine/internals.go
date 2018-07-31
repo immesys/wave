@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
@@ -42,15 +43,19 @@ type Engine struct {
 	totalEqual          chan struct{}
 	totalSyncRequests   int64
 	totalCompletedSyncs int64
+
+	//This allows the user to drop the revocation caches in a light manner
+	rvkResetTime time.Time
 }
 
 func NewEngineWithNoPerspective(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface) (*Engine, error) {
 	subctx, cancel := context.WithCancel(ctx)
 	rv := Engine{
-		ctx:       subctx,
-		ctxcancel: cancel,
-		ws:        state,
-		st:        st,
+		ctx:          subctx,
+		ctxcancel:    cancel,
+		ws:           state,
+		st:           st,
+		rvkResetTime: time.Now(),
 	}
 	return &rv, nil
 }
@@ -67,12 +72,14 @@ func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterfa
 		perspectiveLoc: perspectiveLoc,
 		totalEqual:     make(chan struct{}),
 		//TODO make buffered. Unbuffered for now to find deadlocks
-		resyncQueue: make(chan [32]byte),
+		resyncQueue:  make(chan [32]byte),
+		rvkResetTime: time.Now(),
 	}
 	err = state.MoveEntityInterestingP(ctx, perspective.Entity, perspectiveLoc)
 	if err != nil {
 		return nil, err
 	}
+
 	go rv.syncLoop()
 	//This function must only return once it knows that it has started watching
 	//we don't want a race/gap between processing new and processing old

@@ -125,8 +125,23 @@ service WAVE {
       body: "*"
     };
   }
+  rpc Revoke(RevokeParams) returns (RevokeResponse) {
+    option (google.api.http) = {
+      post: "/v1/Revoke"
+      body: "*"
+    };
+  }
 }
 
+message RevokeParams {
+  Perspective perspective = 1;
+  bytes attestationHash = 2;
+  bytes nameDeclarationHash = 3;
+  bool revokePerspective = 4;
+}
+message RevokeResponse {
+  Error error = 1;
+}
 message ResolveReverseNameParams {
   Perspective perspective = 1;
   bytes hash = 2;

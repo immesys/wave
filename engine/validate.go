@@ -91,7 +91,11 @@ func (e *Engine) revoked(r iapi.RevocationSchemeInstance) (bool, error) {
 	if ts == nil {
 		docheck = true
 	} else {
-		if time.Unix(0, *ts).After(time.Now().Add(time.Hour)) {
+		t := time.Unix(0, *ts)
+		if t.After(time.Now().Add(time.Hour)) {
+			docheck = true
+		}
+		if t.Before(e.rvkResetTime) {
 			docheck = true
 		}
 	}
