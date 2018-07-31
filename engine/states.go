@@ -190,7 +190,7 @@ type attOrND struct {
 }
 
 func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
-	fmt.Printf("MPLA 0\n")
+	//fmt.Printf("MPLA 0\n")
 	var targetIndex int
 	isdirect := bytes.Equal(dest.Keccak256(), e.perspective.Entity.Keccak256())
 	okay, targetIndex, err := e.ws.GetEntityPartitionLabelKeyIndexP(e.ctx, dest.Keccak256HI())
@@ -205,7 +205,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 	subctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
 	//fmt.Printf("targetindex: %v\n", targetIndex)
-	fmt.Printf("MPLA 1\n")
+	//fmt.Printf("MPLA 1\n")
 	//fmt.Printf("subj MPLA: %x\n", dest.Keccak256HI())
 	getTargetIndex := targetIndex
 	if isdirect {
@@ -393,16 +393,21 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 }
 
 func (e *Engine) insertActiveNameDeclaration(ctx context.Context, nd *iapi.NameDeclaration) error {
+	fmt.Printf("inserting active name declaration: %s\n", nd.Name)
 	err := e.ws.MoveNameDeclarationActiveP(e.ctx, nd)
 	if err != nil {
 		return err
 	}
-	entity, validity, err := e.LookupEntity(ctx, nd.Subject, nd.SubjectLocation)
+	entity, validity, err := e.LookupEntity(e.ctx, nd.Subject, nd.SubjectLocation)
 	if err != nil {
 		return err
 	}
 	if validity.Valid {
-		err := e.ws.MoveEntityInterestingP(ctx, entity, nd.SubjectLocation)
+		err := e.ws.MoveEntityInterestingP(e.ctx, entity, nd.SubjectLocation)
+		if err != nil {
+			return err
+		}
+		err = e.queueEntityForSync(entity.Keccak256())
 		if err != nil {
 			return err
 		}

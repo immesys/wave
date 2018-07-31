@@ -9,6 +9,9 @@ import (
 	"github.com/immesys/wave/iapi"
 )
 
+//This allows the user to drop the revocation caches in a light manner
+var rvkResetTime time.Time
+
 // There is one engine per perspective (a perspective is a controlling entity)
 type Engine struct {
 	ctx       context.Context
@@ -43,19 +46,15 @@ type Engine struct {
 	totalEqual          chan struct{}
 	totalSyncRequests   int64
 	totalCompletedSyncs int64
-
-	//This allows the user to drop the revocation caches in a light manner
-	rvkResetTime time.Time
 }
 
 func NewEngineWithNoPerspective(ctx context.Context, state iapi.WaveState, st iapi.StorageInterface) (*Engine, error) {
 	subctx, cancel := context.WithCancel(ctx)
 	rv := Engine{
-		ctx:          subctx,
-		ctxcancel:    cancel,
-		ws:           state,
-		st:           st,
-		rvkResetTime: time.Now(),
+		ctx:       subctx,
+		ctxcancel: cancel,
+		ws:        state,
+		st:        st,
 	}
 	return &rv, nil
 }
@@ -72,8 +71,7 @@ func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterfa
 		perspectiveLoc: perspectiveLoc,
 		totalEqual:     make(chan struct{}),
 		//TODO make buffered. Unbuffered for now to find deadlocks
-		resyncQueue:  make(chan [32]byte),
-		rvkResetTime: time.Now(),
+		resyncQueue: make(chan [32]byte),
 	}
 	err = state.MoveEntityInterestingP(ctx, perspective.Entity, perspectiveLoc)
 	if err != nil {

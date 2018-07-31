@@ -245,7 +245,7 @@ func (e *EntitySecrets) NameDeclarationRevocationDetails(nd *NameDeclaration) ([
 	hash = append(hash, secret1...)
 	hash = append(hash, tbsder...)
 	hi := KECCAK256.Instance(hash)
-	return hi.Value(), nd.SubjectLocation, nil
+	return hi.Value(), nd.AttesterLocation, nil
 }
 func (e *EntitySecrets) PrimarySigningKey() EntitySecretKeySchemeInstance {
 	return e.Keyring[0]

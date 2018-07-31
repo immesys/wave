@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/bouk/monkey"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/localdb/lls"
 	"github.com/immesys/wave/localdb/poc"
@@ -439,7 +438,6 @@ loop:
 			if c.Validity.Valid {
 				count++
 			}
-			//spew.Dump(c)
 		case e := <-cerr:
 			require.NoError(t, e)
 			break loop
@@ -511,7 +509,6 @@ loop:
 			if c.Validity.Valid {
 				count++
 			}
-			//spew.Dump(c)
 		case e := <-cerr:
 			require.NoError(t, e)
 			break loop
@@ -535,7 +532,6 @@ loop2:
 			if c.Validity.Valid {
 				count++
 			}
-			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
 			require.NoError(t, e)
@@ -608,7 +604,6 @@ loop:
 			if c.Validity.Valid {
 				count++
 			}
-			//spew.Dump(c)
 		case e := <-cerr:
 			require.NoError(t, e)
 			break loop
@@ -630,11 +625,9 @@ loop2:
 			if !ok {
 				break loop2
 			}
-			spew.Dump(c.Validity)
 			if c.Validity.Valid {
 				count++
 			}
-			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
 			require.NoError(t, e)
@@ -702,7 +695,6 @@ loop:
 			}
 			_ = c
 			count++
-			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
 			require.NoError(t, e)
@@ -796,7 +788,6 @@ loop1:
 			}
 			_ = c
 			count++
-			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
 			require.NoError(t, e)
@@ -816,7 +807,6 @@ loop2:
 			}
 			_ = c
 			count++
-			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
 			require.NoError(t, e)
@@ -922,7 +912,6 @@ loop1:
 			}
 			_ = c
 			count++
-			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
 			require.NoError(t, e)
@@ -942,7 +931,6 @@ loop2:
 			}
 			_ = c
 			count++
-			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
 			require.NoError(t, e)
@@ -1048,7 +1036,6 @@ loop4:
 			}
 			_ = c
 			count++
-			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
 			require.NoError(t, e)
@@ -1069,7 +1056,6 @@ loop5:
 			}
 			_ = c
 			count++
-			//spew.Dump(c)
 		case e := <-cerr:
 			fmt.Printf("got err %v\n", e)
 			require.NoError(t, e)

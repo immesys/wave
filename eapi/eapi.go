@@ -305,7 +305,6 @@ func (e *EAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationP
 
 	uerr = iapi.SI().Enqueue(ctx, subjLoc, subjHI, hi)
 	if uerr != nil {
-
 		return &pb.PublishAttestationResponse{
 			Error: ToError(wve.ErrW(wve.StorageError, "could not enqueue attestation", uerr)),
 		}, nil
@@ -1167,6 +1166,7 @@ func (e *EAPI) Revoke(ctx context.Context, p *pb.RevokeParams) (*pb.RevokeRespon
 					Error: ToError(werr),
 				}, nil
 			}
+			fmt.Printf("put the revocation blob\n")
 			_, err = iapi.SI().PutBlob(ctx, loc, rvk)
 			if err != nil {
 				return &pb.RevokeResponse{
@@ -1215,6 +1215,7 @@ func (e *EAPI) Revoke(ctx context.Context, p *pb.RevokeParams) (*pb.RevokeRespon
 			}
 			_, err = iapi.SI().PutBlob(ctx, loc, rvk)
 			if err != nil {
+				fmt.Printf("the location in question was: %v\n", loc)
 				return &pb.RevokeResponse{
 					Error: ToError(wve.ErrW(wve.InternalError, "could not publish revocation", err)),
 				}, nil
