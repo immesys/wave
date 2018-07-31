@@ -3,11 +3,12 @@ package serdes
 import "github.com/immesys/asn1"
 
 type WR1BodyCiphertext struct {
-	VerifierBodyCiphertext []byte
-	ProverBodyCiphertext   []byte
-	EnvelopeCiphertext     []byte
-	EnvelopeKey_IBE_BN256  []byte
-	EnvelopeKey_Curve25519 []byte
+	VerifierBodyCiphertext         []byte
+	ProverBodyCiphertext           []byte
+	EnvelopeCiphertext             []byte
+	EnvelopeKey_IBE_BN256          []byte
+	EnvelopeKey_Curve25519         []byte
+	EnvelopeKey_Curve25519Attester []byte
 }
 
 type WR1Envelope struct {

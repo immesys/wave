@@ -312,6 +312,7 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 		if err != nil {
 			return nil, nil, err
 		}
+		fmt.Printf("case 1\n")
 		return att, val, err
 	}
 
@@ -327,6 +328,7 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 
 	//Don't give it our engine, so it can't use our perspective
 	dctx := NewEngineDecryptionContext(e)
+	fmt.Printf("==== PARSING:\n")
 	par, err := iapi.ParseAttestation(subctx, &iapi.PParseAttestation{
 		Attestation:       att,
 		DecryptionContext: dctx,

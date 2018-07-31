@@ -70,6 +70,7 @@ type WR1DecryptionContext interface {
 	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
 	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 	WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
+	WR1AttesterDirectDecryptionKey(ctx context.Context, onResult func(k EntitySecretKeySchemeInstance) bool) error
 }
 type WR1BodyScheme struct {
 }
@@ -147,6 +148,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	//Step 1: decode the label
 	//First try get the envelope key using asymmetric direct encryption
 	var envelopeKey []byte
+	var bodyKeys []byte
 	//Actually first check for prover key in dctx
 	explicitProverBodyKey := wr1dctx.WR1ProverBodyKey(ctx)
 	if explicitProverBodyKey != nil {
@@ -166,6 +168,23 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		})
 		if err != nil {
 			fmt.Printf("dc D\n")
+			return nil, nil, err
+		}
+	}
+	if envelopeKey == nil {
+		err = wr1dctx.WR1AttesterDirectDecryptionKey(ctx, func(k EntitySecretKeySchemeInstance) bool {
+			var err error
+			allkeys, err := k.DecryptMessage(ctx, wr1body.EnvelopeKey_Curve25519Attester)
+			if err != nil {
+				return true
+			}
+			envelopeKey = allkeys[:28]
+			bodyKeys = allkeys[28:]
+			fmt.Printf("attester direct worked\n")
+			return false
+		})
+		if err != nil {
+			fmt.Printf("dc 2D\n")
 			return nil, nil, err
 		}
 	}
@@ -222,7 +241,6 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	//We know the partition labels now
 	rvextra := &WR1Extra{Partition: realpartition, EnvelopeKey: envelopeKey}
 	extra = rvextra
-	var bodyKeys []byte
 	if explicitProverBodyKey != nil {
 		bodyKeys = explicitProverBodyKey[28:]
 	}
@@ -244,6 +262,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 	if bodyKeys == nil {
 		//We could not decrypt the dot. Just return with whatever we have
+		fmt.Printf("no inner keys\n")
 		return nil, extra, nil
 	}
 	if len(bodyKeys) != 16+12+16+12 {
@@ -303,10 +322,11 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	//  basically we are only supporting same or broadening delegation in/out of order
 	//  to support narrowing in-order we would want to include extra WR1 keys in the dot
 	plaintextBody := intermediateForm.TBS.Body.Content.(serdes.AttestationBody)
-	// policy, err := PolicySchemeInstanceFor(&plaintextBody.VerifierBody.Policy)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	//Ok now lets generate the symmetric encryption keys
+	bodyKeys := make([]byte, 16+12+16+12)
+	if _, e := rand.Read(bodyKeys); e != nil {
+		panic(e)
+	}
 	visibilityEntity := policy.WR1DomainEntity()
 	var visibilityID string = "$GLOBAL"
 	if visibilityEntity != nil {
@@ -326,7 +346,11 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	if err != nil {
 		return nil, nil, err
 	}
-	directKey, err := subject.WR1_DirectEncryptionKey()
+	directKey1, err := subject.WR1_DirectEncryptionKey()
+	if err != nil {
+		return nil, nil, err
+	}
+	directKey2, err := attester.Entity.WR1_DirectEncryptionKey()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -389,11 +413,6 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 		Params:  params,
 		Entries: delegatedBundle,
 	}
-	//Ok now lets generate the symmetric encryption keys
-	bodyKeys := make([]byte, 16+12+16+12)
-	if _, e := rand.Read(bodyKeys); e != nil {
-		panic(e)
-	}
 	proverBodyKey := bodyKeys[0:16]
 	proverBodyNonce := bodyKeys[16:28]
 	verifierBodyKey := bodyKeys[28:44]
@@ -444,10 +463,18 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	rand.Read(envelopeSymKey)
 
 	//Encrypt under the destination's curve25519 key
-	ciphertext.EnvelopeKey_Curve25519, err = directKey.EncryptMessage(ctx, envelopeSymKey)
+	ciphertext.EnvelopeKey_Curve25519, err = directKey1.EncryptMessage(ctx, envelopeSymKey)
 	if err != nil {
 		return nil, nil, err
 	}
+	attesterKeyMaterial := []byte{}
+	attesterKeyMaterial = append(attesterKeyMaterial, envelopeSymKey...)
+	attesterKeyMaterial = append(attesterKeyMaterial, bodyKeys...)
+	ciphertext.EnvelopeKey_Curve25519Attester, err = directKey2.EncryptMessage(ctx, attesterKeyMaterial)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	//Encrypt under the destinations IBE key
 	ciphertext.EnvelopeKey_IBE_BN256, err = visibilityKey.EncryptMessage(ctx, envelopeSymKey)
 	if err != nil {

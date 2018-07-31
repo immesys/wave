@@ -901,3 +901,156 @@ func actionResync(c *cli.Context) error {
 	os.Exit(0)
 	return nil
 }
+
+func getAttestationByHashOrFile(conn pb.WAVEClient, in string, msg string) []byte {
+	f, err := ioutil.ReadFile(in)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			fmt.Printf("Error opening file %q: %v\n", in, err)
+			os.Exit(1)
+		}
+		//Resolve as name/hash
+		if len(in) == 48 && strings.Index(in, ".") == -1 {
+			//Resolve as hash
+			rv, err := base64.URLEncoding.DecodeString(in)
+			if err != nil {
+				fmt.Printf("bad base64: %q\n", in)
+				os.Exit(1)
+			}
+			return rv
+		}
+		fmt.Printf("malformed hash\n")
+		os.Exit(1)
+	}
+	//Resolve as file
+	resp, err := conn.Inspect(context.Background(), &pb.InspectParams{
+		Content: f,
+	})
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		os.Exit(1)
+	}
+	if resp.Error != nil {
+		fmt.Printf("could not inspect file: %s\n", resp.Error.Message)
+		os.Exit(1)
+	}
+	if resp.Attestation != nil {
+		return resp.Attestation.Hash
+	}
+	fmt.Printf(msg)
+	os.Exit(1)
+	return nil
+}
+
+func getNameDeclarationByNameHashOrFile(persp *pb.Perspective, conn pb.WAVEClient, in string, msg string) []byte {
+	f, err := ioutil.ReadFile(in)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			fmt.Printf("Error opening file %q: %v\n", in, err)
+			os.Exit(1)
+		}
+		//Resolve as name/hash
+		if len(in) == 48 && strings.Index(in, ".") == -1 {
+			//Resolve as hash
+			rv, err := base64.URLEncoding.DecodeString(in)
+			if err != nil {
+				fmt.Printf("bad base64: %q\n", in)
+				os.Exit(1)
+			}
+			return rv
+		}
+		//Resolve as name
+		resp, err := conn.ResolveName(context.Background(), &pb.ResolveNameParams{
+			Perspective: persp,
+			Name:        in,
+		})
+		if err != nil {
+			fmt.Printf("could not resolve name: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("could not resolve name: %v\n", resp.Error.Message)
+			os.Exit(1)
+		}
+		return resp.Derivation[0].Hash
+	}
+	//Resolve as file
+	resp, err := conn.Inspect(context.Background(), &pb.InspectParams{
+		Content: f,
+	})
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		os.Exit(1)
+	}
+	if resp.Error != nil {
+		fmt.Printf("could not inspect file: %s\n", resp.Error.Message)
+		os.Exit(1)
+	}
+	fmt.Printf("we don't support revoking name declarations by file\n")
+	os.Exit(1)
+	return nil
+}
+
+func actionRevoke(c *cli.Context) error {
+	conn := getConn(c)
+	if c.String("entity") != "" {
+		perspective := getPerspective(c.String("entity"), c.String("passphrase"), "missing perspective entity secrets")
+		resp, err := conn.Revoke(context.Background(), &pb.RevokeParams{
+			Perspective:       perspective,
+			RevokePerspective: true,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: %v\n", resp.Error.Message)
+			os.Exit(1)
+		}
+		fmt.Printf("entity revoked\n")
+		os.Exit(0)
+	}
+	perspective := getPerspective(c.String("attester"), c.String("passphrase"), "missing attesting entity")
+	if c.String("attestation") != "" {
+		if c.String("name") != "" {
+			fmt.Printf("only one of --attestation and --name is allowed\n")
+			os.Exit(1)
+		}
+		//Get the attestation by hash or file
+		atthash := getAttestationByHashOrFile(conn, c.String("attestation"), "bad --attestation\n")
+		resp, err := conn.Revoke(context.Background(), &pb.RevokeParams{
+			Perspective:     perspective,
+			AttestationHash: atthash,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: %v\n", resp.Error.Message)
+			os.Exit(1)
+		}
+		fmt.Printf("attestation revoked\n")
+		os.Exit(0)
+	}
+
+	if c.String("name") != "" {
+		//Revoke name decl
+		hash := getNameDeclarationByNameHashOrFile(perspective, conn, c.String("name"), "bad name")
+		resp, err := conn.Revoke(context.Background(), &pb.RevokeParams{
+			Perspective:         perspective,
+			NameDeclarationHash: hash,
+		})
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		if resp.Error != nil {
+			fmt.Printf("error: %v\n", resp.Error.Message)
+			os.Exit(1)
+		}
+		fmt.Printf("name declaration revoked\n")
+		os.Exit(0)
+	}
+	return nil
+}

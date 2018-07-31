@@ -12,7 +12,7 @@ import (
 
 //Set the last checked time for the given revocation option id
 func (p *poc) AddRevocationCheck(ctx context.Context, id string, ts int64) error {
-	k := p.PKey(ctx, "rvk", id)
+	k := p.GKey(ctx, "rvk", id)
 	ba := make([]byte, 8)
 	binary.LittleEndian.PutUint64(ba, uint64(ts))
 	return p.u.Store(ctx, k, ba)
@@ -20,7 +20,7 @@ func (p *poc) AddRevocationCheck(ctx context.Context, id string, ts int64) error
 
 //Get the last checked time for the given revocation id, if available
 func (p *poc) GetRevocationCheck(ctx context.Context, id string) (*int64, error) {
-	k := p.PKey(ctx, "rvk", id)
+	k := p.GKey(ctx, "rvk", id)
 	ba, err := p.u.Load(ctx, k)
 	if err != nil {
 		return nil, err

@@ -42,7 +42,7 @@ func TestAttPending(t *testing.T) {
 	err = db.MoveAttestationPendingP(ctx, att, 0)
 	require.NoError(t, err)
 	hash := att.Keccak256HI()
-	rv, err := db.GetAttestationP(ctx, hash)
+	rv, _, err := db.GetAttestationP(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, rv)
 	rcereal, err := rv.DER()
@@ -107,7 +107,7 @@ func TestAttLabelled(t *testing.T) {
 	err = db.MoveAttestationLabelledP(ctx, att)
 	require.NoError(t, err)
 	//Check attestation is accessible by hash
-	rback, err := db.GetAttestationP(ctx, att.Keccak256HI())
+	rback, _, err := db.GetAttestationP(ctx, att.Keccak256HI())
 	require.NoError(t, err)
 	rcereal, err := rback.DER()
 	require.EqualValues(t, cereal, rcereal)

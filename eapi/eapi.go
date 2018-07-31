@@ -72,6 +72,13 @@ func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 		}
 		e.engines[id] = eng
 	}
+	val, uerr := eng.CheckEntity(ctx, eng.Perspective().Entity)
+	if uerr != nil {
+		return nil, wve.ErrW(wve.InternalError, "could not check perspective entity", uerr)
+	}
+	if !val.Valid {
+		return nil, wve.Err(wve.InvalidParameter, fmt.Sprintf("perspective entity is invalid: %s", val.Message))
+	}
 	return eng, nil
 }
 func (e *EAPI) getEngineNoPerspective() *engine.Engine {
@@ -539,7 +546,20 @@ func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.Ve
 		Subject:         resp.Subject.Multihash(),
 		SubjectLocation: ToPbLocation(resp.SubjectLocation),
 	}
+	eng := e.getEngineNoPerspective()
 	for idx, att := range resp.Attestations {
+		//Double check the attestation
+		val, err := eng.CheckAttestation(ctx, att)
+		if err != nil {
+			return &pb.VerifyProofResponse{
+				Error: ToError(wve.ErrW(wve.InternalError, "could not check attestation", err)),
+			}, nil
+		}
+		if !val.Valid {
+			return &pb.VerifyProofResponse{
+				Error: ToError(wve.Err(wve.ProofInvalid, "proof contains expired or revoked attestations")),
+			}, nil
+		}
 		proof.Elements[idx] = ConvertProofAttestation(att)
 	}
 
@@ -1160,6 +1180,11 @@ func (e *EAPI) Revoke(ctx context.Context, p *pb.RevokeParams) (*pb.RevokeRespon
 				continue
 			}
 			found = true
+			if len(att.Revocations) == 0 {
+				return &pb.RevokeResponse{
+					Error: ToError(wve.Err(wve.InvalidParameter, "attestation has no revocation options")),
+				}, nil
+			}
 			rvk, loc, werr := eng.Perspective().AttestationRevocationDetails(att)
 			if werr != nil {
 				return &pb.RevokeResponse{
@@ -1207,6 +1232,12 @@ func (e *EAPI) Revoke(ctx context.Context, p *pb.RevokeParams) (*pb.RevokeRespon
 				continue
 			}
 			found = true
+			if len(nd.Revocations) == 0 {
+				return &pb.RevokeResponse{
+					Error: ToError(wve.Err(wve.InvalidParameter, "name declaration has no revocation options")),
+				}, nil
+
+			}
 			rvk, loc, werr := eng.Perspective().NameDeclarationRevocationDetails(nd)
 			if werr != nil {
 				return &pb.RevokeResponse{
@@ -1231,6 +1262,12 @@ func (e *EAPI) Revoke(ctx context.Context, p *pb.RevokeParams) (*pb.RevokeRespon
 
 	//Entity
 	if p.RevokePerspective {
+		fmt.Printf("revoking perspective\n")
+		if len(eng.Perspective().Entity.Revocations) == 0 {
+			return &pb.RevokeResponse{
+				Error: ToError(wve.Err(wve.InvalidParameter, "entity has no revocation options")),
+			}, nil
+		}
 		rvk, locz := eng.Perspective().CommitmentRevocationDetails()
 		for _, loc := range locz {
 			_, err := iapi.SI().PutBlob(ctx, loc, rvk)

@@ -12,6 +12,10 @@ import (
 //This allows the user to drop the revocation caches in a light manner
 var rvkResetTime time.Time
 
+func init() {
+	rvkResetTime = time.Now()
+}
+
 // There is one engine per perspective (a perspective is a controlling entity)
 type Engine struct {
 	ctx       context.Context
