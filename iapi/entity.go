@@ -26,9 +26,9 @@ type RNewEntity struct {
 //canonical representations
 func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 	en := serdes.WaveEntitySecret{}
-//    if p.CommitmentRevocationLocation == nil {
-//        return nil, wve.Err(wve.InvalidParameter, "missing revocation location parameter")
-//    }
+	//    if p.CommitmentRevocationLocation == nil {
+	//        return nil, wve.Err(wve.InvalidParameter, "missing revocation location parameter")
+	//    }
 	if p.ValidFrom != nil {
 		en.Entity.TBS.Validity.NotBefore = *p.ValidFrom
 	} else {
@@ -113,10 +113,10 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 	//Put the canonical certification key in
 	en.Entity.TBS.VerifyingKey = kr.Keys[0].Public
 
-    if (p.CommitmentRevocationLocation != nil ) {
-	ro := NewCommitmentRevocationSchemeInstance(p.CommitmentRevocationLocation, true, rsecret)
-	en.Entity.TBS.Revocations = append(en.Entity.TBS.Revocations, ro.CanonicalForm())
-    }
+	if p.CommitmentRevocationLocation != nil {
+		ro := NewCommitmentRevocationSchemeInstance(p.CommitmentRevocationLocation, true, rsecret)
+		en.Entity.TBS.Revocations = append(en.Entity.TBS.Revocations, ro.CanonicalForm())
+	}
 	//Serialize TBS and sign it
 	der, err := asn1.Marshal(en.Entity.TBS)
 	if err != nil {

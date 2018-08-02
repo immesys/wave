@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/wave/iapi"
 )
 
@@ -141,7 +140,6 @@ func (e *Engine) syncLoop() {
 		if err != nil {
 			panic(err)
 		}
-		spew.Dump(st)
 
 		if resolvedEnt == nil {
 			panic("synchronize nil entity?")

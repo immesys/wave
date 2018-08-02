@@ -91,15 +91,21 @@ func (e *Engine) revoked(r iapi.RevocationSchemeInstance) (bool, error) {
 	if ts == nil {
 		docheck = true
 	} else {
-		if time.Unix(0, *ts).After(time.Now().Add(time.Hour)) {
+		t := time.Unix(0, *ts)
+		if t.After(time.Now().Add(time.Hour)) {
+			docheck = true
+		}
+		if t.Before(rvkResetTime) {
 			docheck = true
 		}
 	}
+	fmt.Printf("docheck is %v\n", docheck)
 	if docheck {
 		isRevoked, err := r.IsRevoked(e.ctx, iapi.SI())
 		if err != nil {
 			return false, err
 		}
+		fmt.Printf("revoked is %v\n", isRevoked)
 		if !isRevoked {
 			err := e.ws.AddRevocationCheck(e.ctx, r.Id(), time.Now().UnixNano())
 			if err != nil {
@@ -119,6 +125,7 @@ func (e *Engine) IsEntityRevoked(ent *iapi.Entity) (bool, error) {
 			return revoked, err
 		}
 	}
+	fmt.Printf("entity is specifically not revoked\n")
 	return false, nil
 }
 

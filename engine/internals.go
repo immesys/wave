@@ -3,10 +3,18 @@ package engine
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
 )
+
+//This allows the user to drop the revocation caches in a light manner
+var rvkResetTime time.Time
+
+func init() {
+	rvkResetTime = time.Now()
+}
 
 // There is one engine per perspective (a perspective is a controlling entity)
 type Engine struct {
@@ -73,6 +81,7 @@ func NewEngine(ctx context.Context, state iapi.WaveState, st iapi.StorageInterfa
 	if err != nil {
 		return nil, err
 	}
+
 	go rv.syncLoop()
 	//This function must only return once it knows that it has started watching
 	//we don't want a race/gap between processing new and processing old

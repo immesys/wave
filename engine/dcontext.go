@@ -103,6 +103,19 @@ func (dctx *EngineDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Con
 	}
 	return nil
 }
+func (dctx *EngineDecryptionContext) WR1AttesterDirectDecryptionKey(ctx context.Context, onResult func(k iapi.EntitySecretKeySchemeInstance) bool) error {
+	if dctx.e == nil {
+		return nil
+	}
+	dek, err := dctx.e.perspective.WR1DirectDecryptionKey(ctx)
+	if err != nil {
+		panic(err)
+	}
+	if dek != nil {
+		onResult(dek)
+	}
+	return nil
+}
 func (dctx *EngineDecryptionContext) WR1DirectDecryptionKey(ctx context.Context, dst iapi.HashSchemeInstance, onResult func(k iapi.EntitySecretKeySchemeInstance) bool) error {
 	if dctx.e == nil {
 		return nil

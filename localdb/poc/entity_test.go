@@ -48,7 +48,7 @@ func TestStoreLoadEntity(t *testing.T) {
 	require.NoError(t, err)
 	hi := ent.Hash(iapi.KECCAK256)
 
-	rent, err := db.GetEntityByHashSchemeInstanceG(ctx, hi)
+	rent, _, err := db.GetEntityByHashSchemeInstanceG(ctx, hi)
 	require.NoError(t, err)
 	secondSer, err := rent.DER()
 	require.NoError(t, err)
@@ -94,7 +94,7 @@ func TestNonExistingEntityByHash(t *testing.T) {
 	ctx := getPctx()
 	hash := make([]byte, 32)
 	rand.Read(hash)
-	ent, err := db.GetEntityByHashSchemeInstanceG(ctx, &iapi.HashSchemeInstance_Keccak_256{hash})
+	ent, _, err := db.GetEntityByHashSchemeInstanceG(ctx, &iapi.HashSchemeInstance_Keccak_256{hash})
 	if err != nil {
 		t.Fatal(err)
 	}

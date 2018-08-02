@@ -110,6 +110,22 @@ func (kpd *KeyPoolDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Con
 	}
 	return nil
 }
+func (kpd *KeyPoolDecryptionContext) WR1AttesterDirectDecryptionKey(ctx context.Context, onResult func(k EntitySecretKeySchemeInstance) bool) error {
+	for idx, es := range kpd.entsecrets {
+		if kpd.delegatedOnly[idx] {
+			continue
+		}
+		dek, err := es.WR1DirectDecryptionKey(ctx)
+		if err != nil {
+			panic(err)
+		}
+		more := onResult(dek)
+		if !more {
+			return nil
+		}
+	}
+	return nil
+}
 func (kpd *KeyPoolDecryptionContext) WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error {
 	for idx, es := range kpd.entsecrets {
 		if kpd.delegatedOnly[idx] {

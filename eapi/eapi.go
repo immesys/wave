@@ -72,6 +72,13 @@ func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 		}
 		e.engines[id] = eng
 	}
+	val, uerr := eng.CheckEntity(ctx, eng.Perspective().Entity)
+	if uerr != nil {
+		return nil, wve.ErrW(wve.InternalError, "could not check perspective entity", uerr)
+	}
+	if !val.Valid {
+		return nil, wve.Err(wve.InvalidParameter, fmt.Sprintf("perspective entity is invalid: %s", val.Message))
+	}
 	return eng, nil
 }
 func (e *EAPI) getEngineNoPerspective() *engine.Engine {
@@ -305,7 +312,6 @@ func (e *EAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationP
 
 	uerr = iapi.SI().Enqueue(ctx, subjLoc, subjHI, hi)
 	if uerr != nil {
-
 		return &pb.PublishAttestationResponse{
 			Error: ToError(wve.ErrW(wve.StorageError, "could not enqueue attestation", uerr)),
 		}, nil
@@ -540,7 +546,20 @@ func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.Ve
 		Subject:         resp.Subject.Multihash(),
 		SubjectLocation: ToPbLocation(resp.SubjectLocation),
 	}
+	eng := e.getEngineNoPerspective()
 	for idx, att := range resp.Attestations {
+		//Double check the attestation
+		val, err := eng.CheckAttestation(ctx, att)
+		if err != nil {
+			return &pb.VerifyProofResponse{
+				Error: ToError(wve.ErrW(wve.InternalError, "could not check attestation", err)),
+			}, nil
+		}
+		if !val.Valid {
+			return &pb.VerifyProofResponse{
+				Error: ToError(wve.Err(wve.ProofInvalid, "proof contains expired or revoked attestations")),
+			}, nil
+		}
 		proof.Elements[idx] = ConvertProofAttestation(att)
 	}
 
@@ -1126,4 +1145,141 @@ func (e *EAPI) ResolveReverseName(ctx context.Context, p *pb.ResolveReverseNameP
 	return &pb.ResolveReverseNameResponse{
 		Name: rv,
 	}, nil
+}
+
+func (e *EAPI) Revoke(ctx context.Context, p *pb.RevokeParams) (*pb.RevokeResponse, error) {
+	eng, err := e.getEngine(ctx, p.Perspective)
+	if err != nil {
+		return &pb.RevokeResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
+		}, nil
+	}
+
+	//Attestation
+	if len(p.AttestationHash) != 0 {
+		hi := iapi.HashSchemeInstanceFromMultihash(p.AttestationHash)
+		if !hi.Supported() {
+			return &pb.RevokeResponse{
+				Error: ToError(wve.Err(wve.InvalidParameter, "invalid attestation hash")),
+			}, nil
+		}
+
+		reglocs, err := iapi.SI().RegisteredLocations(ctx)
+		if err != nil {
+			panic(err)
+		}
+		found := false
+		for _, loc := range reglocs {
+			att, _, err := eng.LookupAttestationNoPerspective(ctx, hi, nil, loc)
+			if err != nil {
+				return &pb.RevokeResponse{
+					Error: ToError(wve.ErrW(wve.LookupFailure, "could not lookup attestation", err)),
+				}, nil
+			}
+			if att == nil {
+				continue
+			}
+			found = true
+			if len(att.Revocations) == 0 {
+				return &pb.RevokeResponse{
+					Error: ToError(wve.Err(wve.InvalidParameter, "attestation has no revocation options")),
+				}, nil
+			}
+			rvk, loc, werr := eng.Perspective().AttestationRevocationDetails(att)
+			if werr != nil {
+				return &pb.RevokeResponse{
+					Error: ToError(werr),
+				}, nil
+			}
+			fmt.Printf("put the revocation blob\n")
+			_, err = iapi.SI().PutBlob(ctx, loc, rvk)
+			if err != nil {
+				return &pb.RevokeResponse{
+					Error: ToError(wve.ErrW(wve.InternalError, "could not publish revocation", err)),
+				}, nil
+			}
+			break //only one publish is required
+		}
+		if !found {
+			return &pb.RevokeResponse{
+				Error: ToError(wve.Err(wve.InvalidParameter, "no attestation with that hash found")),
+			}, nil
+		}
+	} //end attestation
+
+	//Name deckaration
+	if len(p.NameDeclarationHash) != 0 {
+		hi := iapi.HashSchemeInstanceFromMultihash(p.NameDeclarationHash)
+		if !hi.Supported() {
+			return &pb.RevokeResponse{
+				Error: ToError(wve.Err(wve.InvalidParameter, "invalid name declaration hash")),
+			}, nil
+		}
+
+		reglocs, err := iapi.SI().RegisteredLocations(ctx)
+		if err != nil {
+			panic(err)
+		}
+		found := false
+		for _, loc := range reglocs {
+			nd, _, err := eng.LookupNameDeclaration(ctx, hi, loc)
+			if err != nil {
+				return &pb.RevokeResponse{
+					Error: ToError(wve.ErrW(wve.LookupFailure, "could not lookup name declaration", err)),
+				}, nil
+			}
+			if nd == nil {
+				continue
+			}
+			found = true
+			if len(nd.Revocations) == 0 {
+				return &pb.RevokeResponse{
+					Error: ToError(wve.Err(wve.InvalidParameter, "name declaration has no revocation options")),
+				}, nil
+
+			}
+			rvk, loc, werr := eng.Perspective().NameDeclarationRevocationDetails(nd)
+			if werr != nil {
+				return &pb.RevokeResponse{
+					Error: ToError(werr),
+				}, nil
+			}
+			_, err = iapi.SI().PutBlob(ctx, loc, rvk)
+			if err != nil {
+				fmt.Printf("the location in question was: %v\n", loc)
+				return &pb.RevokeResponse{
+					Error: ToError(wve.ErrW(wve.InternalError, "could not publish revocation", err)),
+				}, nil
+			}
+			break //only one publish is required
+		}
+		if !found {
+			return &pb.RevokeResponse{
+				Error: ToError(wve.Err(wve.InvalidParameter, "no attestation with that hash found")),
+			}, nil
+		}
+	} //end attestation
+
+	//Entity
+	if p.RevokePerspective {
+		fmt.Printf("revoking perspective\n")
+		if len(eng.Perspective().Entity.Revocations) == 0 {
+			return &pb.RevokeResponse{
+				Error: ToError(wve.Err(wve.InvalidParameter, "entity has no revocation options")),
+			}, nil
+		}
+		rvk, locz := eng.Perspective().CommitmentRevocationDetails()
+		for _, loc := range locz {
+			_, err := iapi.SI().PutBlob(ctx, loc, rvk)
+			if err != nil {
+				return &pb.RevokeResponse{
+					Error: ToError(wve.ErrW(wve.InternalError, "could not publish revocation", err)),
+				}, nil
+			}
+		}
+	} //end entity
+
+	eng.ResetRevocationCache(ctx)
+
+	return &pb.RevokeResponse{}, nil
 }

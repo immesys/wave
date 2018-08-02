@@ -123,6 +123,36 @@ func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.Has
 	return rv, rve
 }
 
+func (e *Engine) LookupNameDeclaration(ctx context.Context, hi iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.NameDeclaration, *Validity, error) {
+	var nd *iapi.NameDeclaration
+	var err error
+
+	nd, err = e.ws.GetNameDeclarationP(e.ctx, hi)
+	if err != nil {
+		return nil, nil, err
+	}
+	if nd == nil {
+		//Get from storage
+		getresult, err := iapi.SI().GetAttestationOrDeclaration(e.ctx, loc, hi)
+		if err != nil {
+			return nil, nil, err
+		}
+		if getresult.NameDeclaration == nil {
+			return nil, nil, nil
+		}
+		nd = getresult.NameDeclaration
+	}
+
+	//Check the name declaration
+	val, err := e.CheckNameDeclaration(e.ctx, nd)
+	if err != nil {
+		return nil, nil, err
+	}
+	return nd, val, nil
+}
+func (e *Engine) ResetRevocationCache(ctx context.Context) {
+	rvkResetTime = time.Now()
+}
 func (e *Engine) LookupAttestationsTo(ctx context.Context, entityHash iapi.HashSchemeInstance, filter *iapi.LookupFromFilter) (chan *LookupResult, chan error) {
 	//The external context does not have our perspective, but we want it so the caller
 	//can cancel
@@ -264,16 +294,16 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 	if err != nil {
 		return nil, nil, err
 	}
-	if st.EntRevoked {
-		return att, &Validity{Revoked: true, Message: "a linked entity is revoked"}, nil
-	}
-	if st.Expired {
-		return att, &Validity{Expired: true, Message: "the attestation is expired"}, nil
-	}
-	if st.Revoked {
-		return att, &Validity{Revoked: true, Message: "the attestation has been revoked"}, nil
-	}
 	if att != nil {
+		if st.EntRevoked {
+			return att, &Validity{Revoked: true, Message: "a linked entity is revoked"}, nil
+		}
+		if st.Expired {
+			return att, &Validity{Expired: true, Message: "the attestation is expired"}, nil
+		}
+		if st.Revoked {
+			return att, &Validity{Revoked: true, Message: "the attestation has been revoked"}, nil
+		}
 		val, err := e.CheckAttestation(subctx, att)
 		if err != nil {
 			return nil, nil, err
@@ -282,6 +312,7 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 		if err != nil {
 			return nil, nil, err
 		}
+		fmt.Printf("case 1\n")
 		return att, val, err
 	}
 
@@ -297,6 +328,7 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 
 	//Don't give it our engine, so it can't use our perspective
 	dctx := NewEngineDecryptionContext(e)
+	fmt.Printf("==== PARSING:\n")
 	par, err := iapi.ParseAttestation(subctx, &iapi.PParseAttestation{
 		Attestation:       att,
 		DecryptionContext: dctx,
@@ -316,19 +348,17 @@ func (e *Engine) LookupAttestationInPerspective(ctx context.Context, hash iapi.H
 }
 
 func (e *Engine) CheckNameDeclaration(ctx context.Context, nd *iapi.NameDeclaration) (*Validity, error) {
+	revoked, err := e.IsNameDeclarationRevoked(nd)
+	if err != nil {
+		return nil, err
+	}
+	if revoked {
+		return &Validity{Revoked: true, Message: "name declaration has been revoked"}, nil
+	}
+
 	if !nd.Decoded() {
 		return &Validity{NotDecrypted: true}, nil
 	}
-
-	// for _, r := range nd.Revocations {
-	// 	revoked, err := r.IsRevoked(ctx, iapi.SI())
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if revoked {
-	// 		return &Validity{Valid: false, Revoked: true, Message: "Name declaration has been revoked"}, nil
-	// 	}
-	// }
 
 	if time.Now().After(nd.DecryptedBody.Validity.NotAfter) {
 		return &Validity{Expired: true, Message: "Name declaration expired"}, nil
@@ -513,7 +543,6 @@ func (e *Engine) LookupName(ctx context.Context, attester iapi.HashSchemeInstanc
 		if validity.Valid {
 			rv = nd
 		}
-		//TODO revocation
 	}
 	//If we are the attester here, store a reverse name
 	if rv != nil && attester.MultihashString() == e.Perspective().Entity.Keccak256HI().MultihashString() {

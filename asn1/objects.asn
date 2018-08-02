@@ -390,7 +390,14 @@ BEGIN
     -- key: ECDH (outer signature key, subject key)
     -- this permits reading the envelope if you are the direct
     -- recipient, even without knowing the namespace
-    envelopeKey-curve25519 OCTET STRING
+    envelopeKey-curve25519 OCTET STRING,
+
+    -- content prover/verifierBodyKeys
+    -- encryption algorithm: AES128
+    -- key: ECDH (outer signature key, attester key)
+    -- this permits reading the attestation if you are the attester
+    -- even without knowing the namespace
+    envelopeKey-curve25519-attester OCTET STRING
   }
 
   WR1Envelope ::= SEQUENCE {

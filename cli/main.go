@@ -56,6 +56,29 @@ func main() {
 			},
 		},
 		{
+			Name:   "revoke",
+			Usage:  "revoke an entity/attestation/name declaration",
+			Action: cli.ActionFunc(actionRevoke),
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:   "attester",
+					EnvVar: "WAVE_DEFAULT_ENTITY",
+				},
+				cli.StringFlag{
+					Name:  "attestation",
+					Usage: "an attestation to revoke",
+				},
+				cli.StringFlag{
+					Name:  "entity",
+					Usage: "revoke an entity",
+				},
+				cli.StringFlag{
+					Name:  "name",
+					Usage: "revoke a name declaration",
+				},
+			},
+		},
+		{
 			Name:    "mkentity",
 			Aliases: []string{"mke"},
 			Usage:   "create a new entity",

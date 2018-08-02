@@ -462,6 +462,32 @@
         ]
       }
     },
+    "/v1/Revoke": {
+      "post": {
+        "operationId": "Revoke",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbRevokeResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbRevokeParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
     "/v1/SyncStatus": {
       "post": {
         "operationId": "SyncStatus",
@@ -1450,6 +1476,34 @@
       }
     },
     "pbResyncPerspectiveGraphResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        }
+      }
+    },
+    "pbRevokeParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "attestationHash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "nameDeclarationHash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "revokePerspective": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "pbRevokeResponse": {
       "type": "object",
       "properties": {
         "error": {

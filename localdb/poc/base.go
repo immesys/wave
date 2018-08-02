@@ -50,6 +50,11 @@ func (p *poc) PKey(ctx context.Context, stuff ...string) string {
 	parts = append(parts, stuff...)
 	return strings.Join(parts, "/")
 }
+func (p *poc) GKey(ctx context.Context, stuff ...string) string {
+	parts := []string{"global"}
+	parts = append(parts, stuff...)
+	return strings.Join(parts, "/")
+}
 
 func unmarshalGob(ba []byte, into interface{}) error {
 	buf := bytes.NewBuffer(ba)
