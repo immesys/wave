@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/howeyc/gopass"
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/eapi"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/iapi"
@@ -761,6 +762,11 @@ func resolveEntityNameOrHashOrFile(conn pb.WAVEClient, perspective *pb.Perspecti
 			return rv
 		}
 		//Resolve as name
+		if in == "wave" {
+			//Hardcoded builtin PSET
+			rv, _ := base64.URLEncoding.DecodeString(consts.WaveBuiltinPSET)
+			return rv
+		}
 		resp, err := conn.ResolveName(context.Background(), &pb.ResolveNameParams{
 			Perspective: perspective,
 			Name:        in,

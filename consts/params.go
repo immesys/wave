@@ -6,13 +6,13 @@ package consts
 //things get going
 const OAQUESlots = 21
 
-const LocationUC = "eth://4514?storage=swarm"
-
-const OidPrefix = "2.25.45143053631457624761134634438852551742"
-
-const OidEntity = "2.25.45143053631457624761134634438852551742.1"
-const OidDot = "2.25.45143053631457624761134634438852551742.2"
-
 type constContextKey string
 
 var PerspectiveKey constContextKey = "perspective"
+
+//This is the wave built-in permission set, the hash of "wavebuiltin"
+var WaveBuiltinPSET = "GyAZSVTobuuPkf-YOsxW5shK4pqQfOfnY46GV9UUmbGIpA=="
+
+//Granting this permission with the wave builtin pset allows the recipient
+//to decrypt end-to-end encrypted messages
+var WaveBuiltinE2EE = "decrypt"
