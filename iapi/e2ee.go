@@ -18,7 +18,7 @@ type PEncryptMessage struct {
 	//OAQUE encryption
 	Namespace         *Entity
 	NamespaceLocation LocationSchemeInstance
-	PartitionPrefix   [][]byte
+	Resource          string
 	ValidAfter        *time.Time
 	ValidBefore       *time.Time
 	Content           []byte
@@ -51,8 +51,9 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 		canonicalForm.Keys = append(canonicalForm.Keys, asn1.NewExternal(directKey))
 	}
 	if p.Namespace != nil {
-		if len(p.PartitionPrefix) > 12 {
-			return nil, wve.Err(wve.InvalidParameter, "partition prefix must be <= 12 elements")
+		pprefix, werr := pprefixFromResource(p.Resource, true)
+		if werr != nil {
+			return nil, werr
 		}
 		if p.ValidBefore == nil || p.ValidAfter == nil {
 			return nil, wve.Err(wve.InvalidParameter, "valid times are required if encrypting on a namespace")
@@ -60,7 +61,7 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 		if p.ValidBefore.Add(-3 * 365 * 24 * time.Hour).After(*p.ValidAfter) {
 			return nil, wve.Err(wve.InvalidParameter, "valid range cannot exceed roughly 3 years")
 		}
-		partition, werr := CalculateWR1Partition(*p.ValidAfter, *p.ValidBefore, p.PartitionPrefix)
+		partition, werr := CalculateWR1Partition(*p.ValidAfter, *p.ValidBefore, pprefix)
 		if werr != nil {
 			return nil, werr
 		}
@@ -205,7 +206,7 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 				})
 			}
 			if envelopeKey == nil {
-				fmt.Printf("no outer key\n")
+				fmt.Printf("E2EE no outer key\n")
 				continue
 			}
 			if len(envelopeKey) != 16+12 {
@@ -255,7 +256,7 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 				})
 			}
 			if contentsKey == nil {
-				fmt.Printf("no inner key\n")
+				fmt.Printf("E2EE no inner key\n")
 				continue
 			}
 			if len(contentsKey) != 16+12 {

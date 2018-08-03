@@ -151,7 +151,7 @@ func (p *poc) GetEntityPartitionLabelKeyIndexP(ctx context.Context, dsthi iapi.H
 		return false, 0, err
 	}
 	if es == nil {
-		panic("we don't know this entity")
+		return false, 0, nil
 	}
 	return true, es.MaxLabelKeyIndex, nil
 }

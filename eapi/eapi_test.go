@@ -3,12 +3,14 @@ package eapi
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
 
 	"github.com/bouk/monkey"
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/localdb/lls"
@@ -93,7 +95,8 @@ func TestCreateEntityNoPassphrase(t *testing.T) {
 func createEntity(t *testing.T) (public []byte, secret []byte) {
 	ctx := context.Background()
 	rv, err := eapi.CreateEntity(ctx, &pb.CreateEntityParams{
-	//SecretPassphrase: "password",
+		//SecretPassphrase: "password",
+		ValidUntil: time.Now().Add(40*365*24*time.Hour).UnixNano() / 1e6,
 	})
 	require.NoError(t, err)
 	return rv.PublicDER, rv.SecretDER
@@ -340,7 +343,7 @@ func TestE2EEOAQUEEncryptionNS(t *testing.T) {
 		Content:           msg,
 		Namespace:         srcpub.Hash,
 		NamespaceLocation: &inmem,
-		Partition:         [][]byte{[]byte("foo"), []byte("bar")},
+		Resource:          "foo/bar",
 	})
 	require.NoError(t, err)
 	require.Nil(t, encrv.Error)
@@ -395,7 +398,7 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 		Content:           msg,
 		Namespace:         srcpub.Hash,
 		NamespaceLocation: &inmem,
-		Partition:         iapi.Partition("foo", "bar"),
+		Resource:          "foo/bar",
 	})
 	require.NoError(t, err)
 	require.Nil(t, encrv.Error)
@@ -406,13 +409,13 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 		Indirections: 5,
 		Statements: []*pb.RTreePolicyStatement{
 			&pb.RTreePolicyStatement{
-				PermissionSet: srcpub.Hash,
-				Permissions:   []string{"foo"},
-				Resource:      "foo/bar",
+				PermissionSet: []byte(consts.WaveBuiltinPSETBytes),
+				Permissions:   []string{consts.WaveBuiltinE2EE},
+				Resource:      "foo/*",
 			},
 		},
 	}
-	policy.VisibilityURI = iapi.Partition("foo", "bar")
+	//policy.VisibilityURI = iapi.Partition("foo", "bar")
 
 	att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
 		Perspective:     srcperspective,
@@ -475,6 +478,315 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 	// } else {
 	// 	fmt.Printf("END THING YY failed to decrypt message\n")
 	// }
+
+	require.NoError(t, err)
+	require.Nil(t, decrv.Error)
+	require.Equal(t, decrv.Content, msg)
+}
+
+func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
+	ctx := context.Background()
+	aPublic, aSecret := createEntity(t)
+	bPublic, bSecret := createEntity(t)
+	cPublic, cSecret := createEntity(t)
+	apubl, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      aPublic,
+		Location: &inmem,
+	})
+	//fmt.Printf("AHASH: %s\n", base64.URLEncoding.EncodeToString(apubl.Hash))
+	bpubl, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      bPublic,
+		Location: &inmem,
+	})
+	//fmt.Printf("BHASH: %s\n", base64.URLEncoding.EncodeToString(bpubl.Hash))
+	cpubl, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      cPublic,
+		Location: &inmem,
+	})
+	//fmt.Printf("CHASH: %s\n", base64.URLEncoding.EncodeToString(cpubl.Hash))
+
+	aPersp := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER: aSecret,
+		},
+		Location: &inmem,
+	}
+	bPersp := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER: bSecret,
+		},
+		Location: &inmem,
+	}
+	cPersp := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER: cSecret,
+		},
+		Location: &inmem,
+	}
+	msg := make([]byte, 512)
+	rand.Read(msg)
+	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
+		Perspective:       aPersp,
+		Content:           msg,
+		Namespace:         apubl.Hash,
+		NamespaceLocation: &inmem,
+		Resource:          "foo/bar",
+	})
+	require.NoError(t, err)
+	require.Nil(t, encrv.Error)
+
+	//First attestation, A->B
+	policy := pb.RTreePolicy{
+		Namespace:    apubl.Hash,
+		Indirections: 5,
+		Statements: []*pb.RTreePolicyStatement{
+			&pb.RTreePolicyStatement{
+				PermissionSet: []byte(consts.WaveBuiltinPSETBytes),
+				Permissions:   []string{consts.WaveBuiltinE2EE},
+				Resource:      "foo/bar",
+			},
+		},
+	}
+	att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		Perspective:     aPersp,
+		BodyScheme:      BodySchemeWaveRef1,
+		SubjectHash:     bpubl.Hash,
+		SubjectLocation: &inmem,
+		Policy: &pb.Policy{
+			RTreePolicy: &policy,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, att.Error)
+	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
+		DER: att.DER,
+	})
+
+	//Sync B's graph. Omitting this simulates out of order because B won;t
+	//have the key. SHould not matter for broadening test
+	if true {
+		rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+			Perspective: bPersp,
+		})
+		require.NoError(t, err)
+		require.Nil(t, rv.Error)
+		//Spin until sync complete (but don't use wait because its hard to use)
+		for {
+			ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+				Perspective: bPersp,
+			})
+			require.NoError(t, err)
+			require.Nil(t, ss.Error)
+			if ss.CompletedSyncs == ss.TotalSyncRequests {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	//Second attestation: B->C
+	policy = pb.RTreePolicy{
+		Namespace:    apubl.Hash,
+		Indirections: 5,
+		Statements: []*pb.RTreePolicyStatement{
+			&pb.RTreePolicyStatement{
+				PermissionSet: []byte(consts.WaveBuiltinPSETBytes),
+				Permissions:   []string{consts.WaveBuiltinE2EE},
+				Resource:      "foo/*",
+			},
+		},
+	}
+	att, err = eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		Perspective:     bPersp,
+		BodyScheme:      BodySchemeWaveRef1,
+		SubjectHash:     cpubl.Hash,
+		SubjectLocation: &inmem,
+		Policy: &pb.Policy{
+			RTreePolicy: &policy,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, att.Error)
+	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
+		DER: att.DER,
+	})
+
+	//Build C's graph
+	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+		Perspective: cPersp,
+	})
+	require.NoError(t, err)
+	require.Nil(t, rv.Error)
+	for {
+		ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+			Perspective: cPersp,
+		})
+		require.NoError(t, err)
+		require.Nil(t, ss.Error)
+		if ss.CompletedSyncs == ss.TotalSyncRequests {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	decrv, err := eapi.DecryptMessage(ctx, &pb.DecryptMessageParams{
+		Perspective: cPersp,
+		Ciphertext:  encrv.Ciphertext,
+	})
+
+	require.NoError(t, err)
+	require.Nil(t, decrv.Error)
+	require.Equal(t, decrv.Content, msg)
+}
+
+func TestE2EEOAQUEEncryptionDelegated2HopNarrowing(t *testing.T) {
+	ctx := context.Background()
+	aPublic, aSecret := createEntity(t)
+	bPublic, bSecret := createEntity(t)
+	cPublic, cSecret := createEntity(t)
+	apubl, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      aPublic,
+		Location: &inmem,
+	})
+	fmt.Printf("apubl hash: %s\n", base64.URLEncoding.EncodeToString(apubl.Hash))
+	bpubl, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      bPublic,
+		Location: &inmem,
+	})
+	cpubl, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      cPublic,
+		Location: &inmem,
+	})
+
+	aPersp := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER: aSecret,
+		},
+		Location: &inmem,
+	}
+	bPersp := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER: bSecret,
+		},
+		Location: &inmem,
+	}
+	cPersp := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER: cSecret,
+		},
+		Location: &inmem,
+	}
+	msg := make([]byte, 512)
+	rand.Read(msg)
+	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
+		Perspective:       aPersp,
+		Content:           msg,
+		Namespace:         apubl.Hash,
+		NamespaceLocation: &inmem,
+		Resource:          "foo/bar",
+	})
+	require.NoError(t, err)
+	require.Nil(t, encrv.Error)
+
+	//First attestation, A->B
+	policy := pb.RTreePolicy{
+		Namespace:    apubl.Hash,
+		Indirections: 5,
+		Statements: []*pb.RTreePolicyStatement{
+			&pb.RTreePolicyStatement{
+				PermissionSet: []byte(consts.WaveBuiltinPSETBytes),
+				Permissions:   []string{consts.WaveBuiltinE2EE},
+				Resource:      "foo/*",
+			},
+		},
+	}
+	att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		Perspective:     aPersp,
+		BodyScheme:      BodySchemeWaveRef1,
+		SubjectHash:     bpubl.Hash,
+		SubjectLocation: &inmem,
+		Policy: &pb.Policy{
+			RTreePolicy: &policy,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, att.Error)
+	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
+		DER: att.DER,
+	})
+
+	//Sync B's graph. Omitting this simulates out of order because B won;t
+	//have the key
+	if true {
+		rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+			Perspective: bPersp,
+		})
+		require.NoError(t, err)
+		require.Nil(t, rv.Error)
+		//Spin until sync complete (but don't use wait because its hard to use)
+		for {
+			ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+				Perspective: bPersp,
+			})
+			require.NoError(t, err)
+			require.Nil(t, ss.Error)
+			if ss.CompletedSyncs == ss.TotalSyncRequests {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	fmt.Printf("========================================================================================\n\n")
+	//Second attestation: B->C
+	policy = pb.RTreePolicy{
+		Namespace:    apubl.Hash,
+		Indirections: 5,
+		Statements: []*pb.RTreePolicyStatement{
+			&pb.RTreePolicyStatement{
+				PermissionSet: []byte(consts.WaveBuiltinPSETBytes),
+				Permissions:   []string{consts.WaveBuiltinE2EE},
+				Resource:      "foo/bar",
+			},
+		},
+	}
+	att, err = eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		Perspective:     bPersp,
+		BodyScheme:      BodySchemeWaveRef1,
+		SubjectHash:     cpubl.Hash,
+		SubjectLocation: &inmem,
+		Policy: &pb.Policy{
+			RTreePolicy: &policy,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, att.Error)
+	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
+		DER: att.DER,
+	})
+	fmt.Printf("PART2========================================================================================PART2\n\n")
+	//Build C's graph
+	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+		Perspective: cPersp,
+	})
+	require.NoError(t, err)
+	require.Nil(t, rv.Error)
+	for {
+		ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+			Perspective: cPersp,
+		})
+		require.NoError(t, err)
+		require.Nil(t, ss.Error)
+		if ss.CompletedSyncs == ss.TotalSyncRequests {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	decrv, err := eapi.DecryptMessage(ctx, &pb.DecryptMessageParams{
+		Perspective: cPersp,
+		Ciphertext:  encrv.Ciphertext,
+	})
 
 	require.NoError(t, err)
 	require.Nil(t, decrv.Error)
@@ -1020,7 +1332,7 @@ func TestCreateAttestationWithExpiredLookup(t *testing.T) {
 	}
 	fmt.Printf("==== STARTING LOOKUP IN DESTINATION GRAPH ====\n")
 
-	future := time.Date(2050, time.May, 19, 1, 2, 3, 4, time.UTC)
+	future := time.Date(2030, time.May, 19, 1, 2, 3, 4, time.UTC)
 	patch := monkey.Patch(time.Now, func() time.Time { return future })
 	defer patch.Unpatch()
 

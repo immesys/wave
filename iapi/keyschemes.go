@@ -311,6 +311,9 @@ func (k *UnsupportedKeyScheme) Supported() bool {
 func (k *UnsupportedKeyScheme) IdentifyingBlob(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("key scheme %s is unsupported", k.SerdesForm.Key.OID.String())
 }
+func (k *UnsupportedKeyScheme) SystemIdentifyingBlob(ctx context.Context) (string, error) {
+	return "", fmt.Errorf("Unsupported key scheme")
+}
 func (k *UnsupportedKeyScheme) HasCapability(c Capability) bool {
 	for _, has := range k.SerdesForm.Capabilities {
 		if has == int(c) {
@@ -350,6 +353,9 @@ func (ek *EntityKey_Ed25519) Supported() bool {
 }
 func (ek *EntityKey_Ed25519) IdentifyingBlob(ctx context.Context) (string, error) {
 	return string(ek.PublicKey), nil
+}
+func (ek *EntityKey_Ed25519) SystemIdentifyingBlob(ctx context.Context) (string, error) {
+	return "", fmt.Errorf("this key is not part of a system")
 }
 func (ek *EntityKey_Ed25519) HasCapability(c Capability) bool {
 	for _, has := range ek.SerdesForm.Capabilities {
@@ -480,6 +486,9 @@ func (ek *EntityKey_Curve25519) Supported() bool {
 }
 func (ek *EntityKey_Curve25519) IdentifyingBlob(ctx context.Context) (string, error) {
 	return string(ek.PublicKey[:]), nil
+}
+func (ek *EntityKey_Curve25519) SystemIdentifyingBlob(ctx context.Context) (string, error) {
+	return "", fmt.Errorf("this key is not part of a system")
 }
 func (ek *EntityKey_Curve25519) HasCapability(c Capability) bool {
 	for _, has := range ek.SerdesForm.Capabilities {
@@ -676,6 +685,10 @@ func (ek *EntityKey_IBE_Params_BN256) IdentifyingBlob(ctx context.Context) (stri
 		return "", fmt.Errorf("failed to marshal")
 	}
 	return string(ba), nil
+}
+func (ek *EntityKey_IBE_Params_BN256) SystemIdentifyingBlob(ctx context.Context) (string, error) {
+	x := ek.SerdesForm.Key.Content.(serdes.EntityParamsIBE_BN256)
+	return KECCAK256.Instance(x).MultihashString(), nil
 }
 func (ek *EntityKey_IBE_Params_BN256) HasCapability(c Capability) bool {
 	for _, has := range ek.SerdesForm.Capabilities {
@@ -932,6 +945,10 @@ func (k *EntityKey_IBE_BN256) IdentifyingBlob(ctx context.Context) (string, erro
 	}
 	return string(js) + "/" + string(k.ID), nil
 }
+func (k *EntityKey_IBE_BN256) SystemIdentifyingBlob(ctx context.Context) (string, error) {
+	params, _ := k.Params.MarshalBinary()
+	return KECCAK256.Instance(params).MultihashString(), nil
+}
 func (k *EntityKey_IBE_BN256) HasCapability(c Capability) bool {
 	for _, has := range k.SerdesForm.Capabilities {
 		if has == int(c) {
@@ -1152,6 +1169,10 @@ func (k *EntityKey_OAQUE_BN256_S20_Params) IdentifyingBlob(ctx context.Context) 
 	ba := k.Params.Marshal()
 	return string(ba), nil
 }
+func (k *EntityKey_OAQUE_BN256_S20_Params) SystemIdentifyingBlob(ctx context.Context) (string, error) {
+	params := k.Params.Marshal()
+	return KECCAK256.Instance(params).MultihashString(), nil
+}
 func (k *EntityKey_OAQUE_BN256_S20_Params) HasCapability(c Capability) bool {
 	for _, has := range k.SerdesForm.Capabilities {
 		if has == int(c) {
@@ -1281,6 +1302,10 @@ func (k *EntityKey_OAQUE_BN256_S20) IdentifyingBlob(ctx context.Context) (string
 	ba := k.Params.Marshal()
 	subid := bytes.Join(k.AttributeSet, []byte(","))
 	return string(ba) + "/" + string(subid), nil
+}
+func (k *EntityKey_OAQUE_BN256_S20) SystemIdentifyingBlob(ctx context.Context) (string, error) {
+	params := k.Params.Marshal()
+	return KECCAK256.Instance(params).MultihashString(), nil
 }
 func (k *EntityKey_OAQUE_BN256_S20) HasCapability(c Capability) bool {
 	for _, has := range k.SerdesForm.Capabilities {

@@ -916,12 +916,8 @@
         "namespaceLocation": {
           "$ref": "#/definitions/pbLocation"
         },
-        "partition": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "byte"
-          }
+        "resource": {
+          "type": "string"
         },
         "validFrom": {
           "type": "string",

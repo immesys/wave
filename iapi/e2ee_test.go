@@ -51,7 +51,7 @@ func TestOAQUEE2EE(t *testing.T) {
 		Namespace:         source.Entity,
 		NamespaceLocation: NewLocationSchemeInstanceURL("test", 1),
 		Content:           msg,
-		PartitionPrefix:   [][]byte{[]byte("foo")},
+		Resource:          "foo",
 		ValidAfter:        Time(time.Now()),
 		ValidBefore:       Time(time.Now().Add(30 * 24 * time.Hour)),
 	})

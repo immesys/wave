@@ -284,7 +284,7 @@ message EncryptMessageParams {
   //If present, an OAQUE decryption key will be generated
   bytes namespace = 5;
   Location namespaceLocation = 6;
-  repeated bytes partition = 7;
+  string resource = 7;
   //ms since epoch, if zero set to now
   int64 validFrom = 8;
   //ms since epoch, if zero set to now

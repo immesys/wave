@@ -476,7 +476,6 @@ func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance,
 		}
 		//Other checks are easier, so just redo them
 		if ent != nil {
-
 			if st.Revoked {
 				return ent, &Validity{Revoked: true, Message: "entity has been revoked"}, nil
 			}

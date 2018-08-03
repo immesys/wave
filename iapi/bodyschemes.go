@@ -1,6 +1,7 @@
 package iapi
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"errors"
@@ -8,7 +9,9 @@ import (
 	"sync"
 
 	"github.com/immesys/asn1"
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/serdes"
+	"github.com/immesys/wave/wve"
 )
 
 var ErrDecryptBodyMalformed = errors.New("body is malformed")
@@ -314,7 +317,32 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	return rv, rvextra, nil
 }
 
-func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
+type WR1BodyEncryptionContext interface {
+	BodyEncryptionContext
+	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
+	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
+	WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error)
+}
+
+func isPolicyE2EE(p PolicySchemeInstance) (HashSchemeInstance, LocationSchemeInstance, bool) {
+	rtree, ok := p.(*RTreePolicy)
+	if !ok {
+		return nil, nil, false
+	}
+	for _, s := range rtree.SerdesForm.Statements {
+		hi := HashSchemeInstanceFor(&s.PermissionSet)
+		if hi.Supported() && hi.MultihashString() == consts.WaveBuiltinPSET {
+			if len(s.Permissions) == 1 && s.Permissions[0] == consts.WaveBuiltinE2EE {
+				loc := LocationSchemeInstanceFor(&rtree.SerdesForm.NamespaceLocation)
+				return rtree.WR1DomainEntity(), loc, true
+			}
+		}
+	}
+	return nil, nil, false
+}
+
+func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
+	ec := ecp.(WR1BodyEncryptionContext)
 	//Step 0 generate the WR1 keys
 	// - IBE key using the domain visibility from the policy
 	// - OAQUE key using the WR1 partition from the entity
@@ -366,16 +394,33 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	//Ok now we have the key material we need to encrypt. Lets generate the delegated key material
 	delegatedVisibilityKey, err := attester.WR1LabelKey(ctx, []byte(visibilityID))
 	if err != nil {
+		fmt.Printf("K 3\n")
 		return nil, nil, err
 	}
+
+	e2eNS, e2eNSLoc, isE2E := isPolicyE2EE(policy)
 
 	//Get the bundle, but it is empty (no keys)
 	partitions, delegatedBundle, err := CalculateEmptyKeyBundleEntries(plaintextBody.VerifierBody.Validity.NotBefore,
 		plaintextBody.VerifierBody.Validity.NotAfter,
 		policy.WR1PartitionPrefix())
 	if err != nil {
+		fmt.Printf("K 2\n")
 		return nil, nil, err
 	}
+
+	var e2eDelegatedBundle []serdes.BN256OAQUEKeyringBundleEntry
+	if isE2E {
+		var err error
+		_, e2eDelegatedBundle, err = CalculateEmptyKeyBundleEntries(plaintextBody.VerifierBody.Validity.NotBefore,
+			plaintextBody.VerifierBody.Validity.NotAfter,
+			policy.WR1PartitionPrefix())
+		if err != nil {
+			fmt.Printf("K 1\n")
+			return nil, nil, err
+		}
+	}
+	e2eKeyOkay := make([]bool, len(e2eDelegatedBundle))
 
 	//Generating these delegated keys is a bit of a pain. Sequentially its about 1.5s on my machine.
 	//If we split it over multiple cores it goes down to about 250 ms
@@ -396,11 +441,65 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 				//This is a keyring entry, we need to extract just the oaque private key
 				cf := k.SecretCanonicalForm()
 				delegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BN256_s20)
+
+				if isE2E {
+					//Also try generate the e2e key, which is in the namespace system
+					var sk SlottedSecretKey
+					ec.WR1OAQUEKeysForContent(ctx, e2eNS, partitions[idx], func(k SlottedSecretKey) bool {
+						esk, err := k.GenerateChildSecretKey(ctx, partitions[idx])
+						if err != nil {
+							panic(err)
+						}
+						sk = esk.(SlottedSecretKey)
+						return false
+					})
+					if sk != nil {
+						e2eKeyOkay[idx] = true
+						//fmt.Printf("Delegated NS key %s was ok\n", WR1PartitionToIntString(partitions[idx]))
+						cf := sk.SecretCanonicalForm()
+						e2eDelegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BN256_s20)
+					}
+				}
 			}
 			wg.Done()
 		}(i)
 	}
 	wg.Wait()
+
+	includeE2Ebundle := false
+
+	var e2eBundle serdes.BN256OAQUEKeyringBundle
+	var e2eVisiblityKey serdes.WR1DomainVisibilityKey_IBE_BN256
+	if isE2E {
+		nsEnt, err := ec.WR1EntityFromHash(ctx, e2eNS, e2eNSLoc)
+		if err != nil {
+			fmt.Printf("K 4\n")
+			return nil, nil, wve.ErrW(wve.InvalidE2EEGrant, "could not look up namespace entity", err)
+		}
+		expected := []byte(nsEnt.Keccak256HI().MultihashString())
+		ec.WR1IBEKeysForPartitionLabel(ctx, e2eNS, func(k EntitySecretKeySchemeInstance) bool {
+			id := k.Public().CanonicalForm().Key.Content.(serdes.EntityPublicIBE_BN256).ID
+			if bytes.Equal(id, expected) {
+				cf := k.SecretCanonicalForm()
+				e2eVisiblityKey = serdes.WR1DomainVisibilityKey_IBE_BN256(*cf)
+				return false
+			}
+			return true
+		})
+		nsparams, err := nsEnt.WR1_BodyParams()
+		if err != nil {
+			return nil, nil, err
+		}
+		e2eBundle.Params = nsparams.(*EntityKey_OAQUE_BN256_S20_Params).Params.Marshal()
+		entries := []serdes.BN256OAQUEKeyringBundleEntry{}
+		for idx, ok := range e2eKeyOkay {
+			if ok {
+				entries = append(entries, e2eDelegatedBundle[idx])
+				includeE2Ebundle = true
+			}
+		}
+		e2eBundle.Entries = entries
+	}
 	// for idx, p := range partitions {
 	// 	fmt.Printf("granted key %d: %s\n", idx, WR1PartitionToIntString(p))
 	// }
@@ -427,6 +526,10 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ec BodyEncryptionContex
 	dvkSCF := delegatedVisibilityKey.SecretCanonicalForm()
 	proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(serdes.WR1DomainVisibilityKey_IBE_BN256(*dvkSCF)))
 	proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(bundleCF))
+	if isE2E && includeE2Ebundle {
+		proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(e2eBundle))
+		proverBody.Addendums = append(proverBody.Addendums, asn1.NewExternal(e2eVisiblityKey))
+	}
 	proverBody.Extensions = plaintextBody.ProverExtensions
 	verifierBody.AttestationVerifierBody = plaintextBody.VerifierBody
 

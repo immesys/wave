@@ -23,8 +23,7 @@ func TestEntityRevocation(t *testing.T) {
 	}
 
 	l1, err := eapi.ResolveHash(ctx, &pb.ResolveHashParams{
-		Hash:        hash,
-		Perspective: persp,
+		Hash: hash,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, l1.Entity)
@@ -38,10 +37,10 @@ func TestEntityRevocation(t *testing.T) {
 	require.Nil(t, rvkr.Error)
 
 	l2, err := eapi.ResolveHash(ctx, &pb.ResolveHashParams{
-		Hash:        hash,
-		Perspective: persp,
+		Hash: hash,
 	})
 	require.NoError(t, err)
+	require.Nil(t, l2.Error)
 	require.NotNil(t, l2.Entity)
 	require.False(t, l2.Entity.Validity.Valid)
 	require.True(t, l2.Entity.Validity.Revoked)

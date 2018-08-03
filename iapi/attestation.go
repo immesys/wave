@@ -3,10 +3,12 @@ package iapi
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/immesys/asn1"
 
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
 )
@@ -56,6 +58,10 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	subjloc := p.SubjectLocation.CanonicalForm()
 	att.TBS.SubjectLocation = *subjloc
 
+	werr := checkPolicyForSpecialCases(p.Policy)
+	if werr != nil {
+		return nil, werr
+	}
 	//TODO
 	//att.TBS.Extensions
 
@@ -114,7 +120,6 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	if err != nil {
 		panic(err)
 	}
-	//spew.Dump(p.Attester)
 	sig, err := p.Attester.PrimarySigningKey().SignCertify(ctx, bindingDER)
 	if err != nil {
 		panic(err)
@@ -180,6 +185,80 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	// }
 
 	return rv, nil
+}
+
+func pprefixFromResource(res string, ismessage bool) ([][]byte, wve.WVE) {
+	parts := strings.Split(res, "/")
+	if len(parts) > 11 {
+		return nil, wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt resource can not be more than 11 elements long")
+	}
+	pprefix := make([][]byte, 12)
+	pprefix[0] = []byte("\x00e2ee")
+	close := true
+	for idx, p := range parts {
+		if p == "+" {
+			if ismessage {
+				return nil, wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt resource should not have '+' in it when used for encryption")
+			}
+			continue //leave as nil
+		}
+		if p == "*" {
+			if ismessage {
+				return nil, wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt resource should not have '*' in it when used for encryption")
+			}
+			if idx != len(parts)-1 {
+				return nil, wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt resource may only have a * as the last element")
+			}
+			close = false
+			continue //leave as nil
+		}
+		if p == "" {
+			return nil, wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt resource may not have empty elements")
+		}
+		pprefix[idx+1] = []byte(p)
+	}
+	if close {
+		for i := len(parts) + 1; i < 12; i++ {
+			pprefix[i] = []byte("\x00") //bottom
+		}
+	}
+	return pprefix, nil
+}
+
+func checkPolicyForSpecialCases(p PolicySchemeInstance) wve.WVE {
+	rtree, ok := p.(*RTreePolicy)
+	if !ok {
+		return nil
+	}
+	foundE2E := false
+	var res string
+	for _, s := range rtree.SerdesForm.Statements {
+		hi := HashSchemeInstanceFor(&s.PermissionSet)
+		if hi.Supported() && hi.MultihashString() == consts.WaveBuiltinPSET {
+			foundE2E = true
+			if len(s.Permissions) != 1 || s.Permissions[0] != consts.WaveBuiltinE2EE {
+				return wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt grant can only have one permission and one statement")
+			}
+			res = s.Resource
+		}
+	}
+	if !foundE2E {
+		return nil
+	}
+	if len(rtree.SerdesForm.Statements) != 1 {
+		return wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt grant can only have one permission and one statement")
+	}
+	for _, p := range rtree.WR1PartitionPrefix() {
+		if len(p) != 0 {
+			return wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt grant must have no partition specified (it is generated from the resource)")
+		}
+	}
+	pprefix, err := pprefixFromResource(res, false)
+	if err != nil {
+		return err
+	}
+	rtree.VisibilityURI = pprefix
+	return nil
 }
 
 type PParseAttestation struct {

@@ -80,6 +80,11 @@ func NewRTreePolicyScheme(policy serdes.RTreePolicy, visuri [][]byte) (*RTreePol
 	if len(visuri) > 12 {
 		return nil, fmt.Errorf("too many elements in visibility URI")
 	}
+	if policy.Namespace.Content != nil {
+		if policy.NamespaceLocation.Content == nil {
+			panic("missing ns location")
+		}
+	}
 	vuri := make([][]byte, 12)
 	for idx, p := range visuri {
 		vuri[idx] = p

@@ -235,16 +235,25 @@ func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 			Error: ToError(wve.ErrW(wve.UnsupportedHashScheme, "could not get hash scheme for location", err)),
 		}, nil
 	}
+	dctx := engine.NewEngineDecryptionContext(eng)
+	dctx.AutoLoadPartitionSecrets(true)
+	pol, err := e.ConvertPolicy(p.Policy)
+	if err != nil {
+		return &pb.CreateAttestationResponse{
+			Error: ToError(err),
+		}, nil
+	}
 	params := &iapi.PCreateAttestation{
-		Policy:           ConvertPolicy(p.Policy),
-		HashScheme:       hashScheme,
-		BodyScheme:       ConvertBodyScheme(p.BodyScheme),
-		Attester:         eng.Perspective(),
-		AttesterLocation: eng.PerspectiveLocation(),
-		Subject:          ent,
-		SubjectLocation:  subLoc,
-		ValidFrom:        TimeFromInt64MillisWithDefault(p.ValidFrom, time.Now()),
-		ValidUntil:       TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
+		Policy:            pol,
+		EncryptionContext: dctx,
+		HashScheme:        hashScheme,
+		BodyScheme:        ConvertBodyScheme(p.BodyScheme),
+		Attester:          eng.Perspective(),
+		AttesterLocation:  eng.PerspectiveLocation(),
+		Subject:           ent,
+		SubjectLocation:   subLoc,
+		ValidFrom:         TimeFromInt64MillisWithDefault(p.ValidFrom, time.Now()),
+		ValidUntil:        TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
 	}
 	resp, err := iapi.CreateAttestation(ctx, params)
 	if err != nil {
@@ -666,6 +675,8 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	}
 	ext := ehash.CanonicalForm()
 	spol.Namespace = *ext
+	nsloc := iapi.NewLocationSchemeInstanceURL("https://foo.com", 1).CanonicalForm()
+	spol.NamespaceLocation = *nsloc
 	for _, st := range p.Statements {
 		pset := iapi.HashSchemeInstanceFromMultihash(st.PermissionSet)
 		if !pset.Supported() {
@@ -876,7 +887,7 @@ func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (
 		}
 		params.Namespace = ns
 		params.NamespaceLocation = nsLoc
-		params.PartitionPrefix = p.Partition
+		params.Resource = p.Resource
 	}
 	params.Content = p.Content
 	rv, err := iapi.EncryptMessage(ctx, &params)

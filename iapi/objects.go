@@ -310,7 +310,18 @@ func (e *Attestation) Hash(scheme HashScheme) HashSchemeInstance {
 	rv := scheme.Instance(tbhder)
 	return rv
 }
-
+func (e *Attestation) Namespace() (HashSchemeInstance, LocationSchemeInstance, bool, error) {
+	if e.DecryptedBody == nil {
+		return nil, nil, false, fmt.Errorf("Attestation is not decrypted")
+	}
+	rtree, ok := e.DecryptedBody.VerifierBody.Policy.Content.(serdes.RTreePolicy)
+	if !ok {
+		return nil, nil, false, nil
+	}
+	hi := HashSchemeInstanceFor(&rtree.Namespace)
+	loc := LocationSchemeInstanceFor(&rtree.NamespaceLocation)
+	return hi, loc, true, nil
+}
 func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 	rv := []SlottedSecretKey{}
 	for _, ex := range e.DecryptedBody.ProverPolicyAddendums {

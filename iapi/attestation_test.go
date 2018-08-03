@@ -15,11 +15,12 @@ func TestBasicAttestation(t *testing.T) {
 	pol, err := NewTrustLevelPolicy(3)
 	require.NoError(t, err)
 	bodyscheme := NewPlaintextBodyScheme()
+	dc := NewKeyPoolDecryptionContext()
 	rv, err := CreateAttestation(context.Background(), &PCreateAttestation{
 		Policy:            pol,
 		HashScheme:        &HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dc,
 		Attester:          source.EntitySecrets,
 		AttesterLocation:  NewLocationSchemeInstanceURL("test", 1),
 		Subject:           dst.EntitySecrets.Entity,
@@ -45,11 +46,12 @@ func TestBasicAttestationDER(t *testing.T) {
 	pol, err := NewTrustLevelPolicy(3)
 	require.NoError(t, err)
 	bodyscheme := NewPlaintextBodyScheme()
+	dc := NewKeyPoolDecryptionContext()
 	rv, err := CreateAttestation(context.Background(), &PCreateAttestation{
 		Policy:            pol,
 		HashScheme:        &HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dc,
 		Attester:          source.EntitySecrets,
 		AttesterLocation:  NewLocationSchemeInstanceURL("test", 1),
 		Subject:           dst.EntitySecrets.Entity,
@@ -76,13 +78,14 @@ func oneHopAttestation(t *testing.T, delegatedOnly bool) {
 	pol, err := NewTrustLevelPolicy(3)
 	require.NoError(t, err)
 	bodyscheme := &WR1BodyScheme{}
+	dc := NewKeyPoolDecryptionContext()
 	rv, err := CreateAttestation(context.Background(), &PCreateAttestation{
 		Policy: pol,
 		//TODO test with this, it fails right now
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dc,
 		Attester:          source.EntitySecrets,
 		AttesterLocation:  NewLocationSchemeInstanceURL("test", 1),
 		Subject:           dst.EntitySecrets.Entity,

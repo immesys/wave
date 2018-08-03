@@ -18,6 +18,7 @@ type KeyPoolDecryptionContext struct {
 	domainVisibilityIds [][]byte
 }
 
+var _ WR1BodyEncryptionContext = &KeyPoolDecryptionContext{}
 var _ WR1DecryptionContext = &KeyPoolDecryptionContext{}
 
 func NewKeyPoolDecryptionContext() *KeyPoolDecryptionContext {
@@ -36,6 +37,9 @@ func (kpd *KeyPoolDecryptionContext) AddEntitySecretsLabelOnly(es *EntitySecrets
 }
 func (kpd *KeyPoolDecryptionContext) AddEntity(e *Entity) {
 	kpd.entz = append(kpd.entz, e)
+}
+func (kpd *KeyPoolDecryptionContext) WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error) {
+	return kpd.EntityByHashLoc(ctx, hash, loc)
 }
 func (kpd *KeyPoolDecryptionContext) SetWR1VerifierBodyKey(atv []byte) {
 	kpd.attVerKey = atv

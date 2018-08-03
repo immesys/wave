@@ -120,6 +120,7 @@ type EntityKeySchemeInstance interface {
 	Scheme
 	//Such as the public key, used for comparing keys to check private matches
 	IdentifyingBlob(ctx context.Context) (string, error)
+	SystemIdentifyingBlob(ctx context.Context) (string, error)
 	HasCapability(c Capability) bool
 	VerifyCertify(ctx context.Context, data []byte, signature []byte) error
 	VerifyAttestation(ctx context.Context, data []byte, signature []byte) error

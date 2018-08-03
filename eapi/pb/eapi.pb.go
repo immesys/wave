@@ -30,10 +30,10 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type RevokeParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	AttestationHash      []byte       `protobuf:"bytes,2,opt,name=attestationHash,proto3" json:"attestationHash,omitempty"`
 	NameDeclarationHash  []byte       `protobuf:"bytes,3,opt,name=nameDeclarationHash,proto3" json:"nameDeclarationHash,omitempty"`
-	RevokePerspective    bool         `protobuf:"varint,4,opt,name=revokePerspective" json:"revokePerspective,omitempty"`
+	RevokePerspective    bool         `protobuf:"varint,4,opt,name=revokePerspective,proto3" json:"revokePerspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -43,7 +43,7 @@ func (m *RevokeParams) Reset()         { *m = RevokeParams{} }
 func (m *RevokeParams) String() string { return proto.CompactTextString(m) }
 func (*RevokeParams) ProtoMessage()    {}
 func (*RevokeParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{0}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{0}
 }
 func (m *RevokeParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RevokeParams.Unmarshal(m, b)
@@ -92,7 +92,7 @@ func (m *RevokeParams) GetRevokePerspective() bool {
 }
 
 type RevokeResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -102,7 +102,7 @@ func (m *RevokeResponse) Reset()         { *m = RevokeResponse{} }
 func (m *RevokeResponse) String() string { return proto.CompactTextString(m) }
 func (*RevokeResponse) ProtoMessage()    {}
 func (*RevokeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{1}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{1}
 }
 func (m *RevokeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RevokeResponse.Unmarshal(m, b)
@@ -130,7 +130,7 @@ func (m *RevokeResponse) GetError() *Error {
 }
 
 type ResolveReverseNameParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	Hash                 []byte       `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
@@ -141,7 +141,7 @@ func (m *ResolveReverseNameParams) Reset()         { *m = ResolveReverseNamePara
 func (m *ResolveReverseNameParams) String() string { return proto.CompactTextString(m) }
 func (*ResolveReverseNameParams) ProtoMessage()    {}
 func (*ResolveReverseNameParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{2}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{2}
 }
 func (m *ResolveReverseNameParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveReverseNameParams.Unmarshal(m, b)
@@ -176,8 +176,8 @@ func (m *ResolveReverseNameParams) GetHash() []byte {
 }
 
 type ResolveReverseNameResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Name                 string   `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Name                 string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -187,7 +187,7 @@ func (m *ResolveReverseNameResponse) Reset()         { *m = ResolveReverseNameRe
 func (m *ResolveReverseNameResponse) String() string { return proto.CompactTextString(m) }
 func (*ResolveReverseNameResponse) ProtoMessage()    {}
 func (*ResolveReverseNameResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{3}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{3}
 }
 func (m *ResolveReverseNameResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveReverseNameResponse.Unmarshal(m, b)
@@ -222,9 +222,9 @@ func (m *ResolveReverseNameResponse) GetName() string {
 }
 
 type MarkEntityInterestingParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	Entity               []byte       `protobuf:"bytes,2,opt,name=entity,proto3" json:"entity,omitempty"`
-	EntityLocation       *Location    `protobuf:"bytes,3,opt,name=entityLocation" json:"entityLocation,omitempty"`
+	EntityLocation       *Location    `protobuf:"bytes,3,opt,name=entityLocation,proto3" json:"entityLocation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -234,7 +234,7 @@ func (m *MarkEntityInterestingParams) Reset()         { *m = MarkEntityInteresti
 func (m *MarkEntityInterestingParams) String() string { return proto.CompactTextString(m) }
 func (*MarkEntityInterestingParams) ProtoMessage()    {}
 func (*MarkEntityInterestingParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{4}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{4}
 }
 func (m *MarkEntityInterestingParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MarkEntityInterestingParams.Unmarshal(m, b)
@@ -276,7 +276,7 @@ func (m *MarkEntityInterestingParams) GetEntityLocation() *Location {
 }
 
 type MarkEntityInterestingResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -286,7 +286,7 @@ func (m *MarkEntityInterestingResponse) Reset()         { *m = MarkEntityInteres
 func (m *MarkEntityInterestingResponse) String() string { return proto.CompactTextString(m) }
 func (*MarkEntityInterestingResponse) ProtoMessage()    {}
 func (*MarkEntityInterestingResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{5}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{5}
 }
 func (m *MarkEntityInterestingResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MarkEntityInterestingResponse.Unmarshal(m, b)
@@ -314,17 +314,17 @@ func (m *MarkEntityInterestingResponse) GetError() *Error {
 }
 
 type CreateNameDeclarationParams struct {
-	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
-	Name            string       `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	Name            string       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Subject         []byte       `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
-	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	// ms since epoch, if omitted default = now
-	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom" json:"validFrom,omitempty"`
+	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
 	// ms since epoch if omitted default = now+3 years
-	ValidUntil int64 `protobuf:"varint,6,opt,name=validUntil" json:"validUntil,omitempty"`
+	ValidUntil int64 `protobuf:"varint,6,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	// if specified, the name declaration will be encrypted
 	Namespace            []byte    `protobuf:"bytes,7,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	NamespaceLocation    *Location `protobuf:"bytes,8,opt,name=namespaceLocation" json:"namespaceLocation,omitempty"`
+	NamespaceLocation    *Location `protobuf:"bytes,8,opt,name=namespaceLocation,proto3" json:"namespaceLocation,omitempty"`
 	Partition            [][]byte  `protobuf:"bytes,9,rep,name=partition,proto3" json:"partition,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
@@ -335,7 +335,7 @@ func (m *CreateNameDeclarationParams) Reset()         { *m = CreateNameDeclarati
 func (m *CreateNameDeclarationParams) String() string { return proto.CompactTextString(m) }
 func (*CreateNameDeclarationParams) ProtoMessage()    {}
 func (*CreateNameDeclarationParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{6}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{6}
 }
 func (m *CreateNameDeclarationParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateNameDeclarationParams.Unmarshal(m, b)
@@ -419,7 +419,7 @@ func (m *CreateNameDeclarationParams) GetPartition() [][]byte {
 }
 
 type CreateNameDeclarationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	DER                  []byte   `protobuf:"bytes,2,opt,name=DER,proto3" json:"DER,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -431,7 +431,7 @@ func (m *CreateNameDeclarationResponse) Reset()         { *m = CreateNameDeclara
 func (m *CreateNameDeclarationResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateNameDeclarationResponse) ProtoMessage()    {}
 func (*CreateNameDeclarationResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{7}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{7}
 }
 func (m *CreateNameDeclarationResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateNameDeclarationResponse.Unmarshal(m, b)
@@ -473,8 +473,8 @@ func (m *CreateNameDeclarationResponse) GetHash() []byte {
 }
 
 type ResolveNameParams struct {
-	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
-	Name        string       `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	Name        string       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// If omitted, the perspective entity is used
 	TopLevelAttester     []byte   `protobuf:"bytes,3,opt,name=topLevelAttester,proto3" json:"topLevelAttester,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -486,7 +486,7 @@ func (m *ResolveNameParams) Reset()         { *m = ResolveNameParams{} }
 func (m *ResolveNameParams) String() string { return proto.CompactTextString(m) }
 func (*ResolveNameParams) ProtoMessage()    {}
 func (*ResolveNameParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{8}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{8}
 }
 func (m *ResolveNameParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveNameParams.Unmarshal(m, b)
@@ -529,17 +529,17 @@ func (m *ResolveNameParams) GetTopLevelAttester() []byte {
 
 type NameDeclaration struct {
 	Hash                 []byte                   `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	Name                 string                   `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Name                 string                   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Subject              []byte                   `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
-	SubjectLocation      *Location                `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation      *Location                `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	Attester             []byte                   `protobuf:"bytes,5,opt,name=attester,proto3" json:"attester,omitempty"`
-	AttesterLocation     *Location                `protobuf:"bytes,6,opt,name=attesterLocation" json:"attesterLocation,omitempty"`
-	ValidFrom            int64                    `protobuf:"varint,7,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64                    `protobuf:"varint,8,opt,name=validUntil" json:"validUntil,omitempty"`
+	AttesterLocation     *Location                `protobuf:"bytes,6,opt,name=attesterLocation,proto3" json:"attesterLocation,omitempty"`
+	ValidFrom            int64                    `protobuf:"varint,7,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64                    `protobuf:"varint,8,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	Namespace            []byte                   `protobuf:"bytes,9,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	NamespaceLocation    *Location                `protobuf:"bytes,10,opt,name=namespaceLocation" json:"namespaceLocation,omitempty"`
+	NamespaceLocation    *Location                `protobuf:"bytes,10,opt,name=namespaceLocation,proto3" json:"namespaceLocation,omitempty"`
 	Partition            [][]byte                 `protobuf:"bytes,11,rep,name=partition,proto3" json:"partition,omitempty"`
-	Validity             *NameDeclarationValidity `protobuf:"bytes,12,opt,name=validity" json:"validity,omitempty"`
+	Validity             *NameDeclarationValidity `protobuf:"bytes,12,opt,name=validity,proto3" json:"validity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
 	XXX_unrecognized     []byte                   `json:"-"`
 	XXX_sizecache        int32                    `json:"-"`
@@ -549,7 +549,7 @@ func (m *NameDeclaration) Reset()         { *m = NameDeclaration{} }
 func (m *NameDeclaration) String() string { return proto.CompactTextString(m) }
 func (*NameDeclaration) ProtoMessage()    {}
 func (*NameDeclaration) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{9}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{9}
 }
 func (m *NameDeclaration) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NameDeclaration.Unmarshal(m, b)
@@ -654,10 +654,10 @@ func (m *NameDeclaration) GetValidity() *NameDeclarationValidity {
 }
 
 type ResolveNameResponse struct {
-	Error                *Error             `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Entity               *Entity            `protobuf:"bytes,2,opt,name=entity" json:"entity,omitempty"`
-	Derivation           []*NameDeclaration `protobuf:"bytes,3,rep,name=derivation" json:"derivation,omitempty"`
-	Location             *Location          `protobuf:"bytes,4,opt,name=location" json:"location,omitempty"`
+	Error                *Error             `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Entity               *Entity            `protobuf:"bytes,2,opt,name=entity,proto3" json:"entity,omitempty"`
+	Derivation           []*NameDeclaration `protobuf:"bytes,3,rep,name=derivation,proto3" json:"derivation,omitempty"`
+	Location             *Location          `protobuf:"bytes,4,opt,name=location,proto3" json:"location,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`
@@ -667,7 +667,7 @@ func (m *ResolveNameResponse) Reset()         { *m = ResolveNameResponse{} }
 func (m *ResolveNameResponse) String() string { return proto.CompactTextString(m) }
 func (*ResolveNameResponse) ProtoMessage()    {}
 func (*ResolveNameResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{10}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{10}
 }
 func (m *ResolveNameResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveNameResponse.Unmarshal(m, b)
@@ -717,7 +717,7 @@ func (m *ResolveNameResponse) GetLocation() *Location {
 
 type ResolveHashParams struct {
 	Hash                 []byte       `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	Perspective          *Perspective `protobuf:"bytes,2,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,2,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -727,7 +727,7 @@ func (m *ResolveHashParams) Reset()         { *m = ResolveHashParams{} }
 func (m *ResolveHashParams) String() string { return proto.CompactTextString(m) }
 func (*ResolveHashParams) ProtoMessage()    {}
 func (*ResolveHashParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{11}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{11}
 }
 func (m *ResolveHashParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveHashParams.Unmarshal(m, b)
@@ -762,10 +762,10 @@ func (m *ResolveHashParams) GetPerspective() *Perspective {
 }
 
 type ResolveHashResponse struct {
-	Error                *Error       `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Location             *Location    `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
-	Entity               *Entity      `protobuf:"bytes,3,opt,name=entity" json:"entity,omitempty"`
-	Attestation          *Attestation `protobuf:"bytes,4,opt,name=attestation" json:"attestation,omitempty"`
+	Error                *Error       `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Location             *Location    `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	Entity               *Entity      `protobuf:"bytes,3,opt,name=entity,proto3" json:"entity,omitempty"`
+	Attestation          *Attestation `protobuf:"bytes,4,opt,name=attestation,proto3" json:"attestation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -775,7 +775,7 @@ func (m *ResolveHashResponse) Reset()         { *m = ResolveHashResponse{} }
 func (m *ResolveHashResponse) String() string { return proto.CompactTextString(m) }
 func (*ResolveHashResponse) ProtoMessage()    {}
 func (*ResolveHashResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{12}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{12}
 }
 func (m *ResolveHashResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResolveHashResponse.Unmarshal(m, b)
@@ -836,7 +836,7 @@ func (m *InspectParams) Reset()         { *m = InspectParams{} }
 func (m *InspectParams) String() string { return proto.CompactTextString(m) }
 func (*InspectParams) ProtoMessage()    {}
 func (*InspectParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{13}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{13}
 }
 func (m *InspectParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InspectParams.Unmarshal(m, b)
@@ -878,9 +878,9 @@ func (m *InspectParams) GetVerifierKey() []byte {
 }
 
 type InspectResponse struct {
-	Error                *Error       `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Entity               *Entity      `protobuf:"bytes,2,opt,name=entity" json:"entity,omitempty"`
-	Attestation          *Attestation `protobuf:"bytes,3,opt,name=attestation" json:"attestation,omitempty"`
+	Error                *Error       `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Entity               *Entity      `protobuf:"bytes,2,opt,name=entity,proto3" json:"entity,omitempty"`
+	Attestation          *Attestation `protobuf:"bytes,3,opt,name=attestation,proto3" json:"attestation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -890,7 +890,7 @@ func (m *InspectResponse) Reset()         { *m = InspectResponse{} }
 func (m *InspectResponse) String() string { return proto.CompactTextString(m) }
 func (*InspectResponse) ProtoMessage()    {}
 func (*InspectResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{14}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{14}
 }
 func (m *InspectResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InspectResponse.Unmarshal(m, b)
@@ -941,7 +941,7 @@ func (m *ListLocationsParams) Reset()         { *m = ListLocationsParams{} }
 func (m *ListLocationsParams) String() string { return proto.CompactTextString(m) }
 func (*ListLocationsParams) ProtoMessage()    {}
 func (*ListLocationsParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{15}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{15}
 }
 func (m *ListLocationsParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListLocationsParams.Unmarshal(m, b)
@@ -962,8 +962,8 @@ func (m *ListLocationsParams) XXX_DiscardUnknown() {
 var xxx_messageInfo_ListLocationsParams proto.InternalMessageInfo
 
 type ListLocationsResponse struct {
-	Error                *Error               `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	AgentLocations       map[string]*Location `protobuf:"bytes,2,rep,name=agentLocations" json:"agentLocations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Error                *Error               `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	AgentLocations       map[string]*Location `protobuf:"bytes,2,rep,name=agentLocations,proto3" json:"agentLocations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -973,7 +973,7 @@ func (m *ListLocationsResponse) Reset()         { *m = ListLocationsResponse{} }
 func (m *ListLocationsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListLocationsResponse) ProtoMessage()    {}
 func (*ListLocationsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{16}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{16}
 }
 func (m *ListLocationsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListLocationsResponse.Unmarshal(m, b)
@@ -1009,10 +1009,10 @@ func (m *ListLocationsResponse) GetAgentLocations() map[string]*Location {
 
 type CreateEntityParams struct {
 	// Milliseconds since the epoch
-	ValidFrom            int64     `protobuf:"varint,1,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64     `protobuf:"varint,2,opt,name=validUntil" json:"validUntil,omitempty"`
-	RevocationLocation   *Location `protobuf:"bytes,3,opt,name=revocationLocation" json:"revocationLocation,omitempty"`
-	SecretPassphrase     string    `protobuf:"bytes,4,opt,name=SecretPassphrase" json:"SecretPassphrase,omitempty"`
+	ValidFrom            int64     `protobuf:"varint,1,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64     `protobuf:"varint,2,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
+	RevocationLocation   *Location `protobuf:"bytes,3,opt,name=revocationLocation,proto3" json:"revocationLocation,omitempty"`
+	SecretPassphrase     string    `protobuf:"bytes,4,opt,name=SecretPassphrase,proto3" json:"SecretPassphrase,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -1022,7 +1022,7 @@ func (m *CreateEntityParams) Reset()         { *m = CreateEntityParams{} }
 func (m *CreateEntityParams) String() string { return proto.CompactTextString(m) }
 func (*CreateEntityParams) ProtoMessage()    {}
 func (*CreateEntityParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{17}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{17}
 }
 func (m *CreateEntityParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateEntityParams.Unmarshal(m, b)
@@ -1071,7 +1071,7 @@ func (m *CreateEntityParams) GetSecretPassphrase() string {
 }
 
 type CreateEntityResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	PublicDER            []byte   `protobuf:"bytes,2,opt,name=PublicDER,proto3" json:"PublicDER,omitempty"`
 	SecretDER            []byte   `protobuf:"bytes,3,opt,name=SecretDER,proto3" json:"SecretDER,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,4,opt,name=hash,proto3" json:"hash,omitempty"`
@@ -1084,7 +1084,7 @@ func (m *CreateEntityResponse) Reset()         { *m = CreateEntityResponse{} }
 func (m *CreateEntityResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateEntityResponse) ProtoMessage()    {}
 func (*CreateEntityResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{18}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{18}
 }
 func (m *CreateEntityResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateEntityResponse.Unmarshal(m, b)
@@ -1134,9 +1134,9 @@ func (m *CreateEntityResponse) GetHash() []byte {
 
 type Entity struct {
 	Hash                 []byte          `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	ValidFrom            int64           `protobuf:"varint,2,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64           `protobuf:"varint,3,opt,name=validUntil" json:"validUntil,omitempty"`
-	Validity             *EntityValidity `protobuf:"bytes,4,opt,name=validity" json:"validity,omitempty"`
+	ValidFrom            int64           `protobuf:"varint,2,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64           `protobuf:"varint,3,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
+	Validity             *EntityValidity `protobuf:"bytes,4,opt,name=validity,proto3" json:"validity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -1146,7 +1146,7 @@ func (m *Entity) Reset()         { *m = Entity{} }
 func (m *Entity) String() string { return proto.CompactTextString(m) }
 func (*Entity) ProtoMessage()    {}
 func (*Entity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{19}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{19}
 }
 func (m *Entity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Entity.Unmarshal(m, b)
@@ -1195,15 +1195,15 @@ func (m *Entity) GetValidity() *EntityValidity {
 }
 
 type CreateAttestationParams struct {
-	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
-	BodyScheme      string       `protobuf:"bytes,2,opt,name=bodyScheme" json:"bodyScheme,omitempty"`
+	Perspective     *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
+	BodyScheme      string       `protobuf:"bytes,2,opt,name=bodyScheme,proto3" json:"bodyScheme,omitempty"`
 	SubjectHash     []byte       `protobuf:"bytes,3,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
-	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation *Location    `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	// If 0, will be set to time.Now. Ms since epoch
-	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom" json:"validFrom,omitempty"`
+	ValidFrom int64 `protobuf:"varint,5,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
 	// If 0, will be set to some arbitrary default. Ms since epoch
-	ValidUntil           int64    `protobuf:"varint,6,opt,name=validUntil" json:"validUntil,omitempty"`
-	Policy               *Policy  `protobuf:"bytes,7,opt,name=policy" json:"policy,omitempty"`
+	ValidUntil           int64    `protobuf:"varint,6,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
+	Policy               *Policy  `protobuf:"bytes,7,opt,name=policy,proto3" json:"policy,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1213,7 +1213,7 @@ func (m *CreateAttestationParams) Reset()         { *m = CreateAttestationParams
 func (m *CreateAttestationParams) String() string { return proto.CompactTextString(m) }
 func (*CreateAttestationParams) ProtoMessage()    {}
 func (*CreateAttestationParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{20}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{20}
 }
 func (m *CreateAttestationParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateAttestationParams.Unmarshal(m, b)
@@ -1283,7 +1283,7 @@ func (m *CreateAttestationParams) GetPolicy() *Policy {
 }
 
 type ResyncPerspectiveGraphParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -1293,7 +1293,7 @@ func (m *ResyncPerspectiveGraphParams) Reset()         { *m = ResyncPerspectiveG
 func (m *ResyncPerspectiveGraphParams) String() string { return proto.CompactTextString(m) }
 func (*ResyncPerspectiveGraphParams) ProtoMessage()    {}
 func (*ResyncPerspectiveGraphParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{21}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{21}
 }
 func (m *ResyncPerspectiveGraphParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResyncPerspectiveGraphParams.Unmarshal(m, b)
@@ -1321,7 +1321,7 @@ func (m *ResyncPerspectiveGraphParams) GetPerspective() *Perspective {
 }
 
 type ResyncPerspectiveGraphResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1331,7 +1331,7 @@ func (m *ResyncPerspectiveGraphResponse) Reset()         { *m = ResyncPerspectiv
 func (m *ResyncPerspectiveGraphResponse) String() string { return proto.CompactTextString(m) }
 func (*ResyncPerspectiveGraphResponse) ProtoMessage()    {}
 func (*ResyncPerspectiveGraphResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{22}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{22}
 }
 func (m *ResyncPerspectiveGraphResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResyncPerspectiveGraphResponse.Unmarshal(m, b)
@@ -1359,7 +1359,7 @@ func (m *ResyncPerspectiveGraphResponse) GetError() *Error {
 }
 
 type SyncParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -1369,7 +1369,7 @@ func (m *SyncParams) Reset()         { *m = SyncParams{} }
 func (m *SyncParams) String() string { return proto.CompactTextString(m) }
 func (*SyncParams) ProtoMessage()    {}
 func (*SyncParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{23}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{23}
 }
 func (m *SyncParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SyncParams.Unmarshal(m, b)
@@ -1397,20 +1397,20 @@ func (m *SyncParams) GetPerspective() *Perspective {
 }
 
 type EncryptMessageParams struct {
-	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	// The payload of the message
 	Content []byte `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
 	// If present, a direct decryption key will be generated
 	SubjectHash     []byte    `protobuf:"bytes,3,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
-	SubjectLocation *Location `protobuf:"bytes,4,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation *Location `protobuf:"bytes,4,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	// If present, an OAQUE decryption key will be generated
 	Namespace         []byte    `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	NamespaceLocation *Location `protobuf:"bytes,6,opt,name=namespaceLocation" json:"namespaceLocation,omitempty"`
-	Partition         [][]byte  `protobuf:"bytes,7,rep,name=partition,proto3" json:"partition,omitempty"`
+	NamespaceLocation *Location `protobuf:"bytes,6,opt,name=namespaceLocation,proto3" json:"namespaceLocation,omitempty"`
+	Resource          string    `protobuf:"bytes,7,opt,name=resource,proto3" json:"resource,omitempty"`
 	// ms since epoch, if zero set to now
-	ValidFrom int64 `protobuf:"varint,8,opt,name=validFrom" json:"validFrom,omitempty"`
+	ValidFrom int64 `protobuf:"varint,8,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
 	// ms since epoch, if zero set to now
-	ValidUntil           int64    `protobuf:"varint,9,opt,name=validUntil" json:"validUntil,omitempty"`
+	ValidUntil           int64    `protobuf:"varint,9,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1420,7 +1420,7 @@ func (m *EncryptMessageParams) Reset()         { *m = EncryptMessageParams{} }
 func (m *EncryptMessageParams) String() string { return proto.CompactTextString(m) }
 func (*EncryptMessageParams) ProtoMessage()    {}
 func (*EncryptMessageParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{24}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{24}
 }
 func (m *EncryptMessageParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EncryptMessageParams.Unmarshal(m, b)
@@ -1482,11 +1482,11 @@ func (m *EncryptMessageParams) GetNamespaceLocation() *Location {
 	return nil
 }
 
-func (m *EncryptMessageParams) GetPartition() [][]byte {
+func (m *EncryptMessageParams) GetResource() string {
 	if m != nil {
-		return m.Partition
+		return m.Resource
 	}
-	return nil
+	return ""
 }
 
 func (m *EncryptMessageParams) GetValidFrom() int64 {
@@ -1504,7 +1504,7 @@ func (m *EncryptMessageParams) GetValidUntil() int64 {
 }
 
 type EncryptMessageResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Ciphertext           []byte   `protobuf:"bytes,2,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1515,7 +1515,7 @@ func (m *EncryptMessageResponse) Reset()         { *m = EncryptMessageResponse{}
 func (m *EncryptMessageResponse) String() string { return proto.CompactTextString(m) }
 func (*EncryptMessageResponse) ProtoMessage()    {}
 func (*EncryptMessageResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{25}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{25}
 }
 func (m *EncryptMessageResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EncryptMessageResponse.Unmarshal(m, b)
@@ -1550,7 +1550,7 @@ func (m *EncryptMessageResponse) GetCiphertext() []byte {
 }
 
 type DecryptMessageParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	Ciphertext           []byte       `protobuf:"bytes,2,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
@@ -1561,7 +1561,7 @@ func (m *DecryptMessageParams) Reset()         { *m = DecryptMessageParams{} }
 func (m *DecryptMessageParams) String() string { return proto.CompactTextString(m) }
 func (*DecryptMessageParams) ProtoMessage()    {}
 func (*DecryptMessageParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{26}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{26}
 }
 func (m *DecryptMessageParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DecryptMessageParams.Unmarshal(m, b)
@@ -1596,7 +1596,7 @@ func (m *DecryptMessageParams) GetCiphertext() []byte {
 }
 
 type DecryptMessageResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Content              []byte   `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1607,7 +1607,7 @@ func (m *DecryptMessageResponse) Reset()         { *m = DecryptMessageResponse{}
 func (m *DecryptMessageResponse) String() string { return proto.CompactTextString(m) }
 func (*DecryptMessageResponse) ProtoMessage()    {}
 func (*DecryptMessageResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{27}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{27}
 }
 func (m *DecryptMessageResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DecryptMessageResponse.Unmarshal(m, b)
@@ -1642,10 +1642,10 @@ func (m *DecryptMessageResponse) GetContent() []byte {
 }
 
 type SyncResponse struct {
-	Error                *Error                          `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	StorageStatus        map[string]*StorageDriverStatus `protobuf:"bytes,2,rep,name=storageStatus" json:"storageStatus,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	TotalSyncRequests    int64                           `protobuf:"varint,3,opt,name=totalSyncRequests" json:"totalSyncRequests,omitempty"`
-	CompletedSyncs       int64                           `protobuf:"varint,4,opt,name=completedSyncs" json:"completedSyncs,omitempty"`
+	Error                *Error                          `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	StorageStatus        map[string]*StorageDriverStatus `protobuf:"bytes,2,rep,name=storageStatus,proto3" json:"storageStatus,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	TotalSyncRequests    int64                           `protobuf:"varint,3,opt,name=totalSyncRequests,proto3" json:"totalSyncRequests,omitempty"`
+	CompletedSyncs       int64                           `protobuf:"varint,4,opt,name=completedSyncs,proto3" json:"completedSyncs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
 	XXX_unrecognized     []byte                          `json:"-"`
 	XXX_sizecache        int32                           `json:"-"`
@@ -1655,7 +1655,7 @@ func (m *SyncResponse) Reset()         { *m = SyncResponse{} }
 func (m *SyncResponse) String() string { return proto.CompactTextString(m) }
 func (*SyncResponse) ProtoMessage()    {}
 func (*SyncResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{28}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{28}
 }
 func (m *SyncResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SyncResponse.Unmarshal(m, b)
@@ -1704,8 +1704,8 @@ func (m *SyncResponse) GetCompletedSyncs() int64 {
 }
 
 type StorageDriverStatus struct {
-	Operational          bool              `protobuf:"varint,1,opt,name=operational" json:"operational,omitempty"`
-	Info                 map[string]string `protobuf:"bytes,2,rep,name=info" json:"info,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Operational          bool              `protobuf:"varint,1,opt,name=operational,proto3" json:"operational,omitempty"`
+	Info                 map[string]string `protobuf:"bytes,2,rep,name=info,proto3" json:"info,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -1715,7 +1715,7 @@ func (m *StorageDriverStatus) Reset()         { *m = StorageDriverStatus{} }
 func (m *StorageDriverStatus) String() string { return proto.CompactTextString(m) }
 func (*StorageDriverStatus) ProtoMessage()    {}
 func (*StorageDriverStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{29}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{29}
 }
 func (m *StorageDriverStatus) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StorageDriverStatus.Unmarshal(m, b)
@@ -1750,7 +1750,7 @@ func (m *StorageDriverStatus) GetInfo() map[string]string {
 }
 
 type CreateAttestationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	DER                  []byte   `protobuf:"bytes,2,opt,name=DER,proto3" json:"DER,omitempty"`
 	VerifierKey          []byte   `protobuf:"bytes,3,opt,name=verifierKey,proto3" json:"verifierKey,omitempty"`
 	ProverKey            []byte   `protobuf:"bytes,4,opt,name=proverKey,proto3" json:"proverKey,omitempty"`
@@ -1764,7 +1764,7 @@ func (m *CreateAttestationResponse) Reset()         { *m = CreateAttestationResp
 func (m *CreateAttestationResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateAttestationResponse) ProtoMessage()    {}
 func (*CreateAttestationResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{30}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{30}
 }
 func (m *CreateAttestationResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateAttestationResponse.Unmarshal(m, b)
@@ -1821,7 +1821,7 @@ func (m *CreateAttestationResponse) GetHash() []byte {
 
 type PublishEntityParams struct {
 	DER                  []byte    `protobuf:"bytes,1,opt,name=DER,proto3" json:"DER,omitempty"`
-	Location             *Location `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
+	Location             *Location `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -1831,7 +1831,7 @@ func (m *PublishEntityParams) Reset()         { *m = PublishEntityParams{} }
 func (m *PublishEntityParams) String() string { return proto.CompactTextString(m) }
 func (*PublishEntityParams) ProtoMessage()    {}
 func (*PublishEntityParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{31}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{31}
 }
 func (m *PublishEntityParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PublishEntityParams.Unmarshal(m, b)
@@ -1866,7 +1866,7 @@ func (m *PublishEntityParams) GetLocation() *Location {
 }
 
 type PublishEntityResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1877,7 +1877,7 @@ func (m *PublishEntityResponse) Reset()         { *m = PublishEntityResponse{} }
 func (m *PublishEntityResponse) String() string { return proto.CompactTextString(m) }
 func (*PublishEntityResponse) ProtoMessage()    {}
 func (*PublishEntityResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{32}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{32}
 }
 func (m *PublishEntityResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PublishEntityResponse.Unmarshal(m, b)
@@ -1922,7 +1922,7 @@ func (m *PublishAttestationParams) Reset()         { *m = PublishAttestationPara
 func (m *PublishAttestationParams) String() string { return proto.CompactTextString(m) }
 func (*PublishAttestationParams) ProtoMessage()    {}
 func (*PublishAttestationParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{33}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{33}
 }
 func (m *PublishAttestationParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PublishAttestationParams.Unmarshal(m, b)
@@ -1950,7 +1950,7 @@ func (m *PublishAttestationParams) GetDER() []byte {
 }
 
 type PublishAttestationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1961,7 +1961,7 @@ func (m *PublishAttestationResponse) Reset()         { *m = PublishAttestationRe
 func (m *PublishAttestationResponse) String() string { return proto.CompactTextString(m) }
 func (*PublishAttestationResponse) ProtoMessage()    {}
 func (*PublishAttestationResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{34}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{34}
 }
 func (m *PublishAttestationResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PublishAttestationResponse.Unmarshal(m, b)
@@ -1996,7 +1996,7 @@ func (m *PublishAttestationResponse) GetHash() []byte {
 }
 
 type AddAttestationParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	DER                  []byte       `protobuf:"bytes,2,opt,name=DER,proto3" json:"DER,omitempty"`
 	ProverKey            []byte       `protobuf:"bytes,3,opt,name=proverKey,proto3" json:"proverKey,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
@@ -2008,7 +2008,7 @@ func (m *AddAttestationParams) Reset()         { *m = AddAttestationParams{} }
 func (m *AddAttestationParams) String() string { return proto.CompactTextString(m) }
 func (*AddAttestationParams) ProtoMessage()    {}
 func (*AddAttestationParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{35}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{35}
 }
 func (m *AddAttestationParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddAttestationParams.Unmarshal(m, b)
@@ -2050,7 +2050,7 @@ func (m *AddAttestationParams) GetProverKey() []byte {
 }
 
 type AddAttestationResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2060,7 +2060,7 @@ func (m *AddAttestationResponse) Reset()         { *m = AddAttestationResponse{}
 func (m *AddAttestationResponse) String() string { return proto.CompactTextString(m) }
 func (*AddAttestationResponse) ProtoMessage()    {}
 func (*AddAttestationResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{36}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{36}
 }
 func (m *AddAttestationResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddAttestationResponse.Unmarshal(m, b)
@@ -2088,7 +2088,7 @@ func (m *AddAttestationResponse) GetError() *Error {
 }
 
 type LookupAttestationsParams struct {
-	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	FromEntity           []byte       `protobuf:"bytes,2,opt,name=fromEntity,proto3" json:"fromEntity,omitempty"`
 	ToEntity             []byte       `protobuf:"bytes,3,opt,name=toEntity,proto3" json:"toEntity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
@@ -2100,7 +2100,7 @@ func (m *LookupAttestationsParams) Reset()         { *m = LookupAttestationsPara
 func (m *LookupAttestationsParams) String() string { return proto.CompactTextString(m) }
 func (*LookupAttestationsParams) ProtoMessage()    {}
 func (*LookupAttestationsParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{37}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{37}
 }
 func (m *LookupAttestationsParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LookupAttestationsParams.Unmarshal(m, b)
@@ -2142,8 +2142,8 @@ func (m *LookupAttestationsParams) GetToEntity() []byte {
 }
 
 type LookupAttestationsResponse struct {
-	Error                *Error         `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Results              []*Attestation `protobuf:"bytes,2,rep,name=results" json:"results,omitempty"`
+	Error                *Error         `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Results              []*Attestation `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -2153,7 +2153,7 @@ func (m *LookupAttestationsResponse) Reset()         { *m = LookupAttestationsRe
 func (m *LookupAttestationsResponse) String() string { return proto.CompactTextString(m) }
 func (*LookupAttestationsResponse) ProtoMessage()    {}
 func (*LookupAttestationsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{38}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{38}
 }
 func (m *LookupAttestationsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LookupAttestationsResponse.Unmarshal(m, b)
@@ -2188,8 +2188,8 @@ func (m *LookupAttestationsResponse) GetResults() []*Attestation {
 }
 
 type Error struct {
-	Code                 int32    `protobuf:"varint,1,opt,name=code" json:"code,omitempty"`
-	Message              string   `protobuf:"bytes,2,opt,name=message" json:"message,omitempty"`
+	Code                 int32    `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Message              string   `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2199,7 +2199,7 @@ func (m *Error) Reset()         { *m = Error{} }
 func (m *Error) String() string { return proto.CompactTextString(m) }
 func (*Error) ProtoMessage()    {}
 func (*Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{39}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{39}
 }
 func (m *Error) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Error.Unmarshal(m, b)
@@ -2234,8 +2234,8 @@ func (m *Error) GetMessage() string {
 }
 
 type Perspective struct {
-	EntitySecret         *EntitySecret `protobuf:"bytes,1,opt,name=entitySecret" json:"entitySecret,omitempty"`
-	Location             *Location     `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
+	EntitySecret         *EntitySecret `protobuf:"bytes,1,opt,name=entitySecret,proto3" json:"entitySecret,omitempty"`
+	Location             *Location     `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
 	XXX_unrecognized     []byte        `json:"-"`
 	XXX_sizecache        int32         `json:"-"`
@@ -2245,7 +2245,7 @@ func (m *Perspective) Reset()         { *m = Perspective{} }
 func (m *Perspective) String() string { return proto.CompactTextString(m) }
 func (*Perspective) ProtoMessage()    {}
 func (*Perspective) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{40}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{40}
 }
 func (m *Perspective) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Perspective.Unmarshal(m, b)
@@ -2281,9 +2281,9 @@ func (m *Perspective) GetLocation() *Location {
 
 type Location struct {
 	// One of the following
-	LocationURI *LocationURI `protobuf:"bytes,1,opt,name=locationURI" json:"locationURI,omitempty"`
+	LocationURI *LocationURI `protobuf:"bytes,1,opt,name=locationURI,proto3" json:"locationURI,omitempty"`
 	// The name of a location in the agent config
-	AgentLocation        string   `protobuf:"bytes,2,opt,name=agentLocation" json:"agentLocation,omitempty"`
+	AgentLocation        string   `protobuf:"bytes,2,opt,name=agentLocation,proto3" json:"agentLocation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2293,7 +2293,7 @@ func (m *Location) Reset()         { *m = Location{} }
 func (m *Location) String() string { return proto.CompactTextString(m) }
 func (*Location) ProtoMessage()    {}
 func (*Location) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{41}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{41}
 }
 func (m *Location) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Location.Unmarshal(m, b)
@@ -2328,8 +2328,8 @@ func (m *Location) GetAgentLocation() string {
 }
 
 type LocationURI struct {
-	URI                  string   `protobuf:"bytes,1,opt,name=URI" json:"URI,omitempty"`
-	Version              int32    `protobuf:"varint,2,opt,name=version" json:"version,omitempty"`
+	URI                  string   `protobuf:"bytes,1,opt,name=URI,proto3" json:"URI,omitempty"`
+	Version              int32    `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2339,7 +2339,7 @@ func (m *LocationURI) Reset()         { *m = LocationURI{} }
 func (m *LocationURI) String() string { return proto.CompactTextString(m) }
 func (*LocationURI) ProtoMessage()    {}
 func (*LocationURI) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{42}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{42}
 }
 func (m *LocationURI) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LocationURI.Unmarshal(m, b)
@@ -2385,7 +2385,7 @@ func (m *EntitySecret) Reset()         { *m = EntitySecret{} }
 func (m *EntitySecret) String() string { return proto.CompactTextString(m) }
 func (*EntitySecret) ProtoMessage()    {}
 func (*EntitySecret) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{43}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{43}
 }
 func (m *EntitySecret) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EntitySecret.Unmarshal(m, b)
@@ -2422,12 +2422,12 @@ func (m *EntitySecret) GetPassphrase() []byte {
 type Attestation struct {
 	DER                  []byte               `protobuf:"bytes,1,opt,name=DER,proto3" json:"DER,omitempty"`
 	Hash                 []byte               `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
-	Body                 *AttestationBody     `protobuf:"bytes,3,opt,name=body" json:"body,omitempty"`
+	Body                 *AttestationBody     `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
 	VerifierKey          []byte               `protobuf:"bytes,4,opt,name=verifierKey,proto3" json:"verifierKey,omitempty"`
 	ProverKey            []byte               `protobuf:"bytes,5,opt,name=proverKey,proto3" json:"proverKey,omitempty"`
 	SubjectHash          []byte               `protobuf:"bytes,6,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
-	SubjectLocation      *Location            `protobuf:"bytes,7,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
-	Validity             *AttestationValidity `protobuf:"bytes,8,opt,name=validity" json:"validity,omitempty"`
+	SubjectLocation      *Location            `protobuf:"bytes,7,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
+	Validity             *AttestationValidity `protobuf:"bytes,8,opt,name=validity,proto3" json:"validity,omitempty"`
 	Partition            [][]byte             `protobuf:"bytes,9,rep,name=partition,proto3" json:"partition,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
@@ -2438,7 +2438,7 @@ func (m *Attestation) Reset()         { *m = Attestation{} }
 func (m *Attestation) String() string { return proto.CompactTextString(m) }
 func (*Attestation) ProtoMessage()    {}
 func (*Attestation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{44}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{44}
 }
 func (m *Attestation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Attestation.Unmarshal(m, b)
@@ -2524,10 +2524,10 @@ func (m *Attestation) GetPartition() [][]byte {
 type AttestationBody struct {
 	DecodedBodyDER       []byte    `protobuf:"bytes,1,opt,name=DecodedBodyDER,proto3" json:"DecodedBodyDER,omitempty"`
 	AttesterHash         []byte    `protobuf:"bytes,2,opt,name=attesterHash,proto3" json:"attesterHash,omitempty"`
-	AttesterLocation     *Location `protobuf:"bytes,3,opt,name=attesterLocation" json:"attesterLocation,omitempty"`
-	Policy               *Policy   `protobuf:"bytes,4,opt,name=policy" json:"policy,omitempty"`
-	ValidFrom            int64     `protobuf:"varint,5,opt,name=validFrom" json:"validFrom,omitempty"`
-	ValidUntil           int64     `protobuf:"varint,6,opt,name=validUntil" json:"validUntil,omitempty"`
+	AttesterLocation     *Location `protobuf:"bytes,3,opt,name=attesterLocation,proto3" json:"attesterLocation,omitempty"`
+	Policy               *Policy   `protobuf:"bytes,4,opt,name=policy,proto3" json:"policy,omitempty"`
+	ValidFrom            int64     `protobuf:"varint,5,opt,name=validFrom,proto3" json:"validFrom,omitempty"`
+	ValidUntil           int64     `protobuf:"varint,6,opt,name=validUntil,proto3" json:"validUntil,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -2537,7 +2537,7 @@ func (m *AttestationBody) Reset()         { *m = AttestationBody{} }
 func (m *AttestationBody) String() string { return proto.CompactTextString(m) }
 func (*AttestationBody) ProtoMessage()    {}
 func (*AttestationBody) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{45}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{45}
 }
 func (m *AttestationBody) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AttestationBody.Unmarshal(m, b)
@@ -2600,15 +2600,15 @@ func (m *AttestationBody) GetValidUntil() int64 {
 }
 
 type AttestationValidity struct {
-	Valid                bool     `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
-	Revoked              bool     `protobuf:"varint,2,opt,name=revoked" json:"revoked,omitempty"`
-	Expired              bool     `protobuf:"varint,3,opt,name=expired" json:"expired,omitempty"`
-	Malformed            bool     `protobuf:"varint,4,opt,name=malformed" json:"malformed,omitempty"`
-	NotDecrypted         bool     `protobuf:"varint,5,opt,name=notDecrypted" json:"notDecrypted,omitempty"`
-	SrcInvalid           bool     `protobuf:"varint,6,opt,name=srcInvalid" json:"srcInvalid,omitempty"`
-	DstInvalid           bool     `protobuf:"varint,7,opt,name=dstInvalid" json:"dstInvalid,omitempty"`
-	Message              string   `protobuf:"bytes,8,opt,name=message" json:"message,omitempty"`
-	NotValidYet          bool     `protobuf:"varint,9,opt,name=notValidYet" json:"notValidYet,omitempty"`
+	Valid                bool     `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Revoked              bool     `protobuf:"varint,2,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	Expired              bool     `protobuf:"varint,3,opt,name=expired,proto3" json:"expired,omitempty"`
+	Malformed            bool     `protobuf:"varint,4,opt,name=malformed,proto3" json:"malformed,omitempty"`
+	NotDecrypted         bool     `protobuf:"varint,5,opt,name=notDecrypted,proto3" json:"notDecrypted,omitempty"`
+	SrcInvalid           bool     `protobuf:"varint,6,opt,name=srcInvalid,proto3" json:"srcInvalid,omitempty"`
+	DstInvalid           bool     `protobuf:"varint,7,opt,name=dstInvalid,proto3" json:"dstInvalid,omitempty"`
+	Message              string   `protobuf:"bytes,8,opt,name=message,proto3" json:"message,omitempty"`
+	NotValidYet          bool     `protobuf:"varint,9,opt,name=notValidYet,proto3" json:"notValidYet,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2618,7 +2618,7 @@ func (m *AttestationValidity) Reset()         { *m = AttestationValidity{} }
 func (m *AttestationValidity) String() string { return proto.CompactTextString(m) }
 func (*AttestationValidity) ProtoMessage()    {}
 func (*AttestationValidity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{46}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{46}
 }
 func (m *AttestationValidity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AttestationValidity.Unmarshal(m, b)
@@ -2702,12 +2702,12 @@ func (m *AttestationValidity) GetNotValidYet() bool {
 }
 
 type EntityValidity struct {
-	Valid                bool     `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
-	Revoked              bool     `protobuf:"varint,2,opt,name=revoked" json:"revoked,omitempty"`
-	Expired              bool     `protobuf:"varint,3,opt,name=expired" json:"expired,omitempty"`
-	Malformed            bool     `protobuf:"varint,4,opt,name=malformed" json:"malformed,omitempty"`
-	Message              string   `protobuf:"bytes,5,opt,name=message" json:"message,omitempty"`
-	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet" json:"notValidYet,omitempty"`
+	Valid                bool     `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Revoked              bool     `protobuf:"varint,2,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	Expired              bool     `protobuf:"varint,3,opt,name=expired,proto3" json:"expired,omitempty"`
+	Malformed            bool     `protobuf:"varint,4,opt,name=malformed,proto3" json:"malformed,omitempty"`
+	Message              string   `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet,proto3" json:"notValidYet,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2717,7 +2717,7 @@ func (m *EntityValidity) Reset()         { *m = EntityValidity{} }
 func (m *EntityValidity) String() string { return proto.CompactTextString(m) }
 func (*EntityValidity) ProtoMessage()    {}
 func (*EntityValidity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{47}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{47}
 }
 func (m *EntityValidity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EntityValidity.Unmarshal(m, b)
@@ -2780,12 +2780,12 @@ func (m *EntityValidity) GetNotValidYet() bool {
 }
 
 type NameDeclarationValidity struct {
-	Valid                bool     `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
-	Revoked              bool     `protobuf:"varint,2,opt,name=revoked" json:"revoked,omitempty"`
-	Expired              bool     `protobuf:"varint,3,opt,name=expired" json:"expired,omitempty"`
-	Malformed            bool     `protobuf:"varint,4,opt,name=malformed" json:"malformed,omitempty"`
-	Message              string   `protobuf:"bytes,5,opt,name=message" json:"message,omitempty"`
-	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet" json:"notValidYet,omitempty"`
+	Valid                bool     `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Revoked              bool     `protobuf:"varint,2,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	Expired              bool     `protobuf:"varint,3,opt,name=expired,proto3" json:"expired,omitempty"`
+	Malformed            bool     `protobuf:"varint,4,opt,name=malformed,proto3" json:"malformed,omitempty"`
+	Message              string   `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	NotValidYet          bool     `protobuf:"varint,6,opt,name=notValidYet,proto3" json:"notValidYet,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2795,7 +2795,7 @@ func (m *NameDeclarationValidity) Reset()         { *m = NameDeclarationValidity
 func (m *NameDeclarationValidity) String() string { return proto.CompactTextString(m) }
 func (*NameDeclarationValidity) ProtoMessage()    {}
 func (*NameDeclarationValidity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{48}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{48}
 }
 func (m *NameDeclarationValidity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NameDeclarationValidity.Unmarshal(m, b)
@@ -2858,8 +2858,8 @@ func (m *NameDeclarationValidity) GetNotValidYet() bool {
 }
 
 type Policy struct {
-	TrustLevelPolicy     *TrustLevelPolicy `protobuf:"bytes,1,opt,name=trustLevelPolicy" json:"trustLevelPolicy,omitempty"`
-	RTreePolicy          *RTreePolicy      `protobuf:"bytes,2,opt,name=rTreePolicy" json:"rTreePolicy,omitempty"`
+	TrustLevelPolicy     *TrustLevelPolicy `protobuf:"bytes,1,opt,name=trustLevelPolicy,proto3" json:"trustLevelPolicy,omitempty"`
+	RTreePolicy          *RTreePolicy      `protobuf:"bytes,2,opt,name=rTreePolicy,proto3" json:"rTreePolicy,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -2869,7 +2869,7 @@ func (m *Policy) Reset()         { *m = Policy{} }
 func (m *Policy) String() string { return proto.CompactTextString(m) }
 func (*Policy) ProtoMessage()    {}
 func (*Policy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{49}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{49}
 }
 func (m *Policy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Policy.Unmarshal(m, b)
@@ -2904,7 +2904,7 @@ func (m *Policy) GetRTreePolicy() *RTreePolicy {
 }
 
 type TrustLevelPolicy struct {
-	Trust                int32    `protobuf:"varint,1,opt,name=trust" json:"trust,omitempty"`
+	Trust                int32    `protobuf:"varint,1,opt,name=trust,proto3" json:"trust,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2914,7 +2914,7 @@ func (m *TrustLevelPolicy) Reset()         { *m = TrustLevelPolicy{} }
 func (m *TrustLevelPolicy) String() string { return proto.CompactTextString(m) }
 func (*TrustLevelPolicy) ProtoMessage()    {}
 func (*TrustLevelPolicy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{50}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{50}
 }
 func (m *TrustLevelPolicy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TrustLevelPolicy.Unmarshal(m, b)
@@ -2943,8 +2943,8 @@ func (m *TrustLevelPolicy) GetTrust() int32 {
 
 type RTreePolicy struct {
 	Namespace            []byte                  `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Indirections         uint32                  `protobuf:"varint,2,opt,name=indirections" json:"indirections,omitempty"`
-	Statements           []*RTreePolicyStatement `protobuf:"bytes,3,rep,name=statements" json:"statements,omitempty"`
+	Indirections         uint32                  `protobuf:"varint,2,opt,name=indirections,proto3" json:"indirections,omitempty"`
+	Statements           []*RTreePolicyStatement `protobuf:"bytes,3,rep,name=statements,proto3" json:"statements,omitempty"`
 	VisibilityURI        [][]byte                `protobuf:"bytes,4,rep,name=visibilityURI,proto3" json:"visibilityURI,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
@@ -2955,7 +2955,7 @@ func (m *RTreePolicy) Reset()         { *m = RTreePolicy{} }
 func (m *RTreePolicy) String() string { return proto.CompactTextString(m) }
 func (*RTreePolicy) ProtoMessage()    {}
 func (*RTreePolicy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{51}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{51}
 }
 func (m *RTreePolicy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RTreePolicy.Unmarshal(m, b)
@@ -3005,8 +3005,8 @@ func (m *RTreePolicy) GetVisibilityURI() [][]byte {
 
 type RTreePolicyStatement struct {
 	PermissionSet        []byte   `protobuf:"bytes,1,opt,name=permissionSet,proto3" json:"permissionSet,omitempty"`
-	Permissions          []string `protobuf:"bytes,2,rep,name=permissions" json:"permissions,omitempty"`
-	Resource             string   `protobuf:"bytes,3,opt,name=resource" json:"resource,omitempty"`
+	Permissions          []string `protobuf:"bytes,2,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	Resource             string   `protobuf:"bytes,3,opt,name=resource,proto3" json:"resource,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3016,7 +3016,7 @@ func (m *RTreePolicyStatement) Reset()         { *m = RTreePolicyStatement{} }
 func (m *RTreePolicyStatement) String() string { return proto.CompactTextString(m) }
 func (*RTreePolicyStatement) ProtoMessage()    {}
 func (*RTreePolicyStatement) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{52}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{52}
 }
 func (m *RTreePolicyStatement) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RTreePolicyStatement.Unmarshal(m, b)
@@ -3058,10 +3058,10 @@ func (m *RTreePolicyStatement) GetResource() string {
 }
 
 type BuildRTreeParams struct {
-	Perspective          *Perspective            `protobuf:"bytes,1,opt,name=perspective" json:"perspective,omitempty"`
+	Perspective          *Perspective            `protobuf:"bytes,1,opt,name=perspective,proto3" json:"perspective,omitempty"`
 	SubjectHash          []byte                  `protobuf:"bytes,2,opt,name=subjectHash,proto3" json:"subjectHash,omitempty"`
 	RtreeNamespace       []byte                  `protobuf:"bytes,3,opt,name=rtreeNamespace,proto3" json:"rtreeNamespace,omitempty"`
-	Statements           []*RTreePolicyStatement `protobuf:"bytes,4,rep,name=statements" json:"statements,omitempty"`
+	Statements           []*RTreePolicyStatement `protobuf:"bytes,4,rep,name=statements,proto3" json:"statements,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
 	XXX_sizecache        int32                   `json:"-"`
@@ -3071,7 +3071,7 @@ func (m *BuildRTreeParams) Reset()         { *m = BuildRTreeParams{} }
 func (m *BuildRTreeParams) String() string { return proto.CompactTextString(m) }
 func (*BuildRTreeParams) ProtoMessage()    {}
 func (*BuildRTreeParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{53}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{53}
 }
 func (m *BuildRTreeParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuildRTreeParams.Unmarshal(m, b)
@@ -3120,8 +3120,8 @@ func (m *BuildRTreeParams) GetStatements() []*RTreePolicyStatement {
 }
 
 type BuildRTreeResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Result               *Proof   `protobuf:"bytes,2,opt,name=result" json:"result,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Result               *Proof   `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
 	ProofDER             []byte   `protobuf:"bytes,3,opt,name=proofDER,proto3" json:"proofDER,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -3132,7 +3132,7 @@ func (m *BuildRTreeResponse) Reset()         { *m = BuildRTreeResponse{} }
 func (m *BuildRTreeResponse) String() string { return proto.CompactTextString(m) }
 func (*BuildRTreeResponse) ProtoMessage()    {}
 func (*BuildRTreeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{54}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{54}
 }
 func (m *BuildRTreeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuildRTreeResponse.Unmarshal(m, b)
@@ -3184,7 +3184,7 @@ func (m *VerifyProofParams) Reset()         { *m = VerifyProofParams{} }
 func (m *VerifyProofParams) String() string { return proto.CompactTextString(m) }
 func (*VerifyProofParams) ProtoMessage()    {}
 func (*VerifyProofParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{55}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{55}
 }
 func (m *VerifyProofParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VerifyProofParams.Unmarshal(m, b)
@@ -3212,8 +3212,8 @@ func (m *VerifyProofParams) GetProofDER() []byte {
 }
 
 type VerifyProofResponse struct {
-	Error                *Error   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
-	Result               *Proof   `protobuf:"bytes,2,opt,name=result" json:"result,omitempty"`
+	Error                *Error   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Result               *Proof   `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3223,7 +3223,7 @@ func (m *VerifyProofResponse) Reset()         { *m = VerifyProofResponse{} }
 func (m *VerifyProofResponse) String() string { return proto.CompactTextString(m) }
 func (*VerifyProofResponse) ProtoMessage()    {}
 func (*VerifyProofResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{56}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{56}
 }
 func (m *VerifyProofResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VerifyProofResponse.Unmarshal(m, b)
@@ -3258,12 +3258,12 @@ func (m *VerifyProofResponse) GetResult() *Proof {
 }
 
 type Proof struct {
-	Elements             []*Attestation `protobuf:"bytes,1,rep,name=elements" json:"elements,omitempty"`
-	Paths                []*ProofPath   `protobuf:"bytes,2,rep,name=paths" json:"paths,omitempty"`
-	Policy               *Policy        `protobuf:"bytes,3,opt,name=policy" json:"policy,omitempty"`
-	Expiry               int64          `protobuf:"varint,4,opt,name=expiry" json:"expiry,omitempty"`
+	Elements             []*Attestation `protobuf:"bytes,1,rep,name=elements,proto3" json:"elements,omitempty"`
+	Paths                []*ProofPath   `protobuf:"bytes,2,rep,name=paths,proto3" json:"paths,omitempty"`
+	Policy               *Policy        `protobuf:"bytes,3,opt,name=policy,proto3" json:"policy,omitempty"`
+	Expiry               int64          `protobuf:"varint,4,opt,name=expiry,proto3" json:"expiry,omitempty"`
 	Subject              []byte         `protobuf:"bytes,5,opt,name=subject,proto3" json:"subject,omitempty"`
-	SubjectLocation      *Location      `protobuf:"bytes,6,opt,name=subjectLocation" json:"subjectLocation,omitempty"`
+	SubjectLocation      *Location      `protobuf:"bytes,6,opt,name=subjectLocation,proto3" json:"subjectLocation,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -3273,7 +3273,7 @@ func (m *Proof) Reset()         { *m = Proof{} }
 func (m *Proof) String() string { return proto.CompactTextString(m) }
 func (*Proof) ProtoMessage()    {}
 func (*Proof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{57}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{57}
 }
 func (m *Proof) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Proof.Unmarshal(m, b)
@@ -3336,7 +3336,7 @@ func (m *Proof) GetSubjectLocation() *Location {
 }
 
 type ProofPath struct {
-	Elements             []int32  `protobuf:"varint,1,rep,packed,name=elements" json:"elements,omitempty"`
+	Elements             []int32  `protobuf:"varint,1,rep,packed,name=elements,proto3" json:"elements,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3346,7 +3346,7 @@ func (m *ProofPath) Reset()         { *m = ProofPath{} }
 func (m *ProofPath) String() string { return proto.CompactTextString(m) }
 func (*ProofPath) ProtoMessage()    {}
 func (*ProofPath) Descriptor() ([]byte, []int) {
-	return fileDescriptor_eapi_9d6f8aada14040dd, []int{58}
+	return fileDescriptor_eapi_34de25ec28727eb2, []int{58}
 }
 func (m *ProofPath) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ProofPath.Unmarshal(m, b)
@@ -4210,16 +4210,16 @@ var _WAVE_serviceDesc = grpc.ServiceDesc{
 	Metadata: "eapi.proto",
 }
 
-func init() { proto.RegisterFile("eapi.proto", fileDescriptor_eapi_9d6f8aada14040dd) }
+func init() { proto.RegisterFile("eapi.proto", fileDescriptor_eapi_34de25ec28727eb2) }
 
-var fileDescriptor_eapi_9d6f8aada14040dd = []byte{
+var fileDescriptor_eapi_34de25ec28727eb2 = []byte{
 	// 2658 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x1a, 0x4d, 0x6f, 0x24, 0x47,
 	0x55, 0x3d, 0x5f, 0x9e, 0x79, 0x33, 0xb6, 0xc7, 0x35, 0xf6, 0xec, 0x6c, 0xdb, 0xeb, 0x78, 0x2b,
 	0x21, 0x31, 0x61, 0xe3, 0xcd, 0xee, 0x26, 0x64, 0x77, 0x85, 0xc4, 0x3a, 0x59, 0x07, 0x2c, 0x1c,
 	0xf0, 0xb6, 0xb3, 0x1b, 0x2d, 0x12, 0x42, 0xed, 0x99, 0xb2, 0xdd, 0xec, 0x4c, 0x77, 0xa7, 0xba,
 	0x67, 0x94, 0x41, 0xe2, 0x00, 0x12, 0xa0, 0x70, 0xe5, 0x0c, 0x07, 0x2e, 0x20, 0x71, 0xe0, 0x82,
-	0x84, 0x90, 0xe0, 0x07, 0x44, 0x5c, 0x40, 0xfc, 0x01, 0x0e, 0x48, 0x5c, 0xb8, 0x71, 0xe2, 0x86,
+	0x84, 0x90, 0xe0, 0x07, 0x44, 0x5c, 0x40, 0xfc, 0x01, 0x0e, 0x48, 0x5c, 0xb8, 0x70, 0xe4, 0x86,
 	0xea, 0xa3, 0xbb, 0xab, 0xba, 0x7b, 0xc6, 0x1d, 0x7b, 0x09, 0xe2, 0xd6, 0xf5, 0xea, 0xd5, 0xfb,
 	0xaa, 0x57, 0xef, 0xa3, 0xaa, 0x01, 0x88, 0xed, 0x3b, 0x3b, 0x3e, 0xf5, 0x42, 0x0f, 0x95, 0xfc,
 	0x63, 0x73, 0xe3, 0xd4, 0xf3, 0x4e, 0x87, 0xe4, 0xa6, 0xed, 0x3b, 0x37, 0x6d, 0xd7, 0xf5, 0x42,
@@ -4281,73 +4281,73 @@ var fileDescriptor_eapi_9d6f8aada14040dd = []byte{
 	0x5c, 0x78, 0x17, 0x36, 0xf3, 0x49, 0x16, 0x2f, 0xc6, 0xbf, 0x0c, 0x70, 0xc4, 0x08, 0x5c, 0x58,
 	0x86, 0x7f, 0x95, 0x60, 0x75, 0xcf, 0xed, 0xd3, 0xa9, 0x1f, 0xbe, 0x47, 0x82, 0xc0, 0x3e, 0xbd,
 	0x44, 0xe5, 0xa7, 0xe4, 0x80, 0x92, 0x9e, 0x03, 0xfe, 0xab, 0x1b, 0x9f, 0xd4, 0x42, 0xd5, 0x42,
-	0xb5, 0x50, 0xed, 0x02, 0xb5, 0xd0, 0x42, 0xba, 0x16, 0xd2, 0x1c, 0xae, 0x3e, 0xdf, 0xe1, 0x1a,
-	0x69, 0x87, 0xc3, 0x4f, 0xa1, 0xab, 0x1b, 0xbd, 0x78, 0x3c, 0xda, 0x04, 0xe8, 0x3b, 0xfe, 0x19,
-	0xa1, 0x21, 0xf9, 0x28, 0xb2, 0xb3, 0x02, 0xc1, 0x0e, 0xac, 0x3e, 0x24, 0xcf, 0x67, 0x3f, 0xcf,
-	0x63, 0x75, 0x04, 0x5d, 0x9d, 0x55, 0x71, 0x2d, 0x66, 0xba, 0x0a, 0xfe, 0x75, 0x09, 0x5a, 0xcc,
-	0xa5, 0x8b, 0xd3, 0xda, 0x87, 0xc5, 0x20, 0xf4, 0xa8, 0x7d, 0x4a, 0x8e, 0x42, 0x3b, 0x1c, 0x47,
-	0x19, 0xf4, 0x45, 0x86, 0xa8, 0x52, 0xda, 0x39, 0x52, 0xb1, 0x44, 0xde, 0xd4, 0x57, 0xa2, 0x1b,
-	0xb0, 0x12, 0x7a, 0xa1, 0x3d, 0x14, 0xcb, 0x3e, 0x1c, 0x93, 0x20, 0x0c, 0x64, 0x98, 0xcd, 0x4e,
-	0xa0, 0x97, 0x61, 0xa9, 0xef, 0x8d, 0xfc, 0x21, 0x09, 0xc9, 0x80, 0x4d, 0x04, 0xdc, 0x65, 0xcb,
-	0x56, 0x0a, 0x6a, 0x3e, 0x05, 0x94, 0x65, 0x9d, 0x93, 0x8b, 0x5f, 0xd3, 0x73, 0xf1, 0x15, 0xae,
-	0x80, 0x58, 0xf8, 0x90, 0x3a, 0x13, 0x42, 0xc5, 0x72, 0x35, 0x2d, 0xff, 0xd2, 0x80, 0x4e, 0x0e,
-	0x0a, 0x3b, 0x70, 0x9e, 0x4f, 0x44, 0xe1, 0x6b, 0x0f, 0x39, 0x93, 0xba, 0xa5, 0x82, 0xd0, 0x9b,
-	0x50, 0x71, 0xdc, 0x13, 0x4f, 0x1a, 0xeb, 0xfa, 0x0c, 0x5e, 0x3b, 0xfb, 0xee, 0x89, 0x27, 0x4c,
-	0xc5, 0xd1, 0xcd, 0xb7, 0xa0, 0x11, 0x83, 0x72, 0x54, 0x58, 0x55, 0x55, 0x68, 0xa8, 0x92, 0xfe,
-	0xc2, 0x80, 0xab, 0x99, 0x54, 0x73, 0x99, 0x26, 0xf6, 0xdc, 0xca, 0x51, 0xaf, 0x3c, 0x2b, 0xe9,
-	0xca, 0x33, 0xca, 0xbe, 0x55, 0xed, 0x46, 0xa8, 0xc3, 0x73, 0x7b, 0x70, 0xa6, 0x55, 0x39, 0x92,
-	0xb9, 0x91, 0x30, 0x2f, 0x5c, 0x80, 0xe3, 0x03, 0x58, 0xd3, 0x48, 0x7e, 0xaa, 0xfb, 0xa5, 0xcc,
-	0x95, 0xd5, 0x0d, 0xe8, 0x49, 0x6a, 0xd9, 0x84, 0x9d, 0x91, 0x12, 0x3f, 0x02, 0x33, 0x8b, 0x7d,
-	0x39, 0x01, 0xa6, 0xb0, 0xba, 0x3b, 0x18, 0x3c, 0x97, 0x6a, 0x21, 0xbb, 0xa5, 0xda, 0x86, 0x95,
-	0x53, 0x1b, 0x86, 0xef, 0x41, 0x57, 0x67, 0x5d, 0x3c, 0x4d, 0x7e, 0x6c, 0x40, 0xef, 0xc0, 0xf3,
-	0x9e, 0x8d, 0x7d, 0x65, 0x79, 0x70, 0xa9, 0xc8, 0x78, 0x42, 0xbd, 0xd1, 0x9e, 0x7a, 0x2f, 0xa7,
-	0x40, 0x90, 0x09, 0xf5, 0xd0, 0xdb, 0x4b, 0xfa, 0xae, 0x96, 0x15, 0x8f, 0xf1, 0x19, 0x98, 0x59,
-	0x51, 0x8a, 0x6f, 0xca, 0xe7, 0x61, 0x81, 0x92, 0x60, 0x3c, 0x0c, 0xa3, 0x38, 0x97, 0xe9, 0x58,
-	0xa2, 0x79, 0xfc, 0x26, 0x54, 0xf7, 0xa2, 0x8d, 0xec, 0x7b, 0x03, 0xa1, 0x5a, 0xd5, 0xe2, 0xdf,
-	0x2c, 0x02, 0x8f, 0x44, 0xd4, 0x96, 0x67, 0x35, 0x1a, 0xe2, 0x11, 0x34, 0x15, 0xc5, 0xd1, 0x1b,
-	0xd0, 0x12, 0x0d, 0x93, 0xa8, 0x6b, 0xa5, 0x60, 0xed, 0xa4, 0xae, 0x14, 0x70, 0x4b, 0xc3, 0xfa,
-	0x14, 0x07, 0xa4, 0x0f, 0xf5, 0x38, 0xe7, 0xde, 0x82, 0x66, 0x04, 0x7f, 0x6c, 0xed, 0xab, 0x5b,
-	0x71, 0x90, 0x80, 0x2d, 0x15, 0x07, 0xbd, 0x04, 0x8b, 0x5a, 0xef, 0x23, 0xb5, 0xd1, 0x81, 0xf8,
-	0x1e, 0x34, 0x15, 0x0a, 0xcc, 0xf5, 0x22, 0xfa, 0x0d, 0x8b, 0x7d, 0x32, 0x73, 0x4c, 0x08, 0x0d,
-	0x22, 0x02, 0x55, 0x2b, 0x1a, 0xe2, 0x07, 0xd0, 0x52, 0xf5, 0xcc, 0x09, 0x06, 0x9b, 0x00, 0x7e,
-	0xd2, 0x82, 0x48, 0x6f, 0x48, 0x20, 0xf8, 0x93, 0x12, 0x34, 0x95, 0x0d, 0xca, 0xa1, 0x90, 0x73,
-	0xd2, 0xd0, 0x2b, 0x50, 0x61, 0xa5, 0xb3, 0x6c, 0x87, 0x3a, 0xa9, 0x5d, 0x7e, 0xdb, 0x1b, 0x4c,
-	0x2d, 0x8e, 0x90, 0x0e, 0x84, 0x95, 0x73, 0x02, 0x61, 0x35, 0xa7, 0x05, 0x57, 0x8b, 0xb3, 0x5a,
-	0xa1, 0xe2, 0x6c, 0xa1, 0x48, 0x71, 0x76, 0x47, 0x69, 0x47, 0xea, 0x49, 0x4e, 0x53, 0xd4, 0xc8,
-	0xf6, 0x24, 0xe7, 0x5c, 0x87, 0xfe, 0xdb, 0x80, 0xe5, 0x94, 0x19, 0x58, 0x1e, 0x7e, 0x48, 0x98,
-	0x53, 0x0f, 0xd8, 0x30, 0x31, 0x6d, 0x0a, 0x8a, 0x30, 0xb4, 0xa2, 0x9b, 0x38, 0xe5, 0x31, 0x44,
-	0x83, 0xe5, 0xde, 0xe9, 0x95, 0x0b, 0xdd, 0xe9, 0x25, 0x4d, 0x44, 0x65, 0x56, 0x13, 0x71, 0xb9,
-	0x36, 0x05, 0xff, 0xac, 0x04, 0x9d, 0x1c, 0xdb, 0xc9, 0xa4, 0xeb, 0x0c, 0x64, 0x9a, 0x17, 0x03,
-	0xe6, 0xd1, 0xe2, 0x21, 0x66, 0xc0, 0x15, 0xad, 0x5b, 0xd1, 0x90, 0xcd, 0x90, 0x8f, 0x7c, 0x87,
-	0x92, 0x01, 0x57, 0xad, 0x6e, 0x45, 0x43, 0x26, 0xdf, 0xc8, 0x1e, 0x9e, 0x78, 0x74, 0x44, 0x06,
-	0xf2, 0x35, 0x27, 0x01, 0x30, 0xfb, 0xb9, 0x5e, 0x28, 0x4b, 0x3e, 0x32, 0xe0, 0x0a, 0xd4, 0x2d,
-	0x0d, 0xc6, 0x74, 0x08, 0x68, 0x7f, 0xdf, 0x15, 0x02, 0xd5, 0x38, 0x86, 0x02, 0x61, 0xf3, 0x83,
-	0x20, 0x8c, 0xe6, 0x17, 0xc4, 0x7c, 0x02, 0x51, 0xc3, 0x52, 0x5d, 0x0b, 0x4b, 0xcc, 0x4d, 0x5d,
-	0x2f, 0xe4, 0x4a, 0x3f, 0x25, 0x21, 0x2f, 0xaa, 0xeb, 0x96, 0x0a, 0xc2, 0xbf, 0x35, 0x60, 0x49,
-	0x6f, 0x75, 0x3f, 0x33, 0xd3, 0x28, 0x62, 0x57, 0xe7, 0x8a, 0x5d, 0xcb, 0x8a, 0xfd, 0x47, 0x03,
-	0xae, 0xcc, 0xb8, 0x43, 0xfd, 0xbf, 0x90, 0xff, 0x7b, 0x50, 0x13, 0x6e, 0x8e, 0x1e, 0x40, 0x3b,
-	0xa4, 0xe3, 0x20, 0xe4, 0x17, 0xfa, 0x02, 0x26, 0x63, 0xf8, 0x2a, 0x3b, 0x0c, 0xef, 0xa7, 0xe6,
-	0xac, 0x0c, 0x36, 0x4b, 0x00, 0xf4, 0x7d, 0x4a, 0x88, 0x5c, 0xac, 0x5c, 0xa2, 0x5a, 0x09, 0xd8,
-	0x52, 0x71, 0xf0, 0x36, 0xb4, 0xd3, 0x84, 0x99, 0xd9, 0x38, 0x69, 0x99, 0xf1, 0xc4, 0x00, 0xff,
-	0xc6, 0x80, 0xa6, 0x42, 0x46, 0xef, 0x1d, 0x8d, 0x74, 0xef, 0x88, 0xa1, 0xe5, 0xb8, 0x03, 0x87,
-	0xb2, 0x34, 0x28, 0xee, 0xe5, 0x8c, 0xed, 0x45, 0x4b, 0x83, 0xa1, 0xbb, 0x00, 0xec, 0x30, 0x92,
-	0x11, 0x71, 0x79, 0xa3, 0xc0, 0xf2, 0x71, 0x2f, 0x25, 0xed, 0x51, 0x84, 0x60, 0x29, 0xb8, 0x2c,
-	0x6d, 0x4d, 0x9c, 0xc0, 0x39, 0x76, 0x86, 0x4e, 0x38, 0x65, 0xb9, 0xa8, 0xc2, 0x23, 0x9d, 0x0e,
-	0xc4, 0xdf, 0x85, 0xd5, 0x3c, 0x4a, 0x6c, 0xb5, 0x4f, 0xe8, 0xc8, 0x09, 0x58, 0x86, 0x3a, 0x22,
-	0xd1, 0x9d, 0xab, 0x0e, 0x64, 0x5b, 0x97, 0x00, 0x44, 0xb9, 0xd0, 0xb0, 0x54, 0x10, 0xab, 0x53,
-	0x28, 0x09, 0xbc, 0x31, 0xed, 0x13, 0xee, 0x2f, 0x0d, 0x2b, 0x1e, 0xe3, 0x4f, 0x0c, 0x68, 0xbf,
+	0xb5, 0x50, 0xad, 0x58, 0x2d, 0x64, 0x42, 0x9d, 0x92, 0xc0, 0x1b, 0x53, 0x59, 0xef, 0x37, 0xac,
+	0x78, 0xac, 0xbb, 0x5b, 0x7d, 0xbe, 0xbb, 0x35, 0xd2, 0xee, 0x86, 0x9f, 0x42, 0x57, 0x37, 0x79,
+	0xf1, 0x68, 0xb4, 0x09, 0xd0, 0x77, 0xfc, 0x33, 0x42, 0x43, 0xf2, 0x51, 0x64, 0x65, 0x05, 0x82,
+	0x1d, 0x58, 0x7d, 0x48, 0x9e, 0xcf, 0x6e, 0x9e, 0xc7, 0xea, 0x08, 0xba, 0x3a, 0xab, 0xe2, 0x5a,
+	0xcc, 0x74, 0x14, 0xfc, 0xeb, 0x12, 0xb4, 0x98, 0x43, 0x17, 0xa7, 0xb5, 0x0f, 0x8b, 0x41, 0xe8,
+	0x51, 0xfb, 0x94, 0x1c, 0x85, 0x76, 0x38, 0x8e, 0xf2, 0xe7, 0x8b, 0x0c, 0x51, 0xa5, 0xb4, 0x73,
+	0xa4, 0x62, 0x89, 0xac, 0xa9, 0xaf, 0x44, 0x37, 0x60, 0x25, 0xf4, 0x42, 0x7b, 0x28, 0x96, 0x7d,
+	0x38, 0x26, 0x41, 0x18, 0xc8, 0x20, 0x9b, 0x9d, 0x40, 0x2f, 0xc3, 0x52, 0xdf, 0x1b, 0xf9, 0x43,
+	0x12, 0x92, 0x01, 0x9b, 0x08, 0xb8, 0xc3, 0x96, 0xad, 0x14, 0xd4, 0x7c, 0x0a, 0x28, 0xcb, 0x3a,
+	0x27, 0x13, 0xbf, 0xa6, 0x67, 0xe2, 0x2b, 0x5c, 0x01, 0xb1, 0xf0, 0x21, 0x75, 0x26, 0x84, 0x8a,
+	0xe5, 0x6a, 0x52, 0xfe, 0xa5, 0x01, 0x9d, 0x1c, 0x14, 0x76, 0xdc, 0x3c, 0x9f, 0x88, 0xb2, 0xd7,
+	0x1e, 0x72, 0x26, 0x75, 0x4b, 0x05, 0xa1, 0x37, 0xa1, 0xe2, 0xb8, 0x27, 0x9e, 0x34, 0xd6, 0xf5,
+	0x19, 0xbc, 0x76, 0xf6, 0xdd, 0x13, 0x4f, 0x98, 0x8a, 0xa3, 0x9b, 0x6f, 0x41, 0x23, 0x06, 0xe5,
+	0xa8, 0xb0, 0xaa, 0xaa, 0xd0, 0x50, 0x25, 0xfd, 0x85, 0x01, 0x57, 0x33, 0x89, 0xe6, 0x32, 0x2d,
+	0xec, 0xb9, 0x75, 0xa3, 0x5e, 0x77, 0x56, 0xd2, 0x75, 0x67, 0x94, 0x7b, 0xab, 0xda, 0x7d, 0x50,
+	0x87, 0x67, 0xf6, 0xe0, 0x4c, 0xab, 0x71, 0x24, 0x73, 0x23, 0x61, 0x5e, 0xb8, 0xfc, 0xc6, 0x07,
+	0xb0, 0xa6, 0x91, 0xfc, 0x54, 0xb7, 0x4b, 0x99, 0x0b, 0xab, 0x1b, 0xd0, 0x93, 0xd4, 0xb2, 0xe9,
+	0x3a, 0x23, 0x25, 0x7e, 0x04, 0x66, 0x16, 0xfb, 0x72, 0x02, 0x4c, 0x61, 0x75, 0x77, 0x30, 0x78,
+	0x2e, 0xb5, 0x42, 0x76, 0x4b, 0xb5, 0x0d, 0x2b, 0xa7, 0x36, 0x0c, 0xdf, 0x83, 0xae, 0xce, 0xba,
+	0x78, 0x92, 0xfc, 0xd8, 0x80, 0xde, 0x81, 0xe7, 0x3d, 0x1b, 0xfb, 0xca, 0xf2, 0xe0, 0x52, 0x91,
+	0xf1, 0x84, 0x7a, 0xa3, 0x3d, 0xf5, 0x56, 0x4e, 0x81, 0xb0, 0xcc, 0x11, 0x7a, 0x7b, 0x49, 0xd7,
+	0xd5, 0xb2, 0xe2, 0x31, 0x3e, 0x03, 0x33, 0x2b, 0x4a, 0xf1, 0x4d, 0xf9, 0x3c, 0x2c, 0x50, 0x12,
+	0x8c, 0x87, 0x61, 0x14, 0xe7, 0x32, 0xfd, 0x4a, 0x34, 0x8f, 0xdf, 0x84, 0xea, 0x5e, 0xb4, 0x91,
+	0x7d, 0x6f, 0x20, 0x54, 0xab, 0x5a, 0xfc, 0x9b, 0x45, 0xe0, 0x91, 0x88, 0xda, 0xf2, 0xac, 0x46,
+	0x43, 0x3c, 0x82, 0xa6, 0xa2, 0x38, 0x7a, 0x03, 0x5a, 0xa2, 0x5d, 0x12, 0x55, 0xad, 0x14, 0xac,
+	0x9d, 0x54, 0x95, 0x02, 0x6e, 0x69, 0x58, 0x9f, 0xe2, 0x80, 0xf4, 0xa1, 0x1e, 0x67, 0xdc, 0x5b,
+	0xd0, 0x8c, 0xe0, 0x8f, 0xad, 0x7d, 0x75, 0x2b, 0x0e, 0x12, 0xb0, 0xa5, 0xe2, 0xa0, 0x97, 0x60,
+	0x51, 0xeb, 0x7c, 0xa4, 0x36, 0x3a, 0x10, 0xdf, 0x83, 0xa6, 0x42, 0x81, 0xb9, 0x5e, 0x44, 0xbf,
+	0x61, 0xb1, 0x4f, 0x66, 0x8e, 0x09, 0xa1, 0x41, 0x44, 0xa0, 0x6a, 0x45, 0x43, 0xfc, 0x00, 0x5a,
+	0xaa, 0x9e, 0x39, 0xc1, 0x60, 0x13, 0xc0, 0x4f, 0x1a, 0x10, 0xe9, 0x0d, 0x09, 0x04, 0x7f, 0x52,
+	0x82, 0xa6, 0xb2, 0x41, 0x39, 0x14, 0x72, 0x4e, 0x1a, 0x7a, 0x05, 0x2a, 0xac, 0x70, 0x96, 0xcd,
+	0x50, 0x27, 0xb5, 0xcb, 0x6f, 0x7b, 0x83, 0xa9, 0xc5, 0x11, 0xd2, 0x81, 0xb0, 0x72, 0x4e, 0x20,
+	0xac, 0xe6, 0x34, 0xe0, 0x6a, 0x69, 0x56, 0x2b, 0x54, 0x9a, 0x2d, 0x14, 0x29, 0xcd, 0xee, 0x28,
+	0xcd, 0x48, 0x3d, 0xc9, 0x69, 0x8a, 0x1a, 0xd9, 0x8e, 0xe4, 0x9c, 0xcb, 0xd0, 0x7f, 0x1b, 0xb0,
+	0x9c, 0x32, 0x03, 0xcb, 0xc3, 0x0f, 0x09, 0x73, 0xea, 0x01, 0x1b, 0x26, 0xa6, 0x4d, 0x41, 0x11,
+	0x86, 0x56, 0x74, 0x0f, 0xa7, 0x3c, 0x85, 0x68, 0xb0, 0xdc, 0x1b, 0xbd, 0x72, 0xa1, 0x1b, 0xbd,
+	0xa4, 0x85, 0xa8, 0xcc, 0x6a, 0x21, 0x2e, 0xd7, 0xa4, 0xe0, 0x9f, 0x95, 0xa0, 0x93, 0x63, 0x3b,
+	0x99, 0x74, 0x9d, 0x81, 0x4c, 0xf3, 0x62, 0xc0, 0x3c, 0x5a, 0x3c, 0xc3, 0x0c, 0xb8, 0xa2, 0x75,
+	0x2b, 0x1a, 0xb2, 0x19, 0xf2, 0x91, 0xef, 0x50, 0x32, 0xe0, 0xaa, 0xd5, 0xad, 0x68, 0xc8, 0xe4,
+	0x1b, 0xd9, 0xc3, 0x13, 0x8f, 0x8e, 0xc8, 0x40, 0xbe, 0xe5, 0x24, 0x00, 0x66, 0x3f, 0xd7, 0x0b,
+	0x65, 0xc9, 0x47, 0x06, 0x5c, 0x81, 0xba, 0xa5, 0xc1, 0x98, 0x0e, 0x01, 0xed, 0xef, 0xbb, 0x42,
+	0xa0, 0x1a, 0xc7, 0x50, 0x20, 0x6c, 0x7e, 0x10, 0x84, 0xd1, 0xfc, 0x82, 0x98, 0x4f, 0x20, 0x6a,
+	0x58, 0xaa, 0x6b, 0x61, 0x89, 0xb9, 0xa9, 0xeb, 0x85, 0x5c, 0xe9, 0xa7, 0x24, 0xe4, 0x45, 0x75,
+	0xdd, 0x52, 0x41, 0xf8, 0xb7, 0x06, 0x2c, 0xe9, 0x8d, 0xee, 0x67, 0x66, 0x1a, 0x45, 0xec, 0xea,
+	0x5c, 0xb1, 0x6b, 0x59, 0xb1, 0xff, 0x68, 0xc0, 0x95, 0x19, 0x37, 0xa8, 0xff, 0x17, 0xf2, 0x7f,
+	0x0f, 0x6a, 0xc2, 0xcd, 0xd1, 0x03, 0x68, 0x87, 0x74, 0x1c, 0x84, 0xfc, 0x3a, 0x5f, 0xc0, 0x64,
+	0x0c, 0x5f, 0x65, 0x87, 0xe1, 0xfd, 0xd4, 0x9c, 0x95, 0xc1, 0x66, 0x09, 0x80, 0xbe, 0x4f, 0x09,
+	0x91, 0x8b, 0x95, 0x2b, 0x54, 0x2b, 0x01, 0x5b, 0x2a, 0x0e, 0xde, 0x86, 0x76, 0x9a, 0x30, 0x33,
+	0x1b, 0x27, 0x2d, 0x33, 0x9e, 0x18, 0xe0, 0xdf, 0x18, 0xd0, 0x54, 0xc8, 0xe8, 0x9d, 0xa3, 0x91,
+	0xee, 0x1c, 0x31, 0xb4, 0x1c, 0x77, 0xe0, 0x50, 0x96, 0x06, 0xc5, 0xad, 0x9c, 0xb1, 0xbd, 0x68,
+	0x69, 0x30, 0x74, 0x17, 0x80, 0x1d, 0x46, 0x32, 0x22, 0x2e, 0x6f, 0x14, 0x58, 0x3e, 0xee, 0xa5,
+	0xa4, 0x3d, 0x8a, 0x10, 0x2c, 0x05, 0x97, 0xa5, 0xad, 0x89, 0x13, 0x38, 0xc7, 0xce, 0xd0, 0x09,
+	0xa7, 0x2c, 0x17, 0x55, 0x78, 0xa4, 0xd3, 0x81, 0xf8, 0xbb, 0xb0, 0x9a, 0x47, 0x89, 0xad, 0xf6,
+	0x09, 0x1d, 0x39, 0x01, 0xcb, 0x50, 0x47, 0x24, 0xba, 0x71, 0xd5, 0x81, 0x6c, 0xeb, 0x12, 0x80,
+	0x28, 0x17, 0x1a, 0x96, 0x0a, 0xd2, 0x3a, 0xdc, 0xb2, 0xde, 0xe1, 0xe2, 0x4f, 0x0c, 0x68, 0xbf,
 	0x3d, 0x76, 0x86, 0x03, 0x21, 0xc1, 0x85, 0x6b, 0xa5, 0x54, 0x7a, 0x29, 0x65, 0xd3, 0xcb, 0xcb,
-	0xb0, 0x44, 0x43, 0x4a, 0xf8, 0xdb, 0x80, 0xd8, 0x0c, 0x51, 0x33, 0xa5, 0xa0, 0x29, 0x6b, 0x57,
+	0xb0, 0x44, 0x43, 0x4a, 0xf8, 0xcb, 0x80, 0xd8, 0x0c, 0x51, 0x33, 0xa5, 0xa0, 0x29, 0x6b, 0x57,
 	0x8a, 0x5b, 0x1b, 0x87, 0x80, 0x12, 0x55, 0x8a, 0xd7, 0x5a, 0xd7, 0xa1, 0x26, 0x6a, 0x29, 0xe9,
-	0x88, 0x1c, 0xe3, 0x90, 0x7a, 0xde, 0x89, 0x25, 0x27, 0x98, 0x05, 0x7d, 0x06, 0x48, 0xee, 0xff,
+	0x88, 0x1c, 0xe3, 0x90, 0x7a, 0xde, 0x89, 0x25, 0x27, 0x98, 0x05, 0x7d, 0x06, 0x48, 0x6e, 0xff,
 	0xe2, 0x31, 0xbe, 0x09, 0x2b, 0x4f, 0x58, 0x16, 0x9e, 0xf2, 0x25, 0xd2, 0x82, 0xea, 0x02, 0x23,
 	0xb5, 0xe0, 0x29, 0x74, 0x94, 0x05, 0xcf, 0x53, 0x4e, 0xfc, 0x0f, 0x03, 0xaa, 0x1c, 0x82, 0xbe,
 	0x00, 0x75, 0x32, 0x94, 0x36, 0x34, 0xf2, 0x2b, 0xc8, 0x18, 0x01, 0xbd, 0x08, 0x55, 0xdf, 0x0e,
 	0xcf, 0xa2, 0x5a, 0x73, 0x31, 0x26, 0x7c, 0x68, 0x87, 0x67, 0x96, 0x98, 0x53, 0x32, 0x5f, 0x79,
-	0x66, 0xe6, 0xeb, 0x42, 0x8d, 0x47, 0xa2, 0xa9, 0xec, 0x91, 0xe5, 0x48, 0x7d, 0xb1, 0xab, 0x9e,
-	0xfb, 0x62, 0x57, 0x2b, 0x50, 0x74, 0xe0, 0x57, 0xa0, 0x11, 0x4b, 0xc8, 0xac, 0xad, 0x29, 0x5b,
+	0x66, 0xe6, 0xeb, 0x42, 0x8d, 0x47, 0xa2, 0xa9, 0xec, 0x91, 0xe5, 0x48, 0x7d, 0xaf, 0xab, 0x9e,
+	0xfb, 0x5e, 0x57, 0x2b, 0x50, 0x74, 0xe0, 0x57, 0xa0, 0x11, 0x4b, 0xc8, 0xac, 0xad, 0x29, 0x5b,
 	0x4d, 0x74, 0xbb, 0xfd, 0x97, 0x36, 0x54, 0x3e, 0xd8, 0x7d, 0xb2, 0x87, 0xbe, 0x05, 0x2d, 0xf5,
-	0x6e, 0x18, 0x75, 0x19, 0x83, 0xec, 0x65, 0xb7, 0xd9, 0x4b, 0xc3, 0xa3, 0x1d, 0xc2, 0xeb, 0x3f,
+	0x66, 0x18, 0x75, 0x19, 0x83, 0xec, 0x55, 0xb7, 0xd9, 0x4b, 0xc3, 0xa3, 0x1d, 0xc2, 0xeb, 0x3f,
 	0xf8, 0xeb, 0xdf, 0x7f, 0x5a, 0x5a, 0xc3, 0xed, 0x9b, 0x93, 0x5b, 0x37, 0x55, 0x8c, 0xfb, 0xc6,
 	0xab, 0xe8, 0x43, 0x58, 0xc9, 0x34, 0xbe, 0x68, 0x3d, 0xa1, 0x95, 0x69, 0xa6, 0xcc, 0x6b, 0xb9,
 	0x93, 0x31, 0xb7, 0x2d, 0xce, 0xcd, 0xc4, 0x6b, 0x09, 0x37, 0x05, 0x8d, 0xb1, 0xb4, 0x61, 0x51,
@@ -4357,28 +4357,28 @@ var fileDescriptor_eapi_9d6f8aada14040dd = []byte{
 	0x46, 0x60, 0x49, 0x6f, 0x02, 0x11, 0xdf, 0x95, 0xbc, 0x9e, 0xd4, 0x34, 0xb3, 0x33, 0x31, 0xab,
 	0x6b, 0x9c, 0xd5, 0x15, 0x8c, 0x18, 0x2b, 0x1d, 0x87, 0xb1, 0x09, 0x01, 0x65, 0x9b, 0x34, 0xa1,
 	0xdd, 0xac, 0x3e, 0x52, 0x68, 0x37, 0xbb, 0xb5, 0xd3, 0xb7, 0x2d, 0x83, 0xc7, 0xb8, 0xfe, 0xd0,
-	0x80, 0x6e, 0xfe, 0x8d, 0x30, 0xda, 0xe2, 0x71, 0x6e, 0xce, 0x05, 0xb4, 0x89, 0x67, 0x63, 0xc4,
-	0x22, 0x7c, 0x8e, 0x8b, 0xf0, 0x02, 0x36, 0x99, 0x08, 0xf9, 0xb8, 0x4c, 0x8e, 0x7d, 0x71, 0xab,
+	0x80, 0x6e, 0xfe, 0x7d, 0x30, 0xda, 0xe2, 0x71, 0x6e, 0xce, 0xf5, 0xb3, 0x89, 0x67, 0x63, 0xc4,
+	0x22, 0x7c, 0x8e, 0x8b, 0xf0, 0x02, 0x36, 0x99, 0x08, 0xf9, 0xb8, 0x4c, 0x8e, 0x7d, 0x71, 0xa7,
 	0x2c, 0xef, 0x92, 0x96, 0xa2, 0x8b, 0x34, 0xc9, 0xa8, 0x9d, 0xbe, 0x58, 0xc3, 0x57, 0x39, 0xd9,
 	0x0e, 0x5e, 0x62, 0x64, 0x93, 0x95, 0x8c, 0xd4, 0x3d, 0xe8, 0x7c, 0x60, 0x3b, 0xe1, 0xbb, 0x1e,
 	0x65, 0xf0, 0x77, 0xe4, 0xc5, 0xd8, 0xf9, 0x34, 0x5f, 0x37, 0xd0, 0xb7, 0x61, 0x59, 0xc9, 0x3f,
 	0x3c, 0x76, 0xf1, 0x32, 0x22, 0x9d, 0x94, 0xcc, 0xae, 0x0e, 0x8d, 0xc5, 0xda, 0xe4, 0x62, 0xf5,
 	0x70, 0x87, 0x89, 0x95, 0x22, 0xc5, 0x64, 0x7b, 0x0a, 0x4d, 0x25, 0xdc, 0xa2, 0x35, 0x46, 0x26,
 	0x13, 0xb0, 0xcd, 0x2b, 0x29, 0x70, 0x4c, 0xde, 0xe4, 0xe4, 0x57, 0xf1, 0x32, 0x23, 0xaf, 0x20,
-	0xc8, 0x03, 0xa8, 0x3d, 0xde, 0x89, 0x03, 0x98, 0xf3, 0x76, 0x28, 0x0e, 0x60, 0xee, 0x43, 0x9f,
-	0x7e, 0x00, 0x35, 0x14, 0xb1, 0x49, 0x0b, 0xf2, 0x59, 0x14, 0xad, 0x30, 0x1a, 0xda, 0x7b, 0xac,
+	0xc8, 0x03, 0xa8, 0x3d, 0xdd, 0x89, 0x03, 0x98, 0xf3, 0x72, 0x28, 0x0e, 0x60, 0xee, 0x33, 0x9f,
+	0x7e, 0x00, 0x35, 0x14, 0xb1, 0x49, 0x0b, 0xf2, 0x51, 0x14, 0xad, 0x30, 0x1a, 0xda, 0x6b, 0xac,
 	0xd9, 0x51, 0x40, 0x31, 0xc1, 0x2e, 0x27, 0xd8, 0xc6, 0x4d, 0x46, 0x50, 0x4e, 0x4a, 0x43, 0x28,
-	0xcf, 0xd0, 0xc2, 0x10, 0x99, 0x47, 0x6f, 0x61, 0x88, 0x9c, 0xe7, 0x6a, 0xdd, 0x10, 0x0a, 0x82,
-	0x3c, 0xaf, 0xfa, 0x4d, 0xb7, 0x38, 0xaf, 0x79, 0x4f, 0x0e, 0xe2, 0xbc, 0xe6, 0xdf, 0x8b, 0xeb,
+	0x8f, 0xd0, 0xc2, 0x10, 0x99, 0x27, 0x6f, 0x61, 0x88, 0x9c, 0xc7, 0x6a, 0xdd, 0x10, 0x0a, 0x82,
+	0x3c, 0xaf, 0xfa, 0x4d, 0xb7, 0x38, 0xaf, 0x79, 0x0f, 0x0e, 0xe2, 0xbc, 0xe6, 0xdf, 0x8b, 0xeb,
 	0xe7, 0x55, 0xc7, 0x91, 0x6c, 0xf4, 0xab, 0x68, 0xc1, 0x26, 0xef, 0x26, 0x5c, 0xb0, 0xc9, 0xbf,
-	0xb8, 0xd6, 0xd9, 0xe8, 0x38, 0x8c, 0xcd, 0xf7, 0x0d, 0x58, 0xcb, 0xfd, 0x1b, 0x07, 0xbd, 0x90,
-	0x84, 0xec, 0xdc, 0xdf, 0xa2, 0xcc, 0xeb, 0x33, 0x11, 0x62, 0xe6, 0x2f, 0x71, 0xe6, 0x9b, 0xf8,
-	0x6a, 0x12, 0xd7, 0x53, 0xa8, 0xfa, 0x66, 0xb1, 0x49, 0x6d, 0xb3, 0x92, 0x1f, 0x77, 0xb4, 0xcd,
-	0x52, 0xff, 0xb9, 0xc8, 0xdd, 0x2c, 0x86, 0x10, 0xa9, 0x97, 0xfb, 0x77, 0x98, 0x50, 0x6f, 0xce,
-	0x8f, 0x6d, 0x42, 0xbd, 0xb9, 0x7f, 0x96, 0xe9, 0xea, 0xe5, 0xa2, 0xca, 0xbc, 0x92, 0xfd, 0x29,
-	0x4f, 0x44, 0xde, 0x59, 0xff, 0x03, 0x8a, 0xc8, 0x3b, 0xfb, 0x57, 0x3e, 0x3d, 0xaf, 0x64, 0xf1,
-	0x18, 0xdb, 0x3d, 0xa8, 0x89, 0x3f, 0x14, 0x51, 0x5b, 0x10, 0x4b, 0x7e, 0xbd, 0x34, 0x51, 0x02,
+	0xb8, 0xd6, 0xd9, 0xe8, 0x38, 0x8c, 0xcd, 0xf7, 0x0d, 0x58, 0xcb, 0xfd, 0x17, 0x07, 0xbd, 0x90,
+	0x84, 0xec, 0xdc, 0x9f, 0xa2, 0xcc, 0xeb, 0x33, 0x11, 0x62, 0xe6, 0x2f, 0x71, 0xe6, 0x9b, 0xf8,
+	0x6a, 0x12, 0xd7, 0x53, 0xa8, 0xfa, 0x66, 0xb1, 0x49, 0x6d, 0xb3, 0x92, 0xdf, 0x76, 0xb4, 0xcd,
+	0x52, 0xff, 0xb8, 0xc8, 0xdd, 0x2c, 0x86, 0x10, 0xa9, 0x97, 0xfb, 0x6f, 0x98, 0x50, 0x6f, 0xce,
+	0x6f, 0x6d, 0x42, 0xbd, 0xb9, 0xff, 0x95, 0xe9, 0xea, 0xe5, 0xa2, 0xca, 0xbc, 0x92, 0xfd, 0x25,
+	0x4f, 0x44, 0xde, 0x59, 0x7f, 0x03, 0x8a, 0xc8, 0x3b, 0xfb, 0x47, 0x3e, 0x3d, 0xaf, 0x64, 0xf1,
+	0x18, 0xdb, 0x3d, 0xa8, 0x89, 0xff, 0x13, 0x51, 0x5b, 0x10, 0x4b, 0x7e, 0xbc, 0x34, 0x51, 0x02,
 	0x89, 0x49, 0xae, 0x71, 0x92, 0xcb, 0x18, 0x04, 0x49, 0x36, 0x77, 0xdf, 0x78, 0xf5, 0xb8, 0xc6,
-	0xff, 0xde, 0xbc, 0xf3, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf7, 0xda, 0x11, 0x83, 0xed, 0x29,
+	0xff, 0xdd, 0xbc, 0xf3, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xd6, 0xfc, 0x69, 0x2f, 0xeb, 0x29,
 	0x00, 0x00,
 }

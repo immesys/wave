@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/wve"
@@ -61,6 +62,16 @@ func (dctx *EngineDecryptionContext) WR1VerifierBodyKey(ctx context.Context) []b
 }
 func (dctx *EngineDecryptionContext) SetProverKey(k []byte) {
 	dctx.proverBodyKey = k
+}
+func (dctx *EngineDecryptionContext) WR1EntityFromHash(ctx context.Context, hi iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, error) {
+	ent, val, err := dctx.e.LookupEntity(dctx.e.ctx, hi, loc)
+	if err != nil {
+		return nil, err
+	}
+	if !val.Valid {
+		return nil, fmt.Errorf("entity is no longer valid")
+	}
+	return ent, nil
 }
 func (dctx *EngineDecryptionContext) WR1ProverBodyKey(ctx context.Context) []byte {
 	return dctx.proverBodyKey

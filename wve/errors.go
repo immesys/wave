@@ -166,3 +166,4 @@ const NoProofFound = 911
 const ProofInvalid = 912
 const MessageDecryptFailed = 913
 const MalformedPartition = 914
+const InvalidE2EEGrant = 915

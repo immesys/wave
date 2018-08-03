@@ -247,6 +247,7 @@ BEGIN
     -- the namespace, common to all statements. This also becomes the
     -- WR1 domain for visibility control if wr1 is used
     namespace EntityHash,
+    namespaceLocation Location,
     -- specifically for use with WR1, this controls who can see the
     -- attestation
     -- this is a virtual field, there must exist some function

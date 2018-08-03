@@ -253,7 +253,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				var serr error
 				secret, serr = e.ws.GetPartitionLabelKeyP(subctx, dest.Keccak256HI(), sidx)
 				if serr != nil {
-					//fmt.Printf("MPLA 2.8 %v\n", serr)
+					fmt.Printf("MPLA 2.8 %v\n", serr)
 					return serr
 				}
 				if secret == nil {
@@ -306,8 +306,10 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				e.partitionMutex.Unlock()
 				//DOT is transitioning to active
 				if err := e.insertActiveAttestation(rpa.Attestation); err != nil {
-					//fmt.Printf("MPLA 7\n")
-					return err
+					//It's ok if there is a problem with the attestation. Just flag it
+					if err := e.ws.MoveAttestationMalformedP(e.ctx, res.A.Keccak256HI()); err != nil {
+						return err
+					}
 				}
 				//fmt.Printf("<MPLA 6\n")
 				continue
@@ -611,25 +613,115 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	if err != nil {
 		return err
 	}
+	namespaceHI, namespaceLoc, nsokay, err := d.Namespace()
+
 	//Make sure the storage knows the attester is interesting
 	err = e.ws.MoveEntityInterestingP(e.ctx, attester, attesterLoc)
 	if err != nil {
 		return err
 	}
 	//Process the label keys
-	for _, k := range d.WR1DomainVisibilityKeys() {
-		_, err := e.ws.InsertPartitionLabelKeyP(e.ctx, attesterHI, k)
+	if !nsokay {
+		//There is no namespace, treat all keys as coming from attester
+		for _, k := range d.WR1DomainVisibilityKeys() {
+			_, err := e.ws.InsertPartitionLabelKeyP(e.ctx, attesterHI, k)
+			if err != nil {
+				//fmt.Printf("IAA 5\n")
+				return err
+			}
+		}
+		//fmt.Printf("XIAA 4\n")
+		for _, k := range d.WR1SecretSlottedKeys() {
+			err := e.recursiveInsertKeyAndMoveLabelled(attester, k)
+			if err != nil {
+				//fmt.Printf("IAA 6\n")
+				return err
+			}
+		}
+	} else {
+
+		//Filter keys, some of them might belong to the namespace
+		nsent, _, err := e.LookupEntity(context.Background(), namespaceHI, namespaceLoc)
 		if err != nil {
-			//fmt.Printf("IAA 5\n")
 			return err
 		}
-	}
-	//fmt.Printf("XIAA 4\n")
-	for _, k := range d.WR1SecretSlottedKeys() {
-		err := e.recursiveInsertKeyAndMoveLabelled(attester, k)
+		err = e.ws.MoveEntityInterestingP(e.ctx, nsent, namespaceLoc)
 		if err != nil {
-			//fmt.Printf("IAA 6\n")
 			return err
+		}
+		nsHI := nsent.Keccak256HI()
+		{
+			nsparams, err := nsent.WR1_DomainVisiblityParams()
+			if err != nil {
+				return err
+			}
+			nsparamssig, err := nsparams.SystemIdentifyingBlob(context.Background())
+			if err != nil {
+				panic(err)
+			}
+			attparams, err := attester.WR1_DomainVisiblityParams()
+			if err != nil {
+				panic(err)
+			}
+			attparamsig, err := attparams.SystemIdentifyingBlob(context.Background())
+			if err != nil {
+				panic(err)
+			}
+			for _, k := range d.WR1DomainVisibilityKeys() {
+				sig, err := k.Public().SystemIdentifyingBlob(context.Background())
+				if err != nil {
+					panic(err)
+				}
+				if sig == attparamsig {
+					_, err := e.ws.InsertPartitionLabelKeyP(e.ctx, attesterHI, k)
+					if err != nil {
+						return err
+					}
+				} else if sig == nsparamssig {
+					_, err := e.ws.InsertPartitionLabelKeyP(e.ctx, nsHI, k)
+					if err != nil {
+						return err
+					}
+				} else {
+					fmt.Printf("UNKNOWN SIG\n")
+				}
+			}
+		}
+
+		{
+			nsparams, err := nsent.WR1_BodyParams()
+			if err != nil {
+				return err
+			}
+			nsparamssig, err := nsparams.SystemIdentifyingBlob(context.Background())
+			if err != nil {
+				panic(err)
+			}
+			attparams, err := attester.WR1_BodyParams()
+			if err != nil {
+				panic(err)
+			}
+			attparamsig, err := attparams.SystemIdentifyingBlob(context.Background())
+			if err != nil {
+				panic(err)
+			}
+			for _, k := range d.WR1SecretSlottedKeys() {
+				sig, err := k.Public().SystemIdentifyingBlob(context.Background())
+				if err != nil {
+					panic(err)
+				}
+				if sig == attparamsig {
+					err := e.recursiveInsertKeyAndMoveLabelled(attester, k)
+					if err != nil {
+						return err
+					}
+				} else if sig == nsparamssig {
+					err := e.recursiveInsertKeyAndMoveLabelled(nsent, k)
+					if err != nil {
+						return err
+					}
+				}
+			}
 		}
 	}
 	//fmt.Printf("IAA 7\n")
@@ -652,9 +744,6 @@ func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 func (e *Engine) insertPendingAttestation(d *iapi.Attestation) error {
 	//We can't check entities, but we can ensure its not revoked
 	val, err := e.CheckAttestation(e.ctx, d)
-	if !val.Valid {
-		fmt.Printf("XX 20\n")
-	}
 	okay, err := e.checkPendingAttestationAndSave(e.ctx, d, val)
 	if err != nil {
 		return err

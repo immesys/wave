@@ -111,9 +111,11 @@ func TestNameDeclOneHop(t *testing.T) {
 
 	nsex := ns.Entity.Keccak256HI().CanonicalForm()
 	//Grant attestation from NS giving permission to read
+	nslocex := inmem.CanonicalForm()
 	policy := serdes.RTreePolicy{
-		Namespace:    *nsex,
-		Indirections: 2,
+		Namespace:         *nsex,
+		NamespaceLocation: *nslocex,
+		Indirections:      2,
 		Statements: []serdes.RTreeStatement{
 			{
 				PermissionSet: *nsex,
@@ -124,12 +126,13 @@ func TestNameDeclOneHop(t *testing.T) {
 	}
 	pol, uerr := iapi.NewRTreePolicyScheme(policy, iapi.Partition("p1", "p2"))
 	require.NoError(t, uerr)
+	dctx := iapi.NewKeyPoolDecryptionContext()
 	bodyscheme := &iapi.WR1BodyScheme{}
 	arv, werr := iapi.NewParsedAttestation(ctx, &iapi.PCreateAttestation{
 		Policy:            pol,
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          ns.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           b.Entity,
@@ -195,10 +198,12 @@ func TestNameDeclTwoHop(t *testing.T) {
 	require.NoError(t, err)
 
 	nsex := ns.Entity.Keccak256HI().CanonicalForm()
+	nslocex := inmem.CanonicalForm()
 	//Grant attestation from NS giving permission to read
 	policy := serdes.RTreePolicy{
-		Namespace:    *nsex,
-		Indirections: 3,
+		Namespace:         *nsex,
+		NamespaceLocation: *nslocex,
+		Indirections:      3,
 		Statements: []serdes.RTreeStatement{
 			{
 				PermissionSet: *nsex,
@@ -210,11 +215,12 @@ func TestNameDeclTwoHop(t *testing.T) {
 	pol, uerr := iapi.NewRTreePolicyScheme(policy, iapi.Partition("p1", "p2"))
 	require.NoError(t, uerr)
 	bodyscheme := &iapi.WR1BodyScheme{}
+	dctx := iapi.NewKeyPoolDecryptionContext()
 	arv, werr := iapi.NewParsedAttestation(ctx, &iapi.PCreateAttestation{
 		Policy:            pol,
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          ns.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           b.Entity,
@@ -230,7 +236,7 @@ func TestNameDeclTwoHop(t *testing.T) {
 		Policy:            pol,
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          b.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           c.Entity,
@@ -292,10 +298,12 @@ func TestNameDeclOneHopThroughLabelled(t *testing.T) {
 	require.NoError(t, err)
 
 	nsex := ns.Entity.Keccak256HI().CanonicalForm()
+	nslocex := inmem.CanonicalForm()
 	//Grant attestation from NS giving permission to read
 	policy := serdes.RTreePolicy{
-		Namespace:    *nsex,
-		Indirections: 2,
+		Namespace:         *nsex,
+		NamespaceLocation: *nslocex,
+		Indirections:      2,
 		Statements: []serdes.RTreeStatement{
 			{
 				PermissionSet: *nsex,
@@ -307,11 +315,12 @@ func TestNameDeclOneHopThroughLabelled(t *testing.T) {
 	pol, uerr := iapi.NewRTreePolicyScheme(policy, iapi.Partition("p1", "p2", "p3")) //Too precise
 	require.NoError(t, uerr)
 	bodyscheme := &iapi.WR1BodyScheme{}
+	dctx := iapi.NewKeyPoolDecryptionContext()
 	arv, werr := iapi.NewParsedAttestation(ctx, &iapi.PCreateAttestation{
 		Policy:            pol,
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          ns.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           b.Entity,
@@ -344,7 +353,7 @@ func TestNameDeclOneHopThroughLabelled(t *testing.T) {
 		Policy:            pol,
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          ns.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           b.Entity,
@@ -388,13 +397,14 @@ func TestAttestationOneHopExpired1(t *testing.T) {
 	bodyscheme := &iapi.WR1BodyScheme{}
 	tA := time.Now().Add(-365 * 24 * time.Hour)
 	tB := tA.Add(30 * 24 * time.Hour)
+	dctx := iapi.NewKeyPoolDecryptionContext()
 	rv, err := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
 		Policy: pol,
 		//TODO test with this, it fails right now
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          src.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           dst.EntitySecrets.Entity,
@@ -459,13 +469,14 @@ func TestAttestationOneHopExpired2(t *testing.T) {
 	bodyscheme := &iapi.WR1BodyScheme{}
 	tA := time.Now()
 	tB := tA.Add(30 * 24 * time.Hour)
+	dctx := iapi.NewKeyPoolDecryptionContext()
 	rv, err := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
 		Policy: pol,
 		//TODO test with this, it fails right now
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          src.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           dst.EntitySecrets.Entity,
@@ -554,13 +565,14 @@ func TestAttestationOneHopExpired3(t *testing.T) {
 	bodyscheme := &iapi.WR1BodyScheme{}
 	tA := time.Now().Add(15 * 24 * time.Hour)
 	tB := tA.Add(30 * 24 * time.Hour)
+	dctx := iapi.NewKeyPoolDecryptionContext()
 	rv, err := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
 		Policy: pol,
 		//TODO test with this, it fails right now
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          src.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           dst.EntitySecrets.Entity,
@@ -648,13 +660,14 @@ func TestAttestationOneHop(t *testing.T) {
 	pol, uerr := iapi.NewTrustLevelPolicy(3)
 	require.NoError(t, uerr)
 	bodyscheme := &iapi.WR1BodyScheme{}
+	dctx := iapi.NewKeyPoolDecryptionContext()
 	rv, err := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
 		Policy: pol,
 		//TODO test with this, it fails right now
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          src.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           dst.EntitySecrets.Entity,
@@ -717,13 +730,14 @@ func TestAttestationTwoHop(t *testing.T) {
 	pol, uerr := iapi.NewTrustLevelPolicy(3)
 	require.NoError(t, uerr)
 	bodyscheme := &iapi.WR1BodyScheme{}
+	dctx := iapi.NewKeyPoolDecryptionContext()
 	rv, werr := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
 		Policy: pol,
 		//TODO test with this, it fails right now
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          A.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           B.EntitySecrets.Entity,
@@ -744,7 +758,7 @@ func TestAttestationTwoHop(t *testing.T) {
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: dctx,
 		Attester:          B.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           C.EntitySecrets.Entity,
@@ -831,7 +845,9 @@ func TestAttestationTwoHopRTree(t *testing.T) {
 	//Create the attestation from A to B
 	sdpol := serdes.RTreePolicy{}
 	nsh := NS.EntitySecrets.Entity.Keccak256HI().CanonicalForm()
+	nsloc := inmem.CanonicalForm()
 	sdpol.Namespace = *nsh
+	sdpol.NamespaceLocation = *nsloc
 	sdpol.Indirections = 5
 	sdpol.Statements = append(sdpol.Statements, serdes.RTreeStatement{
 		PermissionSet: *nsh,
@@ -841,13 +857,14 @@ func TestAttestationTwoHopRTree(t *testing.T) {
 	pol, err := iapi.NewRTreePolicyScheme(sdpol, [][]byte{[]byte("hello"), []byte("world")})
 	require.NoError(t, err)
 	bodyscheme := &iapi.WR1BodyScheme{}
+	kpdc := iapi.NewKeyPoolDecryptionContext()
 	rv, err := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
 		Policy: pol,
 		//TODO test with this, it fails right now
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: kpdc,
 		Attester:          A.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           B.EntitySecrets.Entity,
@@ -868,7 +885,7 @@ func TestAttestationTwoHopRTree(t *testing.T) {
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: kpdc,
 		Attester:          B.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           C.EntitySecrets.Entity,
@@ -887,11 +904,13 @@ func TestAttestationTwoHopRTree(t *testing.T) {
 	require.NoError(t, err)
 	_, err = iapi.SI().PutEntity(context.Background(), inmem, C.EntitySecrets.Entity)
 	require.NoError(t, err)
+	_, err = iapi.SI().PutEntity(context.Background(), inmem, NS.EntitySecrets.Entity)
+	require.NoError(t, err)
 	err = iapi.SI().Enqueue(context.Background(), inmem, B.EntitySecrets.Entity.Keccak256HI(), hashAB)
 	require.NoError(t, err)
 	err = iapi.SI().Enqueue(context.Background(), inmem, C.EntitySecrets.Entity.Keccak256HI(), hashBC)
 	require.NoError(t, err)
-
+	fmt.Printf("X1\n")
 	eng, err := NewEngine(ctx, ws, iapi.SI(), C.EntitySecrets, inmem)
 	require.NoError(t, err)
 	uerr := eng.ResyncEntireGraph(ctx)
@@ -955,7 +974,9 @@ func TestAttestationTwoHopRTreeNoVis(t *testing.T) {
 	//Create the attestation from A to B
 	sdpol := serdes.RTreePolicy{}
 	nsh := NS.EntitySecrets.Entity.Keccak256HI().CanonicalForm()
+	nslocex := inmem.CanonicalForm()
 	sdpol.Namespace = *nsh
+	sdpol.NamespaceLocation = *nslocex
 	sdpol.Indirections = 5
 	sdpol.Statements = append(sdpol.Statements, serdes.RTreeStatement{
 		PermissionSet: *nsh,
@@ -965,13 +986,14 @@ func TestAttestationTwoHopRTreeNoVis(t *testing.T) {
 	pol, err := iapi.NewRTreePolicyScheme(sdpol, [][]byte{[]byte("hello")})
 	require.NoError(t, err)
 	bodyscheme := &iapi.WR1BodyScheme{}
+	kpdc := iapi.NewKeyPoolDecryptionContext()
 	rv, err := iapi.CreateAttestation(context.Background(), &iapi.PCreateAttestation{
 		Policy: pol,
 		//TODO test with this, it fails right now
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: kpdc,
 		Attester:          A.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           B.EntitySecrets.Entity,
@@ -992,7 +1014,7 @@ func TestAttestationTwoHopRTreeNoVis(t *testing.T) {
 		//HashScheme:        &HashScheme_Sha3_256{},
 		HashScheme:        &iapi.HashScheme_Keccak_256{},
 		BodyScheme:        bodyscheme,
-		EncryptionContext: nil,
+		EncryptionContext: kpdc,
 		Attester:          B.EntitySecrets,
 		AttesterLocation:  inmem,
 		Subject:           C.EntitySecrets.Entity,
@@ -1010,6 +1032,8 @@ func TestAttestationTwoHopRTreeNoVis(t *testing.T) {
 	_, err = iapi.SI().PutEntity(context.Background(), inmem, B.EntitySecrets.Entity)
 	require.NoError(t, err)
 	_, err = iapi.SI().PutEntity(context.Background(), inmem, C.EntitySecrets.Entity)
+	require.NoError(t, err)
+	_, err = iapi.SI().PutEntity(context.Background(), inmem, NS.EntitySecrets.Entity)
 	require.NoError(t, err)
 	err = iapi.SI().Enqueue(context.Background(), inmem, B.EntitySecrets.Entity.Keccak256HI(), hashAB)
 	require.NoError(t, err)

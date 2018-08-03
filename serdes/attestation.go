@@ -41,9 +41,10 @@ type TrustLevel struct {
 }
 
 type RTreePolicy struct {
-	Namespace    asn1.External //EntityHash
-	Indirections int
-	Statements   []RTreeStatement
+	Namespace         asn1.External //EntityHash
+	NamespaceLocation asn1.External
+	Indirections      int
+	Statements        []RTreeStatement
 }
 
 type RTreeStatement struct {

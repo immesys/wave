@@ -262,7 +262,7 @@ func ConvertLookupResult(r *engine.LookupResult) *pb.Attestation {
 // 	}
 // 	panic("unknown hash")
 // }
-func ConvertPolicy(in *pb.Policy) iapi.PolicySchemeInstance {
+func (e *EAPI) ConvertPolicy(in *pb.Policy) (iapi.PolicySchemeInstance, wve.WVE) {
 	if in == nil {
 		panic("nil policy")
 	}
@@ -271,15 +271,42 @@ func ConvertPolicy(in *pb.Policy) iapi.PolicySchemeInstance {
 		if err != nil {
 			panic(err)
 		}
-		return rv
+		return rv, nil
 	}
 	if in.RTreePolicy != nil {
 		spol := serdes.RTreePolicy{
 			Indirections: int(in.RTreePolicy.Indirections),
 		}
+
 		ehash := iapi.HashSchemeInstanceFromMultihash(in.RTreePolicy.Namespace)
 		ext := ehash.CanonicalForm()
 		spol.Namespace = *ext
+
+		//Try locate the namespace
+		eng := e.getEngineNoPerspective()
+		found := false
+		locz, err := iapi.SI().RegisteredLocations(context.Background())
+		if err != nil {
+			panic(err)
+		}
+		for _, loc := range locz {
+			ent, val, err := eng.LookupEntity(context.Background(), ehash, loc)
+			if err != nil {
+				return nil, wve.ErrW(wve.LookupFailure, "failed to find namespace", err)
+			}
+			if ent != nil {
+				if !val.Valid {
+					return nil, wve.Err(wve.InvalidParameter, "namespace entity is no longer valid")
+				}
+				found = true
+				loccf := loc.CanonicalForm()
+				spol.NamespaceLocation = *loccf
+				break
+			}
+		}
+		if !found {
+			return nil, wve.Err(wve.LookupFailure, "failed to find namespace")
+		}
 		for _, st := range in.RTreePolicy.Statements {
 			pset := iapi.HashSchemeInstanceFromMultihash(st.PermissionSet)
 			ext := pset.CanonicalForm()
@@ -293,7 +320,7 @@ func ConvertPolicy(in *pb.Policy) iapi.PolicySchemeInstance {
 		if err != nil {
 			panic(err)
 		}
-		return rv
+		return rv, nil
 	}
 	panic("unknown policy")
 }
