@@ -16,6 +16,13 @@ type KeyPoolDecryptionContext struct {
 	labelOnly           []*EntitySecrets
 	delegatedOnly       []bool
 	domainVisibilityIds [][]byte
+	underlyingContext   KeyPoolUnderlyingContext
+}
+
+type KeyPoolUnderlyingContext interface {
+	EntityByHashLoc(ctx context.Context, h HashSchemeInstance, loc LocationSchemeInstance) (*Entity, wve.WVE)
+	//	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
+	//  WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 }
 
 var _ WR1BodyEncryptionContext = &KeyPoolDecryptionContext{}
@@ -25,6 +32,9 @@ func NewKeyPoolDecryptionContext() *KeyPoolDecryptionContext {
 	return &KeyPoolDecryptionContext{domainVisibilityIds: [][]byte{[]byte("$GLOBAL")}}
 }
 
+func (kpd *KeyPoolDecryptionContext) SetUnderlyingContext(ctx KeyPoolUnderlyingContext) {
+	kpd.underlyingContext = ctx
+}
 func (kpd *KeyPoolDecryptionContext) AddDomainVisibilityID(id []byte) {
 	kpd.domainVisibilityIds = append(kpd.domainVisibilityIds, id)
 }
@@ -39,7 +49,15 @@ func (kpd *KeyPoolDecryptionContext) AddEntity(e *Entity) {
 	kpd.entz = append(kpd.entz, e)
 }
 func (kpd *KeyPoolDecryptionContext) WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error) {
-	return kpd.EntityByHashLoc(ctx, hash, loc)
+	rv, err := kpd.EntityByHashLoc(ctx, hash, loc)
+	if err != nil {
+		return nil, err
+	}
+	if rv == nil && kpd.underlyingContext != nil {
+		return kpd.underlyingContext.EntityByHashLoc(ctx, hash, loc)
+	} else {
+		return rv, err
+	}
 }
 func (kpd *KeyPoolDecryptionContext) SetWR1VerifierBodyKey(atv []byte) {
 	kpd.attVerKey = atv
@@ -73,6 +91,9 @@ func (kpd *KeyPoolDecryptionContext) EntityByHashLoc(ctx context.Context, hash H
 			return es.Entity, nil
 		}
 	}
+	if kpd.underlyingContext != nil {
+		return kpd.underlyingContext.EntityByHashLoc(ctx, hash, loc)
+	}
 	return nil, nil
 }
 func (kpd *KeyPoolDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error {
@@ -91,6 +112,9 @@ func (kpd *KeyPoolDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context,
 			}
 		}
 	}
+	// if kpd.underlyingContext != nil {
+	// 	return kpd.underlyingContext.WR1OAQUEKeysForContent(ctx, dst, slots, onResult)
+	// }
 	return nil
 }
 func (kpd *KeyPoolDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error {
@@ -112,6 +136,9 @@ func (kpd *KeyPoolDecryptionContext) WR1IBEKeysForPartitionLabel(ctx context.Con
 			}
 		}
 	}
+	// if kpd.underlyingContext != nil {
+	// 	return kpd.underlyingContext.WR1IBEKeysForPartitionLabel(ctx, dst, onResult)
+	// }
 	return nil
 }
 func (kpd *KeyPoolDecryptionContext) WR1AttesterDirectDecryptionKey(ctx context.Context, onResult func(k EntitySecretKeySchemeInstance) bool) error {

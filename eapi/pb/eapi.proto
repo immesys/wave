@@ -131,8 +131,21 @@ service WAVE {
       body: "*"
     };
   }
+  rpc CompactProof(CompactProofParams) returns (CompactProofResponse) {
+    option (google.api.http) = {
+      post: "/v1/CompactProof"
+      body: "*"
+    };
+  }
 }
 
+message CompactProofParams {
+  bytes DER = 1;
+}
+message CompactProofResponse {
+  Error error = 1;
+  bytes proofDER = 2;
+}
 message RevokeParams {
   Perspective perspective = 1;
   bytes attestationHash = 2;

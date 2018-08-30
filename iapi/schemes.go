@@ -14,6 +14,11 @@ type Scheme interface {
 	Supported() bool
 }
 
+type VerificationContext interface {
+	EntityByHashLoc(ctx context.Context, h HashSchemeInstance, loc LocationSchemeInstance) (*Entity, wve.WVE)
+	AttestationByHashLoc(ctx context.Context, h HashSchemeInstance, loc LocationSchemeInstance) (*Attestation, wve.WVE)
+}
+
 type BodyDecryptionContext interface {
 	EntityByHashLoc(ctx context.Context, h HashSchemeInstance, loc LocationSchemeInstance) (*Entity, wve.WVE)
 }

@@ -5,13 +5,49 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
 )
 
-type PVerifyRTreeProof struct {
+type PCompactProof struct {
 	DER []byte
+}
+type RCompactProof struct {
+	DER []byte
+}
+
+func CompactProof(ctx context.Context, p *PCompactProof) (*RCompactProof, wve.WVE) {
+	wwo := serdes.WaveWireObject{}
+	rest, err := asn1.Unmarshal(p.DER, &wwo.Content)
+	if err != nil {
+		return nil, wve.Err(wve.ProofInvalid, "asn1 is malformed")
+	}
+	if len(rest) != 0 {
+		return nil, wve.Err(wve.ProofInvalid, "trailing bytes")
+	}
+	exp, ok := wwo.Content.Content.(serdes.WaveExplicitProof)
+	if !ok {
+		return nil, wve.Err(wve.ProofInvalid, "object is not a proof")
+	}
+	for i, _ := range exp.Attestations {
+		exp.Attestations[i].Content = nil
+	}
+	exp.Entities = nil
+	wwo.Content = asn1.NewExternal(exp)
+	der, err := asn1.Marshal(wwo.Content)
+	if err != nil {
+		return nil, wve.ErrW(wve.InternalError, "could not marshal asn1", err)
+	}
+	return &RCompactProof{
+		DER: der,
+	}, nil
+}
+
+type PVerifyRTreeProof struct {
+	DER  []byte
+	VCtx VerificationContext
 }
 type RVerifyRTreeProof struct {
 	Policy          *RTreePolicy
@@ -38,6 +74,8 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 	expiry := time.Now()
 	expiryset := false
 	dctx := NewKeyPoolDecryptionContext()
+	//Ensure that entity lookup gets passed through
+	dctx.SetUnderlyingContext(p.VCtx)
 	for _, entder := range exp.Entities {
 		resp, err := ParseEntity(ctx, &PParseEntity{
 			DER: entder,
@@ -53,7 +91,6 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 	}
 	mapping := make(map[int]*Attestation)
 	for idx, atst := range exp.Attestations {
-
 		if len(atst.Keys) == 0 {
 			fmt.Printf("atst has no keys\n")
 		}
@@ -66,10 +103,40 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 				fmt.Printf("ATST KEY WAS NOT AES\n")
 			}
 		}
-		rpa, err := ParseAttestation(ctx, &PParseAttestation{
-			DER:               atst.Content,
-			DecryptionContext: dctx,
-		})
+		var pap *PParseAttestation
+		if len(atst.Content) > 0 {
+			pap = &PParseAttestation{
+				DER:               atst.Content,
+				DecryptionContext: dctx,
+			}
+		} else {
+			spew.Dump(atst)
+			for _, cfloc := range atst.Locations {
+				fmt.Printf("trying a location\n")
+				cf := cfloc
+				loc := LocationSchemeInstanceFor(&cf)
+				if !loc.Supported() {
+					continue
+				}
+				hsh := HashSchemeInstanceFor(&atst.Hash)
+				if !hsh.Supported() {
+					continue
+				}
+				att, err := p.VCtx.AttestationByHashLoc(ctx, hsh, loc)
+				if err != nil {
+					return nil, wve.ErrW(wve.LookupFailure, "could not resolve attestation", err)
+				}
+				pap = &PParseAttestation{
+					Attestation:       att,
+					DecryptionContext: dctx,
+				}
+				break
+			}
+		}
+		if pap == nil {
+			return nil, wve.Err(wve.ProofInvalid, fmt.Sprintf("could not resolve attestation %d DER", idx))
+		}
+		rpa, err := ParseAttestation(ctx, pap)
 		if err != nil {
 			return nil, wve.ErrW(wve.ProofInvalid, fmt.Sprintf("could not parse attestation %d", idx), err)
 		}

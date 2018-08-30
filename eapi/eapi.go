@@ -539,8 +539,11 @@ func (e *EAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncComp
 }
 
 func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.VerifyProofResponse, error) {
+	eng := e.getEngineNoPerspective()
+	dctx := engine.NewEngineDecryptionContext(eng)
 	resp, werr := iapi.VerifyRTreeProof(ctx, &iapi.PVerifyRTreeProof{
-		DER: p.ProofDER,
+		DER:  p.ProofDER,
+		VCtx: dctx,
 	})
 	if werr != nil {
 		return &pb.VerifyProofResponse{
@@ -555,7 +558,7 @@ func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.Ve
 		Subject:         resp.Subject.Multihash(),
 		SubjectLocation: ToPbLocation(resp.SubjectLocation),
 	}
-	eng := e.getEngineNoPerspective()
+
 	for idx, att := range resp.Attestations {
 		//Double check the attestation
 		val, err := eng.CheckAttestation(ctx, att)
@@ -675,6 +678,7 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	}
 	ext := ehash.CanonicalForm()
 	spol.Namespace = *ext
+	//This is not important
 	nsloc := iapi.NewLocationSchemeInstanceURL("https://foo.com", 1).CanonicalForm()
 	spol.NamespaceLocation = *nsloc
 	for _, st := range p.Statements {
@@ -1293,4 +1297,18 @@ func (e *EAPI) Revoke(ctx context.Context, p *pb.RevokeParams) (*pb.RevokeRespon
 	eng.ResetRevocationCache(ctx)
 
 	return &pb.RevokeResponse{}, nil
+}
+
+func (e *EAPI) CompactProof(ctx context.Context, p *pb.CompactProofParams) (*pb.CompactProofResponse, error) {
+	rv, err := iapi.CompactProof(ctx, &iapi.PCompactProof{
+		DER: p.DER,
+	})
+	if err != nil {
+		return &pb.CompactProofResponse{
+			Error: ToError(err),
+		}, nil
+	}
+	return &pb.CompactProofResponse{
+		ProofDER: rv.DER,
+	}, nil
 }

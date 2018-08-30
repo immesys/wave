@@ -151,3 +151,11 @@ func (dctx *EngineDecryptionContext) EntityByHashLoc(ctx context.Context, hash i
 	_ = validity
 	return ent, nil
 }
+func (dctx *EngineDecryptionContext) AttestationByHashLoc(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Attestation, wve.WVE) {
+	att, validity, err := dctx.e.LookupAttestationNoPerspective(ctx, hash, nil, loc)
+	_ = validity
+	if err != nil {
+		return nil, wve.ErrW(wve.LookupFailure, "could not lookup attestation", err)
+	}
+	return att, nil
+}

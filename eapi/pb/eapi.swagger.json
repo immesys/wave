@@ -68,6 +68,32 @@
         ]
       }
     },
+    "/v1/CompactProof": {
+      "post": {
+        "operationId": "CompactProof",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbCompactProofResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbCompactProofParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
     "/v1/CreateAttestation": {
       "post": {
         "summary": "Create a WAVE attestation, both the source and destination entities must\nbe published",
@@ -704,6 +730,27 @@
         },
         "result": {
           "$ref": "#/definitions/pbProof"
+        },
+        "proofDER": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbCompactProofParams": {
+      "type": "object",
+      "properties": {
+        "DER": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbCompactProofResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
         },
         "proofDER": {
           "type": "string",

@@ -109,10 +109,12 @@ func (e *Engine) LookupAttestationsFrom(ctx context.Context, entityHash iapi.Has
 					return fin(err)
 				}
 			}
+			_, subloc := res.Attestation.Subject()
 			select {
 			case rv <- &LookupResult{
-				Attestation: res.Attestation,
-				Validity:    validity,
+				Attestation:    res.Attestation,
+				Validity:       validity,
+				KnownLocations: []iapi.LocationSchemeInstance{subloc},
 			}:
 			case <-subctx.Done():
 				return fin(subctx.Err())
@@ -189,10 +191,12 @@ func (e *Engine) LookupAttestationsTo(ctx context.Context, entityHash iapi.HashS
 					return fin(err)
 				}
 			}
+			_, subloc := res.Attestation.Subject()
 			select {
 			case rv <- &LookupResult{
-				Attestation: res.Attestation,
-				Validity:    validity,
+				Attestation:    res.Attestation,
+				Validity:       validity,
+				KnownLocations: []iapi.LocationSchemeInstance{subloc},
 			}:
 			case <-subctx.Done():
 				return fin(subctx.Err())
