@@ -111,7 +111,7 @@ func (t *TestGraph) BuildCompare(tst *testing.T, dst string, perms string, edges
 	// }
 }
 
-func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTreeResponse {
+func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTreeProofResponse {
 	ctx := context.Background()
 	perspective := &pb.Perspective{
 		EntitySecret: &pb.EntitySecret{
@@ -148,10 +148,10 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 			permarr = append(permarr, fmt.Sprintf("%x", 1<<uint(i)))
 		}
 	}
-	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeParams{
-		Perspective:    perspective,
-		SubjectHash:    t.pubs[dst].Hash,
-		RtreeNamespace: t.pubs["ns"].Hash,
+	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeProofParams{
+		Perspective: perspective,
+		SubjectHash: t.pubs[dst].Hash,
+		Namespace:   t.pubs["ns"].Hash,
 		Statements: []*pb.RTreePolicyStatement{
 			&pb.RTreePolicyStatement{
 				PermissionSet: t.pubs["ns"].Hash,

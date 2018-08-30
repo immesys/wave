@@ -328,10 +328,19 @@ func ConvertBodyScheme(in string) iapi.AttestationBodyScheme {
 	if in == serdes.UnencryptedBodyOID.String() {
 		return &iapi.PlaintextBodyScheme{}
 	}
+	if in == "plaintext" {
+		return &iapi.PlaintextBodyScheme{}
+	}
 	if in == serdes.WR1BodyOID.String() {
 		return &iapi.WR1BodyScheme{}
 	}
-	panic("unknown body scheme")
+	if in == "wr1" {
+		return &iapi.WR1BodyScheme{}
+	}
+	if in == "" {
+		return &iapi.WR1BodyScheme{}
+	}
+	return nil
 }
 func ConvertEntitySecret(ctx context.Context, in *pb.EntitySecret) (*iapi.EntitySecrets, wve.WVE) {
 	passphrase := string(in.Passphrase)

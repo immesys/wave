@@ -43,6 +43,10 @@ func CreateAttestation(ctx context.Context, p *PCreateAttestation) (*RCreateAtte
 	if !p.HashScheme.Supported() {
 		return nil, wve.Err(wve.UnsupportedHashScheme, "unsupported hash scheme")
 	}
+	err := p.Policy.CheckValid()
+	if err != nil {
+		return nil, wve.ErrW(wve.InvalidParameter, "policy is invalid", err)
+	}
 	subjectHash := p.Subject.Hash(p.HashScheme)
 	if !subjectHash.Supported() {
 		panic(subjectHash)

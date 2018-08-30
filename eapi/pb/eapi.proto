@@ -59,7 +59,7 @@ service WAVE {
     };
   }
   rpc WaitForSyncComplete(SyncParams) returns (stream SyncResponse);
-  rpc BuildRTreeProof(BuildRTreeParams) returns (BuildRTreeResponse) {
+  rpc BuildRTreeProof(BuildRTreeProofParams) returns (BuildRTreeProofResponse) {
     option (google.api.http) = {
       post: "/v1/BuildRTreeProof"
       body: "*"
@@ -266,6 +266,7 @@ message Entity {
 }
 message CreateAttestationParams {
   Perspective perspective = 1;
+  //If omitted will default to wr1
   string bodyScheme = 2;
   bytes subjectHash = 3;
   Location subjectLocation = 4;
@@ -274,6 +275,7 @@ message CreateAttestationParams {
   //If 0, will be set to some arbitrary default. Ms since epoch
   int64 validUntil = 6;
   Policy policy = 7;
+  bool publish = 8;
 }
 message ResyncPerspectiveGraphParams {
   Perspective perspective = 1;
@@ -453,13 +455,14 @@ message RTreePolicyStatement {
   repeated string permissions = 2;
   string resource = 3;
 }
-message BuildRTreeParams {
+message BuildRTreeProofParams {
   Perspective perspective = 1;
+  //If omitted, will default to the perspective entity
   bytes subjectHash = 2;
-  bytes rtreeNamespace = 3;
+  bytes namespace = 3;
   repeated RTreePolicyStatement statements = 4;
 }
-message BuildRTreeResponse {
+message BuildRTreeProofResponse {
   Error error = 1;
   Proof result = 2;
   bytes proofDER = 3;

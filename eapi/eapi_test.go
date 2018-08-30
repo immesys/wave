@@ -1449,10 +1449,10 @@ func TestBuildRTreeProof(t *testing.T) {
 	}
 	fmt.Printf("==== STARTING BUILD IN DESTINATION GRAPH ====\n")
 
-	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeParams{
-		Perspective:    perspective,
-		SubjectHash:    pubs[8].Hash,
-		RtreeNamespace: pubs[0].Hash,
+	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeProofParams{
+		Perspective: perspective,
+		SubjectHash: pubs[8].Hash,
+		Namespace:   pubs[0].Hash,
 		Statements: []*pb.RTreePolicyStatement{
 			&pb.RTreePolicyStatement{
 				PermissionSet: pubs[0].Hash,
@@ -1562,10 +1562,10 @@ func TestBuildRTreeProofVerify(t *testing.T) {
 	}
 	fmt.Printf("==== STARTING BUILD IN DESTINATION GRAPH ====\n")
 
-	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeParams{
-		Perspective:    perspective,
-		SubjectHash:    pubs[8].Hash,
-		RtreeNamespace: pubs[0].Hash,
+	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeProofParams{
+		Perspective: perspective,
+		SubjectHash: pubs[8].Hash,
+		Namespace:   pubs[0].Hash,
 		Statements: []*pb.RTreePolicyStatement{
 			&pb.RTreePolicyStatement{
 				PermissionSet: pubs[0].Hash,

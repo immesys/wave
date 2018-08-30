@@ -49,7 +49,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/pbBuildRTreeResponse"
+              "$ref": "#/definitions/pbBuildRTreeProofResponse"
             }
           }
         },
@@ -59,7 +59,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/pbBuildRTreeParams"
+              "$ref": "#/definitions/pbBuildRTreeProofParams"
             }
           }
         ],
@@ -700,7 +700,7 @@
         }
       }
     },
-    "pbBuildRTreeParams": {
+    "pbBuildRTreeProofParams": {
       "type": "object",
       "properties": {
         "perspective": {
@@ -708,9 +708,10 @@
         },
         "subjectHash": {
           "type": "string",
-          "format": "byte"
+          "format": "byte",
+          "title": "If omitted, will default to the perspective entity"
         },
-        "rtreeNamespace": {
+        "namespace": {
           "type": "string",
           "format": "byte"
         },
@@ -722,7 +723,7 @@
         }
       }
     },
-    "pbBuildRTreeResponse": {
+    "pbBuildRTreeProofResponse": {
       "type": "object",
       "properties": {
         "error": {
@@ -765,7 +766,8 @@
           "$ref": "#/definitions/pbPerspective"
         },
         "bodyScheme": {
-          "type": "string"
+          "type": "string",
+          "title": "If omitted will default to wr1"
         },
         "subjectHash": {
           "type": "string",
@@ -786,6 +788,10 @@
         },
         "policy": {
           "$ref": "#/definitions/pbPolicy"
+        },
+        "publish": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },

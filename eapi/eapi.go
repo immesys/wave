@@ -255,6 +255,11 @@ func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		ValidFrom:         TimeFromInt64MillisWithDefault(p.ValidFrom, time.Now()),
 		ValidUntil:        TimeFromInt64MillisWithDefault(p.ValidUntil, time.Now().Add(30*24*time.Hour)),
 	}
+	if params.BodyScheme == nil {
+		return &pb.CreateAttestationResponse{
+			Error: ToError(wve.Err(wve.InvalidParameter, "invalid body scheme")),
+		}, nil
+	}
 	resp, err := iapi.CreateAttestation(ctx, params)
 	if err != nil {
 		return &pb.CreateAttestationResponse{
@@ -262,6 +267,35 @@ func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationPar
 		}, nil
 	}
 	hi := iapi.KECCAK256.Instance(resp.DER)
+
+	if p.Publish {
+		rvp, err := iapi.ParseAttestation(ctx, &iapi.PParseAttestation{
+			DER: resp.DER,
+		})
+		if err != nil {
+			return &pb.CreateAttestationResponse{
+				Error: ToError(err),
+			}, nil
+		}
+		if rvp.IsMalformed {
+			return &pb.CreateAttestationResponse{
+				Error: ToError(wve.Err(wve.InternalError, "attestation is malformed")),
+			}, nil
+		}
+		hi, uerr := iapi.SI().PutAttestation(ctx, subLoc, rvp.Attestation)
+		if uerr != nil {
+			return &pb.CreateAttestationResponse{
+				Error: ToError(wve.ErrW(wve.StorageError, "could not put attestation", uerr)),
+			}, nil
+		}
+
+		uerr = iapi.SI().Enqueue(ctx, subLoc, ent.Keccak256HI(), hi)
+		if uerr != nil {
+			return &pb.CreateAttestationResponse{
+				Error: ToError(wve.ErrW(wve.StorageError, "could not enqueue attestation", uerr)),
+			}, nil
+		}
+	}
 	return &pb.CreateAttestationResponse{
 		DER:         resp.DER,
 		VerifierKey: resp.VerifierKey,
@@ -662,17 +696,20 @@ func (e *EAPI) ResolveHash(ctx context.Context, p *pb.ResolveHashParams) (*pb.Re
 		Error: ToError(wve.Err(wve.LookupFailure, "no objects found")),
 	}, nil
 }
-func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb.BuildRTreeResponse, error) {
+func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeProofParams) (*pb.BuildRTreeProofResponse, error) {
 	eng, werr := e.getEngine(ctx, p.Perspective)
 	if werr != nil {
-		return &pb.BuildRTreeResponse{
+		return &pb.BuildRTreeProofResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
 		}, nil
 	}
+	if len(p.SubjectHash) == 0 {
+		p.SubjectHash = eng.Perspective().Entity.Keccak256HI().Multihash()
+	}
 	spol := serdes.RTreePolicy{}
-	ehash := iapi.HashSchemeInstanceFromMultihash(p.RtreeNamespace)
+	ehash := iapi.HashSchemeInstanceFromMultihash(p.Namespace)
 	if !ehash.Supported() {
-		return &pb.BuildRTreeResponse{
+		return &pb.BuildRTreeProofResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "bad namespace", werr)),
 		}, nil
 	}
@@ -684,7 +721,7 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	for _, st := range p.Statements {
 		pset := iapi.HashSchemeInstanceFromMultihash(st.PermissionSet)
 		if !pset.Supported() {
-			return &pb.BuildRTreeResponse{
+			return &pb.BuildRTreeProofResponse{
 				Error: ToError(wve.ErrW(wve.InvalidParameter, "bad permissionset", werr)),
 			}, nil
 		}
@@ -723,11 +760,11 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 	tb.Build(msgs)
 	sol := tb.Result()
 	if sol == nil {
-		return &pb.BuildRTreeResponse{
-			Error: ToError(wve.Err(wve.NoProofFound, "could find a proof")),
+		return &pb.BuildRTreeProofResponse{
+			Error: ToError(wve.Err(wve.NoProofFound, "couldn't find a proof")),
 		}, nil
 	}
-	resp := &pb.BuildRTreeResponse{
+	resp := &pb.BuildRTreeProofResponse{
 		Error: nil,
 	}
 	formalProof := serdes.WaveExplicitProof{}
@@ -762,7 +799,7 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 		if _, ok := entities[attesterhi.MultihashString()]; !ok {
 			entity, validity, err := eng.LookupEntity(ctx, attesterhi, attesterloc)
 			if err != nil || !validity.Valid {
-				return &pb.BuildRTreeResponse{
+				return &pb.BuildRTreeProofResponse{
 					Error: ToError(wve.Err(wve.NoProofFound, "proof expired while building")),
 				}, nil
 			}
@@ -776,7 +813,7 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeParams) (*pb
 		subjecthi, subjectloc := edge.LRes.Attestation.Subject()
 		entity, validity, err := eng.LookupEntity(ctx, subjecthi, subjectloc)
 		if err != nil || !validity.Valid {
-			return &pb.BuildRTreeResponse{
+			return &pb.BuildRTreeProofResponse{
 				Error: ToError(wve.Err(wve.NoProofFound, "proof expired while building")),
 			}, nil
 		}

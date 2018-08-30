@@ -29,6 +29,9 @@ type UnsupportedPolicySchemeInstance struct {
 	SerdesForm asn1.External
 }
 
+func (ps *UnsupportedPolicySchemeInstance) CheckValid() error {
+	return fmt.Errorf("Unsupported policy scheme is invalid")
+}
 func (ps *UnsupportedPolicySchemeInstance) Supported() bool {
 	return false
 }
@@ -57,6 +60,12 @@ type TrustLevelPolicy struct {
 	Trust      int
 }
 
+func (ps *TrustLevelPolicy) CheckValid() error {
+	if ps.Trust > 0 && ps.Trust <= 5 {
+		return nil
+	}
+	return fmt.Errorf("invalid trust level")
+}
 func (ps *TrustLevelPolicy) Supported() bool {
 	return true
 }

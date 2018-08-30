@@ -133,7 +133,7 @@ func request_WAVE_SyncStatus_0(ctx context.Context, marshaler runtime.Marshaler,
 }
 
 func request_WAVE_BuildRTreeProof_0(ctx context.Context, marshaler runtime.Marshaler, client WAVEClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq BuildRTreeParams
+	var protoReq BuildRTreeProofParams
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
