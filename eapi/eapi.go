@@ -616,6 +616,22 @@ func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.Ve
 		}
 		proof.Paths[idx] = prp
 	}
+
+	if p.RequiredRTreePolicy != nil {
+		reqpolicy, err := e.ConvertPolicy(&pb.Policy{RTreePolicy: p.RequiredRTreePolicy})
+		if err != nil {
+			return &pb.VerifyProofResponse{
+				Error: ToError(wve.Err(wve.ProofInvalid, "could not parse required rtree policy")),
+			}, nil
+		}
+		rtreereq := reqpolicy.(*iapi.RTreePolicy)
+		isSubset := rtreereq.IsSubsetOf(resp.Policy)
+		if !isSubset {
+			return &pb.VerifyProofResponse{
+				Error: ToError(wve.Err(wve.ProofInvalid, "proof is well formed but grants insufficient permissions")),
+			}, nil
+		}
+	}
 	return &pb.VerifyProofResponse{
 		Result: &proof,
 	}, nil
@@ -703,6 +719,18 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeProofParams)
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
 		}, nil
 	}
+
+	if p.ResyncFirst {
+		uerr := eng.ResyncEntireGraph(ctx)
+		if uerr != nil {
+			return &pb.BuildRTreeProofResponse{
+				Error: ToError(wve.ErrW(wve.UnknownError, "could not sync graph", uerr)),
+			}, nil
+		}
+		waitchan := eng.WaitForEmptySyncQueue()
+		<-waitchan
+	}
+
 	if len(p.SubjectHash) == 0 {
 		p.SubjectHash = eng.Perspective().Entity.Keccak256HI().Multihash()
 	}

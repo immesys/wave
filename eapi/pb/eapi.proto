@@ -461,6 +461,7 @@ message BuildRTreeProofParams {
   bytes subjectHash = 2;
   bytes namespace = 3;
   repeated RTreePolicyStatement statements = 4;
+  bool resyncFirst = 5;
 }
 message BuildRTreeProofResponse {
   Error error = 1;
@@ -468,7 +469,8 @@ message BuildRTreeProofResponse {
   bytes proofDER = 3;
 }
 message VerifyProofParams {
-  bytes proofDER = 1;
+  bytes       proofDER = 1;
+  RTreePolicy requiredRTreePolicy = 2;
 }
 message VerifyProofResponse {
   Error error = 1;

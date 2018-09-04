@@ -720,6 +720,10 @@
           "items": {
             "$ref": "#/definitions/pbRTreePolicyStatement"
           }
+        },
+        "resyncFirst": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },
@@ -1620,6 +1624,9 @@
         "proofDER": {
           "type": "string",
           "format": "byte"
+        },
+        "requiredRTreePolicy": {
+          "$ref": "#/definitions/pbRTreePolicy"
         }
       }
     },

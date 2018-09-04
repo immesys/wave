@@ -24,6 +24,10 @@ func HashSchemeInstanceEqual(lhs HashSchemeInstance, rhs HashSchemeInstance) boo
 	return bytes.Equal(lhs.Value(), rhs.Value()) && lhs.OID().Equal(rhs.OID())
 }
 func HashSchemeInstanceFromMultihash(mh []byte) HashSchemeInstance {
+	bd, err := base64.URLEncoding.DecodeString(string(mh))
+	if err == nil {
+		mh = bd
+	}
 	mhi, err := multihash.Decode(mh)
 	if err != nil {
 		return &UnsupportedHashSchemeInstance{}

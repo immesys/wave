@@ -151,6 +151,9 @@ const InvalidParameter = 304
 const InvalidMultihash = 305
 const GRPCNotFound = 500
 const GRPCAlreadyExists = 600
+
+//700 errors reserved for WaveMQ
+
 const GRPCFailedPrecondition = 900
 const UnsupportedHashScheme = 901
 const UnsupportedBodyScheme = 902
