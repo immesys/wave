@@ -572,6 +572,68 @@ func (e *EAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncComp
 	return nil
 }
 
+func (e *EAPI) VerifySignature(ctx context.Context, p *pb.VerifySignatureParams) (*pb.VerifySignatureResponse, error) {
+	eng := e.getEngineNoPerspective()
+	dctx := engine.NewEngineDecryptionContext(eng)
+
+	loc, err := LocationSchemeInstance(p.SignerLocation)
+	if err != nil {
+		return &pb.VerifySignatureResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not parse signer location", err)),
+		}, nil
+	}
+	if loc == nil {
+		loc = iapi.SI().DefaultLocation(ctx)
+	}
+	signer := iapi.HashSchemeInstanceFromMultihash(p.Signer)
+	if !signer.Supported() {
+		return &pb.VerifySignatureResponse{
+			Error: ToError(wve.Err(wve.InvalidParameter, "could not parse signer")),
+		}, nil
+	}
+
+	_, werr := iapi.VerifySignature(ctx, &iapi.PVerifySignature{
+		DER:            p.Signature,
+		Content:        p.Content,
+		SignerLocation: loc,
+		Signer:         signer,
+		VCtx:           dctx,
+	})
+
+	if werr != nil {
+		return &pb.VerifySignatureResponse{
+			Error: ToError(werr),
+		}, nil
+	}
+	return &pb.VerifySignatureResponse{}, nil
+}
+
+func (e *EAPI) Sign(ctx context.Context, p *pb.SignParams) (*pb.SignResponse, error) {
+	eng, werr := e.getEngine(ctx, p.Perspective)
+	if werr != nil {
+		return &pb.SignResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
+		}, nil
+	}
+	sig := serdes.Signature{}
+	key := eng.Perspective().MessageSigningKey()
+	sig.Scheme = serdes.EntityEd25519OID
+	sigbin, err := key.(*iapi.EntitySecretKey_Ed25519).SignMessage(ctx, p.Content)
+	if err != nil {
+		return &pb.SignResponse{
+			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not sign", err)),
+		}, nil
+	}
+	sig.Signature = sigbin
+	der, err := asn1.Marshal(sig)
+	if err != nil {
+		panic(err)
+	}
+	return &pb.SignResponse{
+		Signature: der,
+	}, nil
+}
+
 func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.VerifyProofResponse, error) {
 	eng := e.getEngineNoPerspective()
 	dctx := engine.NewEngineDecryptionContext(eng)

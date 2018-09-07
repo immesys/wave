@@ -137,8 +137,37 @@ service WAVE {
       body: "*"
     };
   }
+  rpc Sign(SignParams) returns (SignResponse) {
+    option (google.api.http) = {
+      post: "/v1/Sign"
+      body: "*"
+    };
+  }
+  rpc VerifySignature(VerifySignatureParams) returns (VerifySignatureResponse) {
+    option (google.api.http) = {
+      post: "/v1/VerifySignature"
+      body: "*"
+    };
+  }
 }
 
+message SignParams {
+  Perspective perspective = 1;
+  bytes content = 2;
+}
+message SignResponse {
+  Error error = 1;
+  bytes signature = 2;
+}
+message VerifySignatureParams {
+  bytes signer = 1;
+  Location signerLocation = 2;
+  bytes signature = 3;
+  bytes content = 4;
+}
+message VerifySignatureResponse {
+  Error error = 1;
+}
 message CompactProofParams {
   bytes DER = 1;
 }

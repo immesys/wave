@@ -63,6 +63,53 @@ func TestCreateEntity(t *testing.T) {
 	require.Nil(t, rv.Error)
 }
 
+func TestSign(t *testing.T) {
+	ctx := context.Background()
+	_, sec, hash := createAndPublishEntity(t)
+	content := make([]byte, 32)
+	sig, err := eapi.Sign(ctx, &pb.SignParams{
+		Perspective: &pb.Perspective{
+			EntitySecret: &pb.EntitySecret{
+				DER: sec,
+			},
+		},
+		Content: content,
+	})
+	require.NoError(t, err)
+	require.Nil(t, sig.Error)
+	resp, err := eapi.VerifySignature(ctx, &pb.VerifySignatureParams{
+		Signer:    hash,
+		Signature: sig.Signature,
+		Content:   content,
+	})
+	require.NoError(t, err)
+	require.Nil(t, resp.Error)
+}
+
+func TestSignFail(t *testing.T) {
+	ctx := context.Background()
+	_, sec, hash := createAndPublishEntity(t)
+	content := make([]byte, 32)
+	sig, err := eapi.Sign(ctx, &pb.SignParams{
+		Perspective: &pb.Perspective{
+			EntitySecret: &pb.EntitySecret{
+				DER: sec,
+			},
+		},
+		Content: content,
+	})
+	require.NoError(t, err)
+	require.Nil(t, sig.Error)
+	content[0] ^= 0x1
+	resp, err := eapi.VerifySignature(ctx, &pb.VerifySignatureParams{
+		Signer:    hash,
+		Signature: sig.Signature,
+		Content:   content,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp.Error)
+}
+
 func TestCreateEntityNoPassphrase(t *testing.T) {
 	ctx := context.Background()
 	src, err := eapi.CreateEntity(ctx, &pb.CreateEntityParams{})

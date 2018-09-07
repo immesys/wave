@@ -110,6 +110,14 @@ type Entity struct {
 	Extensions    []ExtensionSchemeInstance
 }
 
+func (e *Entity) MessageVerifyingKey() EntityKeySchemeInstance {
+	for _, k := range e.Keys {
+		if k.HasCapability(CapSigning) {
+			return k
+		}
+	}
+	return &UnsupportedKeyScheme{}
+}
 func (e *Entity) Hash(scheme HashScheme) HashSchemeInstance {
 	der, err := e.DER()
 	if err != nil {
@@ -249,6 +257,14 @@ func (e *EntitySecrets) NameDeclarationRevocationDetails(nd *NameDeclaration) ([
 }
 func (e *EntitySecrets) PrimarySigningKey() EntitySecretKeySchemeInstance {
 	return e.Keyring[0]
+}
+func (e *EntitySecrets) MessageSigningKey() EntitySecretKeySchemeInstance {
+	for _, k := range e.Keyring {
+		if k.Public().HasCapability(CapSigning) {
+			return k
+		}
+	}
+	return &UnsupportedSecretKeyScheme{}
 }
 func (e *EntitySecrets) WR1LabelKey(ctx context.Context, namespace []byte) (EntitySecretKeySchemeInstance, error) {
 	for _, kr := range e.Keyring {

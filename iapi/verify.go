@@ -45,6 +45,37 @@ func CompactProof(ctx context.Context, p *PCompactProof) (*RCompactProof, wve.WV
 	}, nil
 }
 
+type PVerifySignature struct {
+	DER            []byte
+	Content        []byte
+	Signer         HashSchemeInstance
+	SignerLocation LocationSchemeInstance
+	VCtx           VerificationContext
+}
+type RVerifySignature struct {
+	Okay bool
+}
+
+func VerifySignature(ctx context.Context, p *PVerifySignature) (*RVerifySignature, wve.WVE) {
+	sig := serdes.Signature{}
+	rest, err := asn1.Unmarshal(p.DER, &sig)
+	if err != nil {
+		return nil, wve.Err(wve.ProofInvalid, "asn1 is malformed")
+	}
+	if len(rest) != 0 {
+		return nil, wve.Err(wve.ProofInvalid, "trailing bytes")
+	}
+	signer, err := p.VCtx.EntityByHashLoc(ctx, p.Signer, p.SignerLocation)
+	if err != nil {
+		return nil, wve.ErrW(wve.LookupFailure, "could not resolve signer", err)
+	}
+	uerr := signer.MessageVerifyingKey().VerifyMessage(ctx, p.Content, sig.Signature)
+	if uerr != nil {
+		return nil, wve.ErrW(wve.InvalidSignature, "signature invalid", uerr)
+	}
+	return &RVerifySignature{true}, nil
+}
+
 type PVerifyRTreeProof struct {
 	DER  []byte
 	VCtx VerificationContext

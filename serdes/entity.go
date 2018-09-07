@@ -54,3 +54,8 @@ type PartitionChange struct {
 	Index   int
 	Content []byte
 }
+
+type Signature struct {
+	Scheme    asn1.ObjectIdentifier
+	Signature []byte
+}

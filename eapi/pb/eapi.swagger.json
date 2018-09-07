@@ -514,6 +514,32 @@
         ]
       }
     },
+    "/v1/Sign": {
+      "post": {
+        "operationId": "Sign",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbSignResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbSignParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
     "/v1/SyncStatus": {
       "post": {
         "operationId": "SyncStatus",
@@ -558,6 +584,32 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/pbVerifyProofParams"
+            }
+          }
+        ],
+        "tags": [
+          "WAVE"
+        ]
+      }
+    },
+    "/v1/VerifySignature": {
+      "post": {
+        "operationId": "VerifySignature",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/pbVerifySignatureResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbVerifySignatureParams"
             }
           }
         ],
@@ -1564,6 +1616,30 @@
         }
       }
     },
+    "pbSignParams": {
+      "type": "object",
+      "properties": {
+        "perspective": {
+          "$ref": "#/definitions/pbPerspective"
+        },
+        "content": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbSignResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
+        },
+        "signature": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
     "pbStorageDriverStatus": {
       "type": "object",
       "properties": {
@@ -1638,6 +1714,34 @@
         },
         "result": {
           "$ref": "#/definitions/pbProof"
+        }
+      }
+    },
+    "pbVerifySignatureParams": {
+      "type": "object",
+      "properties": {
+        "signer": {
+          "type": "string",
+          "format": "byte"
+        },
+        "signerLocation": {
+          "$ref": "#/definitions/pbLocation"
+        },
+        "signature": {
+          "type": "string",
+          "format": "byte"
+        },
+        "content": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "pbVerifySignatureResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/pbError"
         }
       }
     }

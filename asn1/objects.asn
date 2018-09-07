@@ -429,6 +429,12 @@ BEGIN
     signature OCTET STRING
   }
 
+  Signature ::= SEQUENCE {
+    -- use the key scheme as an identifier
+    scheme OBJECT IDENTIFIER,
+    signature OCTET STRING
+  }
+
   SignedOuterKey ::= SEQUENCE {
     tbs SEQUENCE {
       outerSignatureScheme OBJECT IDENTIFIER,
