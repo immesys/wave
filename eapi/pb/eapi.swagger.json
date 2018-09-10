@@ -983,6 +983,10 @@
         "ciphertext": {
           "type": "string",
           "format": "byte"
+        },
+        "resyncFirst": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },

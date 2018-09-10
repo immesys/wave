@@ -341,6 +341,7 @@ message EncryptMessageResponse {
 message DecryptMessageParams {
   Perspective perspective = 1;
   bytes ciphertext = 2;
+  bool resyncFirst = 3;
 }
 message DecryptMessageResponse {
   Error error = 1;

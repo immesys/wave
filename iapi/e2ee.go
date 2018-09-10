@@ -12,7 +12,6 @@ import (
 )
 
 type PEncryptMessage struct {
-	Encryptor *EntitySecrets
 	//Direct encryption key
 	Subject *Entity
 	//OAQUE encryption

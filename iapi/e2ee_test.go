@@ -10,7 +10,7 @@ import (
 )
 
 func TestDirectE2EE(t *testing.T) {
-	source, werr := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
+	_, werr := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
 	require.NoError(t, werr)
 	dst, werr := NewParsedEntitySecrets(context.Background(), &PNewEntity{})
 	require.NoError(t, werr)
@@ -20,9 +20,8 @@ func TestDirectE2EE(t *testing.T) {
 	rand.Read(msg)
 
 	r, err := EncryptMessage(ctx, &PEncryptMessage{
-		Encryptor: source.EntitySecrets,
-		Subject:   dst.Entity,
-		Content:   msg,
+		Subject: dst.Entity,
+		Content: msg,
 	})
 	require.NoError(t, err)
 
@@ -47,7 +46,6 @@ func TestOAQUEE2EE(t *testing.T) {
 	msg := make([]byte, 512)
 	rand.Read(msg)
 	r, err := EncryptMessage(ctx, &PEncryptMessage{
-		Encryptor:         source.EntitySecrets,
 		Namespace:         source.Entity,
 		NamespaceLocation: NewLocationSchemeInstanceURL("test", 1),
 		Content:           msg,

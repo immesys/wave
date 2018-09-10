@@ -951,21 +951,8 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeProofParams)
 }
 
 func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (*pb.EncryptMessageResponse, error) {
-	eng, err := e.getEngine(ctx, p.Perspective)
-	if err != nil {
-		return &pb.EncryptMessageResponse{
-			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
-		}, nil
-	}
-	secret, err := ConvertEntitySecret(ctx, p.Perspective.EntitySecret)
-	if err != nil {
-		return &pb.EncryptMessageResponse{
-			Error: ToError(err),
-		}, nil
-	}
-	params := iapi.PEncryptMessage{
-		Encryptor: secret,
-	}
+	eng := e.getEngineNoPerspective()
+	params := iapi.PEncryptMessage{}
 	if len(p.SubjectHash) != 0 {
 		subHash := iapi.HashSchemeInstanceFromMultihash(p.SubjectHash)
 		subLoc, err := LocationSchemeInstance(p.SubjectLocation)
@@ -1039,6 +1026,18 @@ func (e *EAPI) DecryptMessage(ctx context.Context, p *pb.DecryptMessageParams) (
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
 		}, nil
 	}
+
+	if p.ResyncFirst {
+		uerr := eng.ResyncEntireGraph(ctx)
+		if uerr != nil {
+			return &pb.DecryptMessageResponse{
+				Error: ToError(wve.ErrW(wve.UnknownError, "could not sync graph", uerr)),
+			}, nil
+		}
+		waitchan := eng.WaitForEmptySyncQueue()
+		<-waitchan
+	}
+
 	secret, err := ConvertEntitySecret(ctx, p.Perspective.EntitySecret)
 	if err != nil {
 		return &pb.DecryptMessageResponse{
