@@ -3,6 +3,7 @@ BEGIN
 
   -- When saved in a file or sent over the wire, wrap the object with a
   -- type identifier
+  WaveWireObject ::= EXTERNAL
 
   -- A set of policy statements about an Entity, potentially granting
   -- permissions or establishing facts
