@@ -279,6 +279,9 @@ func (e *EAPI) ConvertPolicy(in *pb.Policy) (iapi.PolicySchemeInstance, wve.WVE)
 		}
 
 		ehash := iapi.HashSchemeInstanceFromMultihash(in.RTreePolicy.Namespace)
+		if !ehash.Supported() {
+			return nil, wve.Err(wve.InvalidParameter, "Policy namespace hash is invalid")
+		}
 		ext := ehash.CanonicalForm()
 		spol.Namespace = *ext
 
