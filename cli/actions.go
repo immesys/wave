@@ -211,7 +211,15 @@ func actionRTGrant(c *cli.Context) error {
 			fmt.Printf("err 2 expected arguments of form permset:perm[,perm,perm...]@namespace/resource\n")
 			os.Exit(1)
 		}
-		pset := resolveEntityNameOrHashOrFile(conn, perspective, firstsplit[0], "bad permission set")
+		//Special cases
+		var pset []byte
+		if firstsplit[0] == "wavemq" {
+			pset = []byte("\x1b\x20\x14\x33\x74\xb3\x2f\xd2\x74\x39\x54\xfe\x47\x86\xf6\xcf\x86\xd4\x03\x72\x0f\x5e\xc4\x42\x36\xb6\x58\xc2\x6a\x1e\x68\x0f\x6e\x01")
+		} else if firstsplit[0] == "wave" {
+			pset = []byte("\x1b\x20\x19\x49\x54\xe8\x6e\xeb\x8f\x91\xff\x98\x3a\xcc\x56\xe6\xc8\x4a\xe2\x9a\x90\x7c\xe7\xe7\x63\x8e\x86\x57\xd5\x14\x99\xb1\x88\xa4")
+		} else {
+			pset = resolveEntityNameOrHashOrFile(conn, perspective, firstsplit[0], "bad permission set")
+		}
 		perms := strings.SplitN(firstsplit[1], ",", -1)
 		nsrez := strings.SplitN(atsplit[1], "/", 2)
 		if namespace == nil {
