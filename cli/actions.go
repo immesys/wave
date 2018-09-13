@@ -711,11 +711,11 @@ func actionRTProve(c *cli.Context) error {
 		os.Exit(1)
 	}
 	perspective.Location = subjectresp.Location
-	params := &pb.BuildRTreeParams{
-		Perspective:    perspective,
-		SubjectHash:    inspectresponse.Entity.Hash,
-		RtreeNamespace: namespace,
-		Statements:     statements,
+	params := &pb.BuildRTreeProofParams{
+		Perspective: perspective,
+		SubjectHash: inspectresponse.Entity.Hash,
+		Namespace:   namespace,
+		Statements:  statements,
 	}
 
 	resp, err := conn.BuildRTreeProof(context.Background(), params)
