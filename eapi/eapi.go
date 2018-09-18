@@ -637,8 +637,15 @@ func (e *EAPI) Sign(ctx context.Context, p *pb.SignParams) (*pb.SignResponse, er
 func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.VerifyProofResponse, error) {
 	eng := e.getEngineNoPerspective()
 	dctx := engine.NewEngineDecryptionContext(eng)
+
+	der := p.ProofDER
+	pblock, _ := pem.Decode(p.ProofDER)
+	if pblock != nil {
+		der = pblock.Bytes
+	}
+
 	resp, werr := iapi.VerifyRTreeProof(ctx, &iapi.PVerifyRTreeProof{
-		DER:  p.ProofDER,
+		DER:  der,
 		VCtx: dctx,
 	})
 	if werr != nil {

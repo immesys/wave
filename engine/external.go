@@ -243,6 +243,7 @@ func (e *Engine) WaitForEmptySyncQueue() chan struct{} {
 }
 
 func (e *Engine) ResyncEntireGraph(ctx context.Context) error {
+	fmt.Printf("XX RESYNC\n")
 	ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
 	//fmt.Printf("TOP LEVEL RESYNC: %q\n", e.perspective.Entity.Keccak256HI().MultihashString())
 	//fmt.Printf("TOP LEVEL RESYNC2: %q\n", e.ctx.Value(consts.PerspectiveKey).(*iapi.EntitySecrets).Entity.Keccak256HI().MultihashString())
@@ -454,6 +455,7 @@ func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Va
 	}, nil
 }
 func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, error) {
+	fmt.Printf("XX CHECK ENTITY\n")
 	if ent.Expired() {
 		return &Validity{Valid: false, Expired: true, Message: "Entity expired"}, nil
 	}
@@ -472,6 +474,7 @@ func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, 
 }
 
 func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, *Validity, error) {
+	fmt.Printf("XX LookupEntity\n")
 	if e.perspective != nil {
 		ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
 		ent, st, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
