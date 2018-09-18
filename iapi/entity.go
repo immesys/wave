@@ -186,7 +186,7 @@ func parseEntityFromObject(ctx context.Context, en *serdes.WaveEntity) (*Entity,
 		lkey := key
 		ks, err := EntityKeySchemeInstanceFor(&lkey)
 		if err != nil {
-			panic(err)
+			return nil, wve.ErrW(wve.MalformedObject, "could not parse entity", err)
 		}
 		rv.Keys = append(rv.Keys, ks)
 	}
