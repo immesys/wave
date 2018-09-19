@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/immesys/asn1"
@@ -14,20 +15,23 @@ import (
 	"github.com/immesys/wave/policyutils/rtree"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
+	"golang.org/x/crypto/sha3"
 	"google.golang.org/grpc"
 )
 
 type EAPI struct {
-	engines  map[[32]byte]*engine.Engine
-	npengine *engine.Engine
-	s        *grpc.Server
-	state    iapi.WaveState
+	//engines  map[[32]byte]*engine.Engine
+	npengine  *engine.Engine
+	s         *grpc.Server
+	state     iapi.WaveState
+	escache   map[[32]byte]*engine.Engine
+	escachemu sync.RWMutex
 }
 
 func NewEAPI(state iapi.WaveState) *EAPI {
 	api := &EAPI{
-		engines: make(map[[32]byte]*engine.Engine),
 		state:   state,
+		escache: make(map[[32]byte]*engine.Engine),
 	}
 	npengine, err := engine.NewEngineWithNoPerspective(context.Background(), state, iapi.SI())
 	if err != nil {
@@ -51,6 +55,17 @@ func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	if in == nil {
 		return nil, wve.Err(wve.InvalidParameter, "missing perspective parameter")
 	}
+	h := sha3.NewShake256()
+	h.Write(in.EntitySecret.DER)
+	dg := [32]byte{}
+	h.Read(dg[:])
+	e.escachemu.RLock()
+	eng, ok := e.escache[dg]
+	e.escachemu.RUnlock()
+	if ok {
+		return eng, nil
+	}
+
 	secret, err := ConvertEntitySecret(ctx, in.EntitySecret)
 	if err != nil {
 		return nil, err
@@ -62,16 +77,15 @@ func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	if loc == nil {
 		loc = iapi.SI().DefaultLocation(ctx)
 	}
-	id := secret.Entity.ArrayKeccak256()
-	eng, ok := e.engines[id]
-	if !ok {
-		var err error
-		eng, err = engine.NewEngine(context.Background(), e.state, iapi.SI(), secret, loc)
-		if err != nil {
-			panic(err)
-		}
-		e.engines[id] = eng
+
+	eng, uerr := engine.NewEngine(context.Background(), e.state, iapi.SI(), secret, loc)
+	if uerr != nil {
+		panic(uerr)
 	}
+	e.escachemu.Lock()
+	e.escache[dg] = eng
+	e.escachemu.Unlock()
+
 	val, uerr := eng.CheckEntity(ctx, eng.Perspective().Entity)
 	if uerr != nil {
 		return nil, wve.ErrW(wve.InternalError, "could not check perspective entity", uerr)
