@@ -2,8 +2,10 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/iapi"
 )
 
@@ -87,6 +89,7 @@ func (e *Engine) revoked(r iapi.RevocationSchemeInstance) (bool, error) {
 	if isCachedRevocationCheck(r.Id()) {
 		return false, nil
 	}
+
 	ts, err := e.ws.GetRevocationCheck(e.ctx, r.Id())
 	if err != nil {
 		return false, err
@@ -106,6 +109,11 @@ func (e *Engine) revoked(r iapi.RevocationSchemeInstance) (bool, error) {
 	if docheck {
 		isRevoked, err := r.IsRevoked(e.ctx, iapi.SI())
 		if err != nil {
+			if consts.DefaultToUnrevoked {
+				fmt.Printf("WARNING: Got Storage Error: %v APPLYING DEFAULT UNREVOKED\n", err)
+				cacheRevocationCheck(r.Id())
+				return false, nil
+			}
 			return false, err
 		}
 		if !isRevoked {

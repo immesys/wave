@@ -5,11 +5,12 @@ import (
 )
 
 type Configuration struct {
-	Database     string
-	ListenIP     string
-	HTTPListenIP string
-	ListenUnix   string
-	Storage      map[string]map[string]string
+	Database           string
+	ListenIP           string
+	HTTPListenIP       string
+	ListenUnix         string
+	DefaultToUnrevoked bool
+	Storage            map[string]map[string]string
 }
 
 func ParseConfig(file string) (*Configuration, error) {

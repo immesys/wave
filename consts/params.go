@@ -23,3 +23,6 @@ var WAVEMQPSETBytes = "\x1b\x20\x14\x33\x74\xb3\x2f\xd2\x74\x39\x54\xfe\x47\x86\
 //Granting this permission with the wave builtin pset allows the recipient
 //to decrypt end-to-end encrypted messages
 var WaveBuiltinE2EE = "decrypt"
+
+//This can actually be changed
+var DefaultToUnrevoked = false

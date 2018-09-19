@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/eapi"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/localdb/lls"
@@ -52,6 +53,8 @@ func MainWithConfig(c *Configuration) {
 		fmt.Printf("storage overlay error: %v\n", err)
 		os.Exit(1)
 	}
+
+	consts.DefaultToUnrevoked = c.DefaultToUnrevoked
 
 	iapi.InjectStorageInterface(si)
 

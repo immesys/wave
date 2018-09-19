@@ -138,19 +138,18 @@ func (e *Engine) syncLoop() {
 		syncup <- true
 		resolvedEnt, st, err := e.ws.GetEntityByHashSchemeInstanceP(e.ctx, &iapi.HashSchemeInstance_Keccak_256{Val: ent[:]})
 		if err != nil {
-			panic(err)
-		}
-
-		if resolvedEnt == nil {
-			panic("synchronize nil entity?")
-		}
-		if st.ValidActive {
-			//fmt.Printf(">syncE\n")
-			err = e.synchronizeEntity(e.ctx, resolvedEnt)
-			if err != nil {
-				panic(err)
+			fmt.Printf("Failed to synchronize entity: %v\n", err)
+		} else if resolvedEnt == nil {
+			fmt.Printf("Failed to synchronize entity: not found\n")
+		} else {
+			if st.ValidActive {
+				//fmt.Printf(">syncE\n")
+				err = e.synchronizeEntity(e.ctx, resolvedEnt)
+				if err != nil {
+					fmt.Printf("Failed to synchronize entity: %v\n", err)
+				}
+				//fmt.Printf("<syncE\n")
 			}
-			//fmt.Printf("<syncE\n")
 		}
 		e.totalMutex.Lock()
 		e.totalCompletedSyncs++

@@ -8,7 +8,12 @@ database = "/var/lib/wave/db"
 listenIp = "127.0.0.1:777"
 httpListenIp = "127.0.0.1:778"
 
+# If you cannot reach storage, is the entity revoked or not?
+defaultToUnrevoked = false
+
 [storage]
+
+
   # This is the default development server
   [storage.default]
   provider = "http_v1"
