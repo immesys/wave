@@ -60,11 +60,13 @@ func (e *Engine) checkPendingAttestationAndSave(ctx context.Context, d *iapi.Att
 // }
 
 func (e *Engine) checkEntityAndSave(ent *iapi.Entity, v *Validity) (bool, error) {
-	if v.Expired {
-		return false, e.ws.MoveEntityExpiredG(e.ctx, ent)
-	}
-	if v.Revoked {
-		return false, e.ws.MoveEntityRevokedG(e.ctx, ent)
+	if e.perspective != nil {
+		if v.Expired {
+			return false, e.ws.MoveEntityExpiredG(e.ctx, ent)
+		}
+		if v.Revoked {
+			return false, e.ws.MoveEntityRevokedG(e.ctx, ent)
+		}
 	}
 	return v.Valid, nil
 }
@@ -82,6 +84,9 @@ func (e *Engine) checkNameDeclarationAndSave(ctx context.Context, nd *iapi.NameD
 	return false, nil
 }
 func (e *Engine) revoked(r iapi.RevocationSchemeInstance) (bool, error) {
+	if isCachedRevocationCheck(r.Id()) {
+		return false, nil
+	}
 	ts, err := e.ws.GetRevocationCheck(e.ctx, r.Id())
 	if err != nil {
 		return false, err
@@ -104,6 +109,7 @@ func (e *Engine) revoked(r iapi.RevocationSchemeInstance) (bool, error) {
 			return false, err
 		}
 		if !isRevoked {
+			cacheRevocationCheck(r.Id())
 			err := e.ws.AddRevocationCheck(e.ctx, r.Id(), time.Now().UnixNano())
 			if err != nil {
 				return false, err
@@ -112,6 +118,7 @@ func (e *Engine) revoked(r iapi.RevocationSchemeInstance) (bool, error) {
 			return true, nil
 		}
 	}
+	cacheRevocationCheck(r.Id())
 	return false, nil
 }
 

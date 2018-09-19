@@ -136,7 +136,7 @@ func (e *Engine) syncLoop() {
 		delete(queue, ent)
 		//We have our element, tell the reader to start
 		syncup <- true
-		resolvedEnt, st, err := e.ws.GetEntityByHashSchemeInstanceG(e.ctx, &iapi.HashSchemeInstance_Keccak_256{Val: ent[:]})
+		resolvedEnt, st, err := e.ws.GetEntityByHashSchemeInstanceP(e.ctx, &iapi.HashSchemeInstance_Keccak_256{Val: ent[:]})
 		if err != nil {
 			panic(err)
 		}

@@ -12,30 +12,6 @@ import (
 	"github.com/immesys/wave/wve"
 )
 
-//functions that the engine needs from above
-
-//TODO everything needs to be parameterized by "view" which is the controlling entity
-//functions that others use from the engine
-
-//actions that can happen:
-//automated
-/*
-new block:
-  events suggesting VKs have new entries
-  events suggesting new entities
-received proof (learned):
-  decoded dots
-*/
-//user triggered
-/*
-new dot:
-  e.g. from out of band
-entity becomes interesting
-
-
-*/
-// new block arrives:
-
 type Validity struct {
 	//Like if revoked / expired / entExpired etc
 	//shared between entity and dot
@@ -455,7 +431,6 @@ func (e *Engine) CheckAttestation(ctx context.Context, d *iapi.Attestation) (*Va
 	}, nil
 }
 func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, error) {
-	fmt.Printf("XX CHECK ENTITY\n")
 	if ent.Expired() {
 		return &Validity{Valid: false, Expired: true, Message: "Entity expired"}, nil
 	}
@@ -474,39 +449,42 @@ func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, 
 }
 
 func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, *Validity, error) {
-	fmt.Printf("XX LookupEntity\n")
-	if e.perspective != nil {
-		ctx = context.WithValue(ctx, consts.PerspectiveKey, e.perspective)
-		ent, st, err := e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
+	var err error
+	ent := getCachedEntity(hash)
+	if ent == nil {
+		ent, err = e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
 		if err != nil {
 			return nil, nil, err
 		}
-		//Other checks are easier, so just redo them
 		if ent != nil {
-			if st.Revoked {
-				return ent, &Validity{Revoked: true, Message: "entity has been revoked"}, nil
-			}
-			if st.Expired {
-				return ent, &Validity{Expired: true, Message: "entity has expired"}, nil
-			}
-
-			val, err := e.CheckEntity(ctx, ent)
-			if err != nil {
-				return nil, nil, err
-			}
-			_, err = e.checkEntityAndSave(ent, val)
-			if err != nil {
-				return nil, nil, err
-			}
-			return ent, val, err
+			cacheEntity(ent)
 		}
 	}
 
+	//Other checks are easier, so just redo them
+	if ent != nil {
+		val, err := e.CheckEntity(ctx, ent)
+		if err != nil {
+			return nil, nil, err
+		}
+		_, err = e.checkEntityAndSave(ent, val)
+		if err != nil {
+			return nil, nil, err
+		}
+		return ent, val, err
+	}
+
 	//Get it from storage
-	ent, err := e.st.GetEntity(ctx, loc, hash)
+	ent, err = e.st.GetEntity(ctx, loc, hash)
 	if err != nil || ent == nil {
 		return nil, nil, err
 	}
+
+	if err := e.ws.InsertGlobalEntity(ctx, ent); err != nil {
+		return nil, nil, err
+	}
+
+	cacheEntity(ent)
 
 	val, err := e.CheckEntity(ctx, ent)
 	//fmt.Printf("validity in lookup: %v\n", val)

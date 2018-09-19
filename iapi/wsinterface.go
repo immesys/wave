@@ -157,7 +157,11 @@ type WaveState interface {
 
 	//This only returns entities we happen to have because they were interesting
 	//to someone, so the caller must handle a nil,nil result and go hit the chain
-	GetEntityByHashSchemeInstanceG(ctx context.Context, hsh HashSchemeInstance) (*Entity, *State, error)
+	GetEntityByHashSchemeInstanceP(ctx context.Context, hsh HashSchemeInstance) (*Entity, *State, error)
+
+	GetEntityByHashSchemeInstanceG(ctx context.Context, hsh HashSchemeInstance) (*Entity, error)
+
+	InsertGlobalEntity(ctx context.Context, e *Entity) error
 }
 
 //TODO

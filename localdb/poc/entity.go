@@ -50,6 +50,33 @@ func (p *poc) loadEntity(ctx context.Context, hash []byte) (*EntityState, error)
 	return es, nil
 }
 
+func (p *poc) saveGlobalEntity(ctx context.Context, e *iapi.Entity) error {
+	h := e.Keccak256()
+	key := p.GKey(ctx, "gentity"+ToB64(h))
+	ba, err := marshalGob(e)
+	if err != nil {
+		return err
+	}
+	return p.u.Store(ctx, key, ba)
+}
+
+func (p *poc) loadGlobalEntity(ctx context.Context, hash []byte) (*iapi.Entity, error) {
+	key := p.GKey(ctx, "gentity"+ToB64(hash))
+	ba, err := p.u.Load(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	if ba == nil {
+		return nil, nil
+	}
+	e := &iapi.Entity{}
+	err = unmarshalGob(ba, e)
+	if err != nil {
+		panic(err)
+	}
+	return e, nil
+}
+
 /*
 func (p *poc) moveEntity(ctx context.Context, ent *iapi.Entity, state int) error {
 	es := &EntityState{
@@ -227,7 +254,7 @@ func (p *poc) MoveEntityExpiredG(ctx context.Context, ent *iapi.Entity) error {
 	es.State = StateExpired
 	return p.saveEntityState(ctx, es)
 }
-func (p *poc) GetEntityByHashSchemeInstanceG(ctx context.Context, hi iapi.HashSchemeInstance) (*iapi.Entity, *iapi.State, error) {
+func (p *poc) GetEntityByHashSchemeInstanceP(ctx context.Context, hi iapi.HashSchemeInstance) (*iapi.Entity, *iapi.State, error) {
 	hash := keccakFromHI(hi)
 	es, err := p.loadEntity(ctx, hash)
 	if err != nil {
@@ -242,4 +269,18 @@ func (p *poc) GetEntityByHashSchemeInstanceG(ctx context.Context, hi iapi.HashSc
 		Revoked:     es.State == StateRevoked || es.State == StateEntRevoked,
 	}
 	return es.Entity, rvs, nil
+}
+func (p *poc) GetEntityByHashSchemeInstanceG(ctx context.Context, hi iapi.HashSchemeInstance) (*iapi.Entity, error) {
+	hash := keccakFromHI(hi)
+	e, err := p.loadGlobalEntity(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	if e == nil {
+		return nil, nil
+	}
+	return e, nil
+}
+func (p *poc) InsertGlobalEntity(ctx context.Context, e *iapi.Entity) error {
+	return p.saveGlobalEntity(ctx, e)
 }
