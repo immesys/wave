@@ -17,7 +17,7 @@ import (
 	"github.com/ucbrise/starwave/crypto/cryptutils"
 	"github.com/ucbrise/starwave/crypto/oaque"
 	"github.com/ucbrise/vuvuzelacrypto/ibe"
-	"vuvuzela.io/crypto/bn256"
+	bn256 "vuvuzela.io/crypto/bn256"
 
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/ed25519"

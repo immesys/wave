@@ -31,7 +31,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/bouk/monkey"
+  name = "bou.ke/monkey"
 
 [[constraint]]
   name = "github.com/davecgh/go-spew"

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bouk/monkey"
+	"bou.ke/monkey"
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/eapi/pb"
 	"github.com/immesys/wave/iapi"

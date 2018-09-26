@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bouk/monkey"
+	"bou.ke/monkey"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/localdb/lls"
 	"github.com/immesys/wave/localdb/poc"

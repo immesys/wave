@@ -278,9 +278,6 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				Attestation:       res.A,
 				DecryptionContext: dctx,
 			})
-			if err != nil {
-				panic(err)
-			}
 
 			//fmt.Printf("MPLA 4\n")
 			//The dot will either
@@ -289,7 +286,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 			// move to active
 			//if it is moving to labelled it must happen while we still hold the
 			//partitionmutex
-			if rpa.IsMalformed {
+			if rpa.IsMalformed || err != nil {
 				e.partitionMutex.Unlock()
 				//fmt.Printf("MPLA 5\n")
 				if err := e.ws.MoveAttestationMalformedP(e.ctx, res.A.Keccak256HI()); err != nil {
@@ -297,6 +294,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 				}
 				continue
 			}
+
 			if rpa.Attestation == nil {
 				e.partitionMutex.Unlock()
 				panic("nil attestation not malformed?")
