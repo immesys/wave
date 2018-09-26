@@ -1,0 +1,31 @@
+syntax = "proto3";
+//Version 1.0
+package vldmpb;
+
+service VLDM {
+
+  rpc GetObject(GetObjectParams) returns (GetObjectResponse);
+  rpc PutObject(PutObjectParams) returns (PutObjectResponse);
+  rpc IterateQueue(IterateQueueParams) returns (IterateQueueResponse);
+  rpc AddToQueue(AddToQueueParams) returns (AddToQueueResponse);
+  
+  //rpc SubscribeMapHeads(SubscribeParams) returns (stream MapHead);
+  //rpc SubmitSignedMapHead(SubmitParams) returns (SubmitResponse);
+
+}
+
+r.Post("/v1/obj", PutHandler)
+r.Get("/v1/info", InfoHandler)
+r.Get("/v1/obj/{hash}", GetHandler)
+r.Get("/v1/queue/{id}", IterateHandler)
+r.Post("/v1/queue/{id}", EnqueueHandler)
+r.Get("/v1/audit/oplog/consistency", OplogConsistencyHandler)
+r.Get("/v1/audit/oplog/sth", OplogSTHHandler)
+r.Get("/v1/audit/oplog/item", OplogItemHandler)
+//message SubscribeParams {
+//  uint64 LastVerifiedLogRevision = 1;
+//}
+
+message MapperMetadata {
+  int64 highest_fully_completed_seq = 1;
+}
