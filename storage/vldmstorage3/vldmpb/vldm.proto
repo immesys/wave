@@ -4,28 +4,48 @@ package vldmpb;
 
 service VLDM {
 
-  rpc GetObject(GetObjectParams) returns (GetObjectResponse);
-  rpc PutObject(PutObjectParams) returns (PutObjectResponse);
-  rpc IterateQueue(IterateQueueParams) returns (IterateQueueResponse);
-  rpc AddToQueue(AddToQueueParams) returns (AddToQueueResponse);
-  
-  //rpc SubscribeMapHeads(SubscribeParams) returns (stream MapHead);
-  //rpc SubmitSignedMapHead(SubmitParams) returns (SubmitResponse);
+  //Mirror of standard services
+  //rpc GetObject(GetObjectParams) returns (GetObjectResponse);
+  //rpc PutObject(PutObjectParams) returns (PutObjectResponse);
+  //rpc IterateQueue(IterateQueueParams) returns (IterateQueueResponse);
+  //rpc AddToQueue(AddToQueueParams) returns (AddToQueueResponse);
 
+  rpc SubscribeMapHeads(SubscribeParams) returns (stream MapHead);
+  rpc SubmitSignedMapHead(SubmitParams) returns (SubmitResponse);
+  rpc GetLogConsistency(GetConsistencyParams) returns (GetConsistencyResponse);
+  rpc GetLogItem(GetLogItemParams) returns (GetLogItemResponse);
 }
 
-r.Post("/v1/obj", PutHandler)
-r.Get("/v1/info", InfoHandler)
-r.Get("/v1/obj/{hash}", GetHandler)
-r.Get("/v1/queue/{id}", IterateHandler)
-r.Post("/v1/queue/{id}", EnqueueHandler)
-r.Get("/v1/audit/oplog/consistency", OplogConsistencyHandler)
-r.Get("/v1/audit/oplog/sth", OplogSTHHandler)
-r.Get("/v1/audit/oplog/item", OplogItemHandler)
-//message SubscribeParams {
-//  uint64 LastVerifiedLogRevision = 1;
-//}
+message SubscribeParams {
 
+}
+message MapHead {
+
+}
+message SubmitParams {
+
+}
+message SubmitResponse {
+
+}
+message GetConsistencyParams {
+  int64 from = 1;
+  int64 to = 2;
+}
+message GetConsistencyResponse {
+  bytes trillianProof = 1;
+}
+
+message GetLogItemParams {
+  int64 index = 1;
+  int64 size = 2;
+}
+message GetLogItemResponse {
+  bytes trillianGetEntryAndProofResponse = 1;
+}
+
+
+// Used internally
 message MapperMetadata {
   int64 highest_fully_completed_seq = 1;
 }

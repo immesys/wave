@@ -9,7 +9,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/trillian"
 	"github.com/google/trillian/types"
-	"github.com/immesys/wave/storage/vldmstorage2/pb"
+	pb "github.com/immesys/wave/storage/vldmstorage3/vldmpb"
 )
 
 const LogBatchSize = 280

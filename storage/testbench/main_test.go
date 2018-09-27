@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/immesys/wave/iapi"
-	"github.com/immesys/wave/storage/memoryserver"
 	"github.com/immesys/wave/storage/overlay"
 	"github.com/immesys/wave/storage/simplehttp"
 	"github.com/stretchr/testify/require"
@@ -19,41 +18,53 @@ func getInstance(t *testing.T) iapi.StorageDriverInterface {
 	return getSimpleHTTPStorageInstance(t)
 }
 
+var storageconfig map[string]string
+
 func getSimpleHTTPStorageInstance(t *testing.T) iapi.StorageDriverInterface {
 	sh := &simplehttp.SimpleHTTPStorage{}
-	cfg := make(map[string]string)
-	//cfg["url"] = "http://vldm.cal-sdb.org:8080/v1"
-	//	cfg["v1key"] = `-----BEGIN PUBLIC KEY-----
-	//MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJeCG0aGGL93ZisvIih7ZVRVPdUis
-	//gImCbKUF6SvULO1DxQUjH+zF4+AO4R0yX6rYKPZ1D10VZ055tG3oEIK3hQ==
-	//-----END PUBLIC KEY-----`
-	cfg["url"] = "https://standalone.storage.bwave.io/v1"
-	require.NoError(t, sh.Initialize(context.Background(), "simplehttp", cfg))
+	require.NoError(t, sh.Initialize(context.Background(), "simplehttp", storageconfig))
 	return sh
 }
 
+// func init() {
+// 	go memoryserver.Main()
+// 	time.Sleep(100 * time.Millisecond)
+// 	cfg := make(map[string]map[string]string)
+// 	cfg["inmem"] = make(map[string]string)
+// 	cfg["inmem"]["provider"] = "http_v1"
+// 	cfg["inmem"]["url"] = "http://localhost:8080/v1"
+// 	ov, err := overlay.NewOverlay(cfg)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	iapi.InjectStorageInterface(ov)
+// }
+
 func init() {
-	go memoryserver.Main()
-	time.Sleep(100 * time.Millisecond)
+	storageconfig = make(map[string]string)
+	storageconfig["provider"] = "http_v1"
+	storageconfig["url"] = "http://127.0.0.1:8080/v1"
+	storageconfig["v1key"] = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEGjdGkLtx+qUEYaPws/xU1yL35wn
+nebmxzLdRFPr8w6U395MSJbfIk7VZ8rGaeHIRNJm3YuRh54vqWSS3SIuqg==
+-----END PUBLIC KEY-----`
+	storageconfig["v1auditors"] = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjxdbNOQuEkIhfN61raSYgijjygMf
+uVBgJsnNrDbraLaHGzbbrYX1BoDm9BomJHSSQpeOYTabcdQ9Jy9n8v45oA==
+-----END PUBLIC KEY-----`
 	cfg := make(map[string]map[string]string)
-	cfg["inmem"] = make(map[string]string)
-	cfg["inmem"]["provider"] = "http_v1"
-	cfg["inmem"]["url"] = "http://localhost:8080/v1"
+	cfg["default"] = storageconfig
 	ov, err := overlay.NewOverlay(cfg)
 	if err != nil {
 		panic(err)
 	}
 	iapi.InjectStorageInterface(ov)
 }
-func TestXPutGetAttestation(t *testing.T) {
-	cfg := make(map[string]map[string]string)
-	cfg["inmem"] = make(map[string]string)
-	cfg["inmem"]["provider"] = "http_v1"
-	cfg["inmem"]["url"] = "http://localhost:8080/v1"
-	inmem := iapi.NewLocationSchemeInstanceURL(cfg["inmem"]["url"], 1)
-	ov, err := overlay.NewOverlay(cfg)
-	require.NoError(t, err)
 
+func TestXPutGetAttestation(t *testing.T) {
+	ctx := context.Background()
+	ov := iapi.SI()
+	loc := ov.DefaultLocation(ctx)
 	source, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
 	require.NoError(t, werr)
 	dst, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
@@ -67,35 +78,28 @@ func TestXPutGetAttestation(t *testing.T) {
 		BodyScheme:        bodyscheme,
 		EncryptionContext: nil,
 		Attester:          source.EntitySecrets,
-		AttesterLocation:  inmem,
+		AttesterLocation:  loc,
 		Subject:           dst.EntitySecrets.Entity,
-		SubjectLocation:   inmem,
+		SubjectLocation:   loc,
 	})
-	ctx := context.Background()
 	require.NoError(t, err)
-	hi, err := ov.PutAttestation(ctx, inmem, rv.Attestation)
+	hi, err := ov.PutAttestation(ctx, loc, rv.Attestation)
 	require.NoError(t, err)
 
-	att, err := ov.GetAttestation(ctx, inmem, hi)
+	att, err := ov.GetAttestation(ctx, loc, hi)
 	require.NoError(t, err)
 	require.NotNil(t, att)
 
-	other, err := ov.GetAttestationOrDeclaration(ctx, inmem, hi)
+	other, err := ov.GetAttestationOrDeclaration(ctx, loc, hi)
 	require.NoError(t, err)
 	require.Nil(t, other.NameDeclaration)
 	require.NotNil(t, other.Attestation)
 }
 
 func TestXPutGetNameDeclaration(t *testing.T) {
-	cfg := make(map[string]map[string]string)
-	cfg["inmem"] = make(map[string]string)
-	cfg["inmem"]["provider"] = "http_v1"
-	cfg["inmem"]["url"] = "http://localhost:8080/v1"
-	inmem := iapi.NewLocationSchemeInstanceURL(cfg["inmem"]["url"], 1)
-	ov, err := overlay.NewOverlay(cfg)
-	require.NoError(t, err)
-
 	ctx := context.Background()
+	ov := iapi.SI()
+	loc := ov.DefaultLocation(ctx)
 
 	source, werr := iapi.NewParsedEntitySecrets(context.Background(), &iapi.PNewEntity{})
 	require.NoError(t, werr)
@@ -104,18 +108,19 @@ func TestXPutGetNameDeclaration(t *testing.T) {
 
 	rv, err := iapi.CreateNameDeclaration(ctx, &iapi.PCreateNameDeclaration{
 		Attester:          source.EntitySecrets,
-		AttesterLocation:  inmem,
+		AttesterLocation:  loc,
 		Subject:           dst.Entity,
-		SubjectLocation:   inmem,
+		SubjectLocation:   loc,
 		Name:              "foo",
 		Namespace:         source.Entity,
-		NamespaceLocation: inmem,
+		NamespaceLocation: loc,
 		Partition:         [][]byte{[]byte("foo")},
 	})
-	hi, err := ov.PutNameDeclaration(ctx, inmem, rv.NameDeclaration)
 	require.NoError(t, err)
-	other, err := ov.GetAttestationOrDeclaration(ctx, inmem, hi)
-	require.NoError(t, err)
+	hi, uerr := ov.PutNameDeclaration(ctx, loc, rv.NameDeclaration)
+	require.NoError(t, uerr)
+	other, uerr := ov.GetAttestationOrDeclaration(ctx, loc, hi)
+	require.NoError(t, uerr)
 	require.NotNil(t, other.NameDeclaration)
 	require.Nil(t, other.Attestation)
 }

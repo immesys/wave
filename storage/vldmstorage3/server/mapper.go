@@ -91,8 +91,29 @@ func PerformOneMap() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_ = setResp
 
+	smr := setResp.GetMapRoot()
+	smrbytes, err := proto.Marshal(setResp.MapRoot)
+	if err != nil {
+		panic(err)
+	}
+	//Here we would communicate with the auditors
+	{
+		ts, sigR, sigS, err := SignMapRoot("mock", smrbytes)
+		//error should not happen because we chose the identity
+		if err != nil {
+			panic(err)
+		}
+		var newMapRoot types.MapRootV1
+		if err := newMapRoot.UnmarshalBinary(smr.MapRoot); err != nil {
+			panic(err)
+		}
+
+		err = DB.InsertSignedMapRoot(newMapRoot.Revision, "mock", ts, sigR, sigS)
+		if err != nil {
+			panic(err)
+		}
+	}
 	// llf := &trillian.LogLeaf{
 	// 	LeafValue: smrbytes,
 	// }

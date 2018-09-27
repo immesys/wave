@@ -25,7 +25,6 @@ func mustMarshalAny(pb proto.Message) *any.Any {
 
 var logconn *grpc.ClientConn
 var OpLogTree *trillian.Tree
-var RootLogTree *trillian.Tree
 var logclient trillian.TrillianLogClient
 var logId int64
 
@@ -40,23 +39,6 @@ func initlogs() {
 		HashAlgorithm:      spb.DigitallySigned_SHA256,
 		SignatureAlgorithm: spb.DigitallySigned_ECDSA,
 		DisplayName:        "OPERATIONS",
-		Description:        "for WAVE",
-		PrivateKey: mustMarshalAny(&keyspb.PrivateKey{
-			Der: privk.Bytes,
-		}),
-		PublicKey: &keyspb.PublicKey{
-			Der: pubk.Bytes,
-		},
-		MaxRootDuration: ptypes.DurationProto(0 * time.Millisecond),
-	}
-	RootLogTree = &trillian.Tree{
-		TreeId:             TreeID_Root,
-		TreeState:          trillian.TreeState_ACTIVE,
-		TreeType:           trillian.TreeType_LOG,
-		HashStrategy:       trillian.HashStrategy_RFC6962_SHA256,
-		HashAlgorithm:      spb.DigitallySigned_SHA256,
-		SignatureAlgorithm: spb.DigitallySigned_ECDSA,
-		DisplayName:        "MAPROOTS",
 		Description:        "for WAVE",
 		PrivateKey: mustMarshalAny(&keyspb.PrivateKey{
 			Der: privk.Bytes,

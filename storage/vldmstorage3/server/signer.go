@@ -24,7 +24,7 @@ func ParsePrivateKey(in []byte) (*ecdsa.PrivateKey, error) {
 	}
 	return priv, err
 }
-func MakeMergePromise(key []byte, valhash []byte, signingkey *ecdsa.PrivateKey) (*simplehttp.MergePromise, error) {
+func MakeMergePromise(key []byte, valhash []byte, auditorID string, signingkey *ecdsa.PrivateKey) (*simplehttp.MergePromise, *simplehttp.V1AuditorSig, error) {
 	if signingkey == nil {
 		panic("no signing key!")
 	}
@@ -35,18 +35,27 @@ func MakeMergePromise(key []byte, valhash []byte, signingkey *ecdsa.PrivateKey) 
 	}
 	tbs, err := json.Marshal(p)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	hash := sha3.Sum256(tbs)
 	r, s, err := ecdsa.Sign(rand.Reader, signingkey, hash[:])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &simplehttp.MergePromise{
+	rv := &simplehttp.MergePromise{
 		TBS:  tbs,
 		SigR: r,
 		SigS: s,
-	}, nil
+	}
+
+	ts, ar, as, err := SignMergePromise(auditorID, rv)
+	asig := &simplehttp.V1AuditorSig{
+		Timestamp: ts,
+		Identity:  auditorID,
+		SigR:      ar,
+		SigS:      as,
+	}
+	return rv, asig, nil
 }
 func VerifyMergePromise(mp *simplehttp.MergePromise, publickey *ecdsa.PublicKey) (*simplehttp.MergePromiseTBS, error) {
 	hash := sha3.Sum256(mp.TBS)

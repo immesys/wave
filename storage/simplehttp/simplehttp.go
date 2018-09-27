@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -44,6 +45,7 @@ type PutObjectRequest struct {
 type PutObjectResponse struct {
 	Hash           []byte        `json:"hash"`
 	V1MergePromise *MergePromise `json:"v1promise"`
+	V1Seal         *V1AuditorSig `json:"v1seals"`
 }
 type InfoResponse struct {
 	HashScheme string `json:"hashScheme"`
@@ -54,18 +56,28 @@ type ObjectResponse struct {
 	V1SMR          []byte        `json:"v1smr"`
 	V1MapInclusion []byte        `json:"v1inclusion"`
 	V1MergePromise *MergePromise `json:"v1promise"`
+	V1Seal         *V1AuditorSig `json:"v1seals"`
+}
+type V1AuditorSig struct {
+	//Time in ms since epoch
+	Timestamp int64
+	Identity  string `json:"identity"`
+	SigR      *big.Int
+	SigS      *big.Int
 }
 type NoSuchObjectResponse struct {
 }
 type IterateQueueResponse struct {
-	Hash           []byte `json:"hash"`
-	NextToken      string `json:"nextToken"`
-	V1MergePromise *MergePromise
-	V1SMR          []byte `json:"v1smr"`
-	V1MapInclusion []byte `json:"v1inclusion"`
+	Hash           []byte        `json:"hash"`
+	NextToken      string        `json:"nextToken"`
+	V1MergePromise *MergePromise `json:"v1promise"`
+	V1SMR          []byte        `json:"v1smr"`
+	V1MapInclusion []byte        `json:"v1inclusion"`
+	V1Seal         *V1AuditorSig `json:"v1seals"`
 }
 type EnqueueResponse struct {
 	V1MergePromise *MergePromise `json:"v1promise"`
+	V1Seal         *V1AuditorSig `json:"v1seals"`
 }
 type NoSuchQueueEntryResponse struct {
 }
@@ -74,12 +86,14 @@ type EnqueueRequest struct {
 }
 
 type SimpleHTTPStorage struct {
-	url            string
-	requireproof   bool
-	publickey      string
-	unpackedpubkey *ecdsa.PublicKey
-	mapTree        *trillian.Tree
-	mapVerifier    *client.MapVerifier
+	url               string
+	requireproof      bool
+	publickey         string
+	unpackedpubkey    *ecdsa.PublicKey
+	trustedAuditors   map[string]*ecdsa.PublicKey
+	trustedAuditorIDs []string
+	mapTree           *trillian.Tree
+	mapVerifier       *client.MapVerifier
 }
 
 func (s *SimpleHTTPStorage) Location(context.Context) iapi.LocationSchemeInstance {
@@ -99,7 +113,36 @@ func (s *SimpleHTTPStorage) Initialize(ctx context.Context, name string, config 
 	s.url = url
 	if config["v1key"] != "" {
 		s.publickey = config["v1key"]
+
+		der, trailing := pem.Decode([]byte(s.publickey))
+		if len(trailing) != 0 {
+			return fmt.Errorf("public key is invalid")
+		}
+		pub, err := x509.ParsePKIXPublicKey(der.Bytes)
+		if err != nil {
+			panic(err)
+		}
+		pubk := pub.(*ecdsa.PublicKey)
+		s.unpackedpubkey = pubk
+
 		s.requireproof = true
+		s.trustedAuditors = make(map[string]*ecdsa.PublicKey)
+		for _, auditor := range strings.Split(config["v1auditors"], ";") {
+			//id := sha3.Sum256([]byte(auditor))
+			//idstring := base64.URLEncoding.EncodeToString(id[:])
+			idstring := "mock"
+			s.trustedAuditorIDs = append(s.trustedAuditorIDs, idstring)
+			der, trailing := pem.Decode([]byte(auditor))
+			if len(trailing) != 0 {
+				return fmt.Errorf("auditor public key is invalid")
+			}
+			pub, err := x509.ParsePKIXPublicKey(der.Bytes)
+			if err != nil {
+				panic(err)
+			}
+			pubk := pub.(*ecdsa.PublicKey)
+			s.trustedAuditors[idstring] = pubk
+		}
 		s.initmap()
 	}
 	return nil
@@ -143,7 +186,7 @@ func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashS
 	}
 	expectedHash := iapi.KECCAK256.Instance(content)
 	if s.requireproof {
-		err := s.verifyV1Promise(rv.V1MergePromise, expectedHash.Value(), expectedHash.Value())
+		err := s.verifyV1Promise(rv.V1MergePromise, rv.V1Seal, expectedHash.Value(), expectedHash.Value())
 		if err != nil {
 			return nil, err
 		}
@@ -151,18 +194,9 @@ func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashS
 	return hi, nil
 }
 
-func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, expectedkey []byte, expectedcontent []byte) error {
-	if s.unpackedpubkey == nil {
-		der, trailing := pem.Decode([]byte(s.publickey))
-		if len(trailing) != 0 {
-			return fmt.Errorf("public key is invalid")
-		}
-		pub, err := x509.ParsePKIXPublicKey(der.Bytes)
-		if err != nil {
-			panic(err)
-		}
-		pubk := pub.(*ecdsa.PublicKey)
-		s.unpackedpubkey = pubk
+func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, seal *V1AuditorSig, expectedkey []byte, expectedcontent []byte) error {
+	if seal == nil {
+		return fmt.Errorf("missing auditor seal")
 	}
 	hash := sha3.Sum256(mp.TBS)
 	if !ecdsa.Verify(s.unpackedpubkey, hash[:], mp.SigR, mp.SigS) {
@@ -173,11 +207,29 @@ func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, expectedkey []byte
 	if err != nil {
 		return err
 	}
+	if time.Now().UnixNano()/1e6 > mptbs.MergeBy {
+		return fmt.Errorf("merge promise has expired")
+	}
 	if expectedkey != nil && !bytes.Equal(mptbs.Key, expectedkey) {
 		return fmt.Errorf("promise is for a different key")
 	}
 	if expectedcontent != nil && !bytes.Equal(mptbs.ValHash, expectedcontent) {
 		return fmt.Errorf("promise is for different content")
+	}
+
+	//Now we need to verify that the auditor signature is valid
+	pubk, ok := s.trustedAuditors[seal.Identity]
+	if !ok {
+		return fmt.Errorf("auditor identity not recognized")
+	}
+	h := sha3.New256()
+	h.Write(mp.TBS)
+	h.Write(mp.SigR.Bytes())
+	h.Write(mp.SigS.Bytes())
+	h.Write([]byte(fmt.Sprintf("%d", seal.Timestamp)))
+	d := h.Sum(nil)
+	if !ecdsa.Verify(pubk, d, seal.SigR, seal.SigS) {
+		return fmt.Errorf("auditor signature is invalid")
 	}
 	return nil
 }
@@ -206,13 +258,13 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 	if s.requireproof {
 		if rv.V1MergePromise != nil {
 			fmt.Printf("promise\n")
-			err := s.verifyV1Promise(rv.V1MergePromise, hash.Value(), hash.Value())
+			err := s.verifyV1Promise(rv.V1MergePromise, rv.V1Seal, hash.Value(), hash.Value())
 			if err != nil {
 				return nil, err
 			}
 		} else {
 			fmt.Printf("inclusion\n")
-			err := s.verifyV1smr(rv.V1SMR, rv.V1MapInclusion, hash.Value(), rv.DER)
+			err := s.verifyV1smr(rv.V1SMR, rv.V1MapInclusion, rv.V1Seal, hash.Value(), rv.DER)
 			if err != nil {
 				return nil, err
 			}
@@ -246,7 +298,7 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 		return fmt.Errorf("Remote sent invalid response")
 	}
 	if s.requireproof {
-		err := s.verifyV1Promise(enqueueResp.V1MergePromise, nil, nil)
+		err := s.verifyV1Promise(enqueueResp.V1MergePromise, enqueueResp.V1Seal, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -294,12 +346,12 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 		expectedHash := iapi.KECCAK256.Instance(expectedHashContents)
 		expectedVHash := iapi.KECCAK256.Instance(iterR.Hash)
 		if iterR.V1MergePromise != nil {
-			err := s.verifyV1Promise(iterR.V1MergePromise, expectedHash.Value(), expectedVHash.Value())
+			err := s.verifyV1Promise(iterR.V1MergePromise, iterR.V1Seal, expectedHash.Value(), expectedVHash.Value())
 			if err != nil {
 				return nil, "", err
 			}
 		} else {
-			err := s.verifyV1smr(iterR.V1SMR, iterR.V1MapInclusion, expectedHash.Value(), iterR.Hash)
+			err := s.verifyV1smr(iterR.V1SMR, iterR.V1MapInclusion, iterR.V1Seal, expectedHash.Value(), iterR.Hash)
 			if err != nil {
 				return nil, "", err
 			}
@@ -308,8 +360,25 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 	return hi, iterR.NextToken, nil
 }
 
-func (s *SimpleHTTPStorage) verifyV1smr(smr []byte, inclusion []byte, key []byte, value []byte) error {
-
+func (s *SimpleHTTPStorage) verifyV1smr(smr []byte, inclusion []byte, seal *V1AuditorSig, key []byte, value []byte) error {
+	if seal == nil {
+		return fmt.Errorf("missing auditor seal")
+	}
+	//First verify auditor sig
+	pubk, ok := s.trustedAuditors[seal.Identity]
+	if !ok {
+		return fmt.Errorf("auditor identity not recognized")
+	}
+	h := sha3.New256()
+	h.Write(smr)
+	h.Write([]byte(fmt.Sprintf("%d", seal.Timestamp)))
+	d := h.Sum(nil)
+	if !ecdsa.Verify(pubk, d, seal.SigR, seal.SigS) {
+		return fmt.Errorf("auditor signature is incorrect")
+	}
+	if time.Now().Add(-time.Hour).UnixNano()/1e6 > seal.Timestamp {
+		return fmt.Errorf("auditor signature has expired")
+	}
 	pbinc := trillian.MapLeafInclusion{}
 	err := proto.Unmarshal(inclusion, &pbinc)
 	if err != nil {

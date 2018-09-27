@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -9,8 +8,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/google/trillian"
 	"github.com/gorilla/pat"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/storage/simplehttp"
@@ -34,12 +31,20 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{}"))
 		return
 	}
-	mkr := GetMapKeyValue(mh.Digest)
+	//TODO get from parameters
+	ids := []string{"mock"}
+	mkr, err := GetMapKeyValue(ids, mh.Digest)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
 	if mkr.Value == nil {
 		w.WriteHeader(404)
 		rv := simplehttp.ObjectResponse{
 			V1SMR:          mkr.SignedMapRoot,
 			V1MapInclusion: mkr.MapInclusion,
+			V1Seal:         mkr.Seal,
 		}
 		json.NewEncoder(w).Encode(&rv)
 		return
@@ -49,6 +54,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		rv := simplehttp.ObjectResponse{
 			DER:            mkr.Value,
 			V1MergePromise: mkr.MergePromise,
+			V1Seal:         mkr.Seal,
 		}
 		json.NewEncoder(w).Encode(&rv)
 		return
@@ -57,6 +63,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		DER:            mkr.Value,
 		V1SMR:          mkr.SignedMapRoot,
 		V1MapInclusion: mkr.MapInclusion,
+		V1Seal:         mkr.Seal,
 	}
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(&rv)
@@ -79,11 +86,19 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body.Close()
+	//TODO get from parameters
+	id := "mock"
 	hash := iapi.KECCAK256.Instance(params.DER)
-	promise := InsertKeyValue(hash.Value(), params.DER)
+	promise, asig, err := InsertKeyValue(id, hash.Value(), params.DER)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
 	resp := simplehttp.PutObjectResponse{
 		Hash:           hash.Multihash(),
 		V1MergePromise: promise,
+		V1Seal:         asig,
 	}
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(&resp)
@@ -117,17 +132,26 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("bad hash"))
 		return
 	}
+	//TODO get from parameters
+	ids := []string{"mock"}
 	tohash := make([]byte, 40)
 	copy(tohash[:32], idmh.Digest)
 	binary.LittleEndian.PutUint64(tohash[32:], uint64(index))
 	hi := iapi.KECCAK256.Instance(tohash)
 	hiarr := hi.Value()
-	mkr := GetMapKeyValue(hiarr)
+	mkr, err := GetMapKeyValue(ids, hiarr)
+	if err != nil {
+		fmt.Printf("case a\n")
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
 	if mkr.Value == nil {
 		w.WriteHeader(404)
 		rv := simplehttp.IterateQueueResponse{
 			V1SMR:          mkr.SignedMapRoot,
 			V1MapInclusion: mkr.MapInclusion,
+			V1Seal:         mkr.Seal,
 		}
 		json.NewEncoder(w).Encode(&rv)
 		return
@@ -138,6 +162,7 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 			Hash:           mkr.Value,
 			NextToken:      fmt.Sprintf("%d", index+1),
 			V1MergePromise: mkr.MergePromise,
+			V1Seal:         mkr.Seal,
 		}
 		json.NewEncoder(w).Encode(&rv)
 		return
@@ -147,6 +172,7 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		NextToken:      fmt.Sprintf("%d", index+1),
 		V1SMR:          mkr.SignedMapRoot,
 		V1MapInclusion: mkr.MapInclusion,
+		V1Seal:         mkr.Seal,
 	}
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(&rv)
@@ -188,13 +214,19 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 
 	hi := iapi.KECCAK256.Instance(tohash)
 	hiarr := hi.Value()
-
-	promise := InsertKeyValue(hiarr, req.EntryHash)
-
+	//TODO get from params
+	auditorId := "mock"
+	promise, asig, err := InsertKeyValue(auditorId, hiarr, req.EntryHash)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
 	SetIndex(idmh.Digest, index+1)
 	w.WriteHeader(201)
 	resp := simplehttp.EnqueueResponse{
 		V1MergePromise: promise,
+		V1Seal:         asig,
 	}
 	json.NewEncoder(w).Encode(&resp)
 	return
@@ -211,100 +243,11 @@ func main() {
 	r.Get("/v1/obj/{hash}", GetHandler)
 	r.Get("/v1/queue/{id}", IterateHandler)
 	r.Post("/v1/queue/{id}", EnqueueHandler)
-	r.Get("/v1/audit/oplog/consistency", OplogConsistencyHandler)
-	r.Get("/v1/audit/oplog/sth", OplogSTHHandler)
-	r.Get("/v1/audit/oplog/item", OplogItemHandler)
+	// r.Get("/v1/audit/oplog/consistency", OplogConsistencyHandler)
+	// r.Get("/v1/audit/oplog/sth", OplogSTHHandler)
+	// r.Get("/v1/audit/oplog/item", OplogItemHandler)
 
 	http.Handle("/", r)
 	err := http.ListenAndServe(":8080", nil)
 	panic(err)
-}
-
-func OplogSTHHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("got Oplog STH handler\n")
-	logSTH(TreeID_Op, w, r)
-}
-func logSTH(logid int64, w http.ResponseWriter, r *http.Request) {
-	resp, err := logclient.GetLatestSignedLogRoot(context.Background(), &trillian.GetLatestSignedLogRootRequest{
-		LogId: logid,
-	})
-	if err != nil {
-		panic(err)
-	}
-	ba, err := proto.Marshal(resp.SignedLogRoot)
-	if err != nil {
-		panic(err)
-	}
-	w.WriteHeader(200)
-	w.Write(ba)
-}
-func OplogConsistencyHandler(w http.ResponseWriter, r *http.Request) {
-	logConsistencyHandler(TreeID_Op, w, r)
-}
-func OplogItemHandler(w http.ResponseWriter, r *http.Request) {
-	logItemHandler(TreeID_Op, w, r)
-}
-func logConsistencyHandler(logid int64, w http.ResponseWriter, r *http.Request) {
-	from := r.URL.Query().Get("from")
-	to := r.URL.Query().Get("to")
-	fromi, err := strconv.ParseInt(from, 10, 64)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("bad 'from' parameter"))
-		return
-	}
-	toi, err := strconv.ParseInt(to, 10, 64)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("bad 'to' parameter"))
-		return
-	}
-	resp, err := logclient.GetConsistencyProof(context.Background(), &trillian.GetConsistencyProofRequest{
-		LogId:          logid,
-		FirstTreeSize:  fromi,
-		SecondTreeSize: toi,
-	})
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	w.WriteHeader(200)
-	ba, err := proto.Marshal(resp.Proof)
-	if err != nil {
-		panic(err)
-	}
-	w.Write(ba)
-	return
-}
-func logItemHandler(logid int64, w http.ResponseWriter, r *http.Request) {
-	index := r.URL.Query().Get("index")
-	indexi, err := strconv.ParseInt(index, 10, 64)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("bad index parameter"))
-		return
-	}
-	size := r.URL.Query().Get("size")
-	sizei, err := strconv.ParseInt(size, 10, 64)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("bad size parameter"))
-		return
-	}
-	resp, err := logclient.GetEntryAndProof(context.Background(), &trillian.GetEntryAndProofRequest{
-		LogId:     logid,
-		LeafIndex: indexi,
-		TreeSize:  sizei,
-	})
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	ba, err := proto.Marshal(resp)
-	if err != nil {
-		panic(err)
-	}
-	w.Write(ba)
 }
