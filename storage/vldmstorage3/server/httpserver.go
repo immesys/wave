@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/pat"
 	"github.com/immesys/wave/iapi"
@@ -31,8 +32,8 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{}"))
 		return
 	}
-	//TODO get from parameters
-	ids := []string{"mock"}
+	adz := r.URL.Query().Get("auditors")
+	ids := strings.Split(adz, ",")
 	mkr, err := GetMapKeyValue(ids, mh.Digest)
 	if err != nil {
 		w.WriteHeader(500)
@@ -87,9 +88,9 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body.Close()
 	//TODO get from parameters
-	id := "mock"
+	ids := params.Auditors
 	hash := iapi.KECCAK256.Instance(params.DER)
-	promise, asig, err := InsertKeyValue(id, hash.Value(), params.DER)
+	promise, asig, err := InsertKeyValue(ids, hash.Value(), params.DER)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
@@ -132,8 +133,8 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("bad hash"))
 		return
 	}
-	//TODO get from parameters
-	ids := []string{"mock"}
+	adz := r.URL.Query().Get("auditors")
+	ids := strings.Split(adz, ",")
 	tohash := make([]byte, 40)
 	copy(tohash[:32], idmh.Digest)
 	binary.LittleEndian.PutUint64(tohash[32:], uint64(index))
@@ -215,8 +216,8 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 	hi := iapi.KECCAK256.Instance(tohash)
 	hiarr := hi.Value()
 	//TODO get from params
-	auditorId := "mock"
-	promise, asig, err := InsertKeyValue(auditorId, hiarr, req.EntryHash)
+	auditorIds := req.Auditors
+	promise, asig, err := InsertKeyValue(auditorIds, hiarr, req.EntryHash)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))

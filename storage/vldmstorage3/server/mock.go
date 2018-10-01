@@ -1,3 +1,5 @@
+// +build ignore
+
 package main
 
 import (
@@ -43,14 +45,25 @@ func SignMapRoot(id string, smr []byte) (timestamp int64, r *big.Int, s *big.Int
 	return
 }
 
-func SignMergePromise(id string, mp *simplehttp.MergePromise) (timestamp int64, r *big.Int, s *big.Int, err error) {
-	timestamp = time.Now().UnixNano() / 1e6
+func SignMergePromise(ids []string, mp *simplehttp.MergePromise) (*simplehttp.V1AuditorSig, error) {
+	//You would typically choose one of the ids to sign based on liveness
+	auditorID := ids[0]
+	timestamp := time.Now().UnixNano() / 1e6
 	h := sha3.New256()
 	h.Write(mp.TBS)
 	h.Write(mp.SigR.Bytes())
 	h.Write(mp.SigS.Bytes())
 	h.Write([]byte(fmt.Sprintf("%d", timestamp)))
 	d := h.Sum(nil)
-	r, s, err = ecdsa.Sign(rand.Reader, auditorSK, d[:])
-	return
+	r, s, err := ecdsa.Sign(rand.Reader, auditorSK, d[:])
+	if err != nil {
+		return nil, err
+	}
+	asig := &simplehttp.V1AuditorSig{
+		Timestamp: timestamp,
+		Identity:  auditorID,
+		SigR:      r,
+		SigS:      s,
+	}
+	return asig, nil
 }

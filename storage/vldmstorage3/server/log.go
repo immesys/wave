@@ -54,6 +54,9 @@ func initlogs() {
 		glog.Fatal(err)
 	}
 	logclient = trillian.NewTrillianLogClient(logconn)
+
+	API.logId = TreeID_Op
+	API.client = logclient
 }
 
 // func addToLog(value []byte) int64 {

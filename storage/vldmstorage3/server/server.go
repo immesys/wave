@@ -14,6 +14,12 @@ type api struct {
 	client trillian.TrillianLogClient
 }
 
+var API *api
+
+func init() {
+	API = &api{}
+}
+
 func (a *api) GetLogItem(ctx context.Context, p *vldmpb.GetLogItemParams) (*vldmpb.GetLogItemResponse, error) {
 	resp, err := a.client.GetEntryAndProof(ctx, &trillian.GetEntryAndProofRequest{
 		LogId:     a.logId,

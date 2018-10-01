@@ -270,11 +270,11 @@ func GetMapKeyValue(identities []string, key []byte) (*GetMapKeyResponse, error)
 	}
 }
 
-func InsertKeyValue(identity string, key []byte, value []byte) (*simplehttp.MergePromise, *simplehttp.V1AuditorSig, error) {
+func InsertKeyValue(identities []string, key []byte, value []byte) (*simplehttp.MergePromise, *simplehttp.V1AuditorSig, error) {
 	//TODO check for existing merge promise for this value
 	hi := iapi.KECCAK256.Instance(value)
 	hasharr := hi.Value()
-	mp, asig, err := MakeMergePromise(key, hasharr, identity, PrivateKeyUnpacked)
+	mp, asig, err := MakeMergePromise(key, hasharr, identities, PrivateKeyUnpacked)
 	if err != nil {
 		return nil, nil, err
 	}

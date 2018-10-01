@@ -40,25 +40,26 @@ type MergePromiseTBS struct {
 	MergeBy int64
 }
 type PutObjectRequest struct {
-	DER []byte `json:"der"`
+	DER        []byte   `json:"der"`
+	Certifiers []string `json:"v1certifiers"`
 }
 type PutObjectResponse struct {
-	Hash           []byte        `json:"hash"`
-	V1MergePromise *MergePromise `json:"v1promise"`
-	V1Seal         *V1AuditorSig `json:"v1seals"`
+	Hash           []byte           `json:"hash"`
+	V1MergePromise *MergePromise    `json:"v1promise"`
+	V1Seal         *V1CertifierSeal `json:"v1seal"`
 }
 type InfoResponse struct {
 	HashScheme string `json:"hashScheme"`
 	Version    string `json:"version"`
 }
 type ObjectResponse struct {
-	DER            []byte        `json:"der"`
-	V1SMR          []byte        `json:"v1smr"`
-	V1MapInclusion []byte        `json:"v1inclusion"`
-	V1MergePromise *MergePromise `json:"v1promise"`
-	V1Seal         *V1AuditorSig `json:"v1seals"`
+	DER            []byte           `json:"der"`
+	V1SMR          []byte           `json:"v1smr"`
+	V1MapInclusion []byte           `json:"v1inclusion"`
+	V1MergePromise *MergePromise    `json:"v1promise"`
+	V1Seal         *V1CertifierSeal `json:"v1seal"`
 }
-type V1AuditorSig struct {
+type V1CertifierSeal struct {
 	//Time in ms since epoch
 	Timestamp int64
 	Identity  string `json:"identity"`
@@ -68,32 +69,33 @@ type V1AuditorSig struct {
 type NoSuchObjectResponse struct {
 }
 type IterateQueueResponse struct {
-	Hash           []byte        `json:"hash"`
-	NextToken      string        `json:"nextToken"`
-	V1MergePromise *MergePromise `json:"v1promise"`
-	V1SMR          []byte        `json:"v1smr"`
-	V1MapInclusion []byte        `json:"v1inclusion"`
-	V1Seal         *V1AuditorSig `json:"v1seals"`
+	Hash           []byte           `json:"hash"`
+	NextToken      string           `json:"nextToken"`
+	V1MergePromise *MergePromise    `json:"v1promise"`
+	V1SMR          []byte           `json:"v1smr"`
+	V1MapInclusion []byte           `json:"v1inclusion"`
+	V1Seal         *V1CertifierSeal `json:"v1seal"`
 }
 type EnqueueResponse struct {
-	V1MergePromise *MergePromise `json:"v1promise"`
-	V1Seal         *V1AuditorSig `json:"v1seals"`
+	V1MergePromise *MergePromise    `json:"v1promise"`
+	V1Seal         *V1CertifierSeal `json:"v1seal"`
 }
 type NoSuchQueueEntryResponse struct {
 }
 type EnqueueRequest struct {
-	EntryHash []byte `json:"entryHash"`
+	EntryHash  []byte   `json:"entryHash"`
+	Certifiers []string `json:"v1certifiers"`
 }
 
 type SimpleHTTPStorage struct {
-	url               string
-	requireproof      bool
-	publickey         string
-	unpackedpubkey    *ecdsa.PublicKey
-	trustedAuditors   map[string]*ecdsa.PublicKey
-	trustedAuditorIDs []string
-	mapTree           *trillian.Tree
-	mapVerifier       *client.MapVerifier
+	url                 string
+	requireproof        bool
+	publickey           string
+	unpackedpubkey      *ecdsa.PublicKey
+	trustedCertifiers   map[string]*ecdsa.PublicKey
+	trustedCertifierIDs []string
+	mapTree             *trillian.Tree
+	mapVerifier         *client.MapVerifier
 }
 
 func (s *SimpleHTTPStorage) Location(context.Context) iapi.LocationSchemeInstance {
@@ -126,12 +128,12 @@ func (s *SimpleHTTPStorage) Initialize(ctx context.Context, name string, config 
 		s.unpackedpubkey = pubk
 
 		s.requireproof = true
-		s.trustedAuditors = make(map[string]*ecdsa.PublicKey)
+		s.trustedCertifiers = make(map[string]*ecdsa.PublicKey)
 		for _, auditor := range strings.Split(config["v1auditors"], ";") {
 			//id := sha3.Sum256([]byte(auditor))
 			//idstring := base64.URLEncoding.EncodeToString(id[:])
 			idstring := "mock"
-			s.trustedAuditorIDs = append(s.trustedAuditorIDs, idstring)
+			s.trustedCertifierIDs = append(s.trustedCertifierIDs, idstring)
 			der, trailing := pem.Decode([]byte(auditor))
 			if len(trailing) != 0 {
 				return fmt.Errorf("auditor public key is invalid")
@@ -141,7 +143,7 @@ func (s *SimpleHTTPStorage) Initialize(ctx context.Context, name string, config 
 				panic(err)
 			}
 			pubk := pub.(*ecdsa.PublicKey)
-			s.trustedAuditors[idstring] = pubk
+			s.trustedCertifiers[idstring] = pubk
 		}
 		s.initmap()
 	}
@@ -155,7 +157,8 @@ func (s *SimpleHTTPStorage) Status(ctx context.Context) (operational bool, info 
 func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashSchemeInstance, error) {
 	buf := bytes.Buffer{}
 	putRequest := &PutObjectRequest{
-		DER: content,
+		DER:        content,
+		Certifiers: s.trustedCertifierIDs,
 	}
 	enc := json.NewEncoder(&buf)
 	err := enc.Encode(putRequest)
@@ -186,6 +189,9 @@ func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashS
 	}
 	expectedHash := iapi.KECCAK256.Instance(content)
 	if s.requireproof {
+		if len(s.trustedCertifierIDs) > 0 && rv.V1Seal == nil {
+			return nil, fmt.Errorf("missing certifier seal\n")
+		}
 		err := s.verifyV1Promise(rv.V1MergePromise, rv.V1Seal, expectedHash.Value(), expectedHash.Value())
 		if err != nil {
 			return nil, err
@@ -194,10 +200,7 @@ func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashS
 	return hi, nil
 }
 
-func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, seal *V1AuditorSig, expectedkey []byte, expectedcontent []byte) error {
-	if seal == nil {
-		return fmt.Errorf("missing auditor seal")
-	}
+func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, seal *V1CertifierSeal, expectedkey []byte, expectedcontent []byte) error {
 	hash := sha3.Sum256(mp.TBS)
 	if !ecdsa.Verify(s.unpackedpubkey, hash[:], mp.SigR, mp.SigS) {
 		return fmt.Errorf("signature is invalid")
@@ -218,24 +221,27 @@ func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, seal *V1AuditorSig
 	}
 
 	//Now we need to verify that the auditor signature is valid
-	pubk, ok := s.trustedAuditors[seal.Identity]
-	if !ok {
-		return fmt.Errorf("auditor identity not recognized")
-	}
-	h := sha3.New256()
-	h.Write(mp.TBS)
-	h.Write(mp.SigR.Bytes())
-	h.Write(mp.SigS.Bytes())
-	h.Write([]byte(fmt.Sprintf("%d", seal.Timestamp)))
-	d := h.Sum(nil)
-	if !ecdsa.Verify(pubk, d, seal.SigR, seal.SigS) {
-		return fmt.Errorf("auditor signature is invalid")
+	if seal != nil {
+		pubk, ok := s.trustedCertifiers[seal.Identity]
+		if !ok {
+			return fmt.Errorf("certifier identity not recognized")
+		}
+		h := sha3.New256()
+		h.Write(mp.TBS)
+		h.Write(mp.SigR.Bytes())
+		h.Write(mp.SigS.Bytes())
+		h.Write([]byte(fmt.Sprintf("%d", seal.Timestamp)))
+		d := h.Sum(nil)
+		if !ecdsa.Verify(pubk, d, seal.SigR, seal.SigS) {
+			return fmt.Errorf("certifier signature is invalid")
+		}
 	}
 	return nil
 }
 func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstance) (content []byte, err error) {
 	b64 := hash.MultihashString()
-	resp, err := http.Get(fmt.Sprintf("%s/obj/%s", s.url, b64))
+	certifierString := strings.Join(s.trustedCertifierIDs, ",")
+	resp, err := http.Get(fmt.Sprintf("%s/obj/%s?certifiers=%s", s.url, b64, certifierString))
 	if err != nil {
 		return nil, err
 	}
@@ -258,12 +264,18 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 	if s.requireproof {
 		if rv.V1MergePromise != nil {
 			fmt.Printf("promise\n")
+			if len(s.trustedCertifierIDs) > 0 && rv.V1Seal == nil {
+				return nil, fmt.Errorf("missing certifier seal\n")
+			}
 			err := s.verifyV1Promise(rv.V1MergePromise, rv.V1Seal, hash.Value(), hash.Value())
 			if err != nil {
 				return nil, err
 			}
 		} else {
 			fmt.Printf("inclusion\n")
+			if len(s.trustedCertifierIDs) > 0 && rv.V1Seal == nil {
+				return nil, fmt.Errorf("missing certifier seal\n")
+			}
 			err := s.verifyV1smr(rv.V1SMR, rv.V1MapInclusion, rv.V1Seal, hash.Value(), rv.DER)
 			if err != nil {
 				return nil, err
@@ -276,7 +288,8 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashSchemeInstance, object iapi.HashSchemeInstance) error {
 	buf := bytes.Buffer{}
 	queueRequest := &EnqueueRequest{
-		EntryHash: object.Multihash(),
+		EntryHash:  object.Multihash(),
+		Certifiers: s.trustedCertifierIDs,
 	}
 	err := json.NewEncoder(&buf).Encode(queueRequest)
 	if err != nil {
@@ -298,6 +311,9 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 		return fmt.Errorf("Remote sent invalid response")
 	}
 	if s.requireproof {
+		if len(s.trustedCertifierIDs) > 0 && enqueueResp.V1Seal == nil {
+			return nil, fmt.Errorf("missing certifier seal\n")
+		}
 		err := s.verifyV1Promise(enqueueResp.V1MergePromise, enqueueResp.V1Seal, nil, nil)
 		if err != nil {
 			return err
@@ -311,7 +327,8 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 
 func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashSchemeInstance, iteratorToken string) (object iapi.HashSchemeInstance, nextToken string, err error) {
 	b64 := queueId.MultihashString()
-	resp, err := http.Get(fmt.Sprintf("%s/queue/%s?token=%s", s.url, b64, iteratorToken))
+	certifierString := strings.Join(s.trustedCertifierIDs, ",")
+	resp, err := http.Get(fmt.Sprintf("%s/queue/%s?token=%s&certifiers=%s", s.url, b64, iteratorToken, certifierString))
 	if err != nil {
 		return nil, "", err
 	}
@@ -346,11 +363,17 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 		expectedHash := iapi.KECCAK256.Instance(expectedHashContents)
 		expectedVHash := iapi.KECCAK256.Instance(iterR.Hash)
 		if iterR.V1MergePromise != nil {
+			if len(s.trustedCertifierIDs) > 0 && iterR.V1Seal == nil {
+				return nil, fmt.Errorf("missing certifier seal\n")
+			}
 			err := s.verifyV1Promise(iterR.V1MergePromise, iterR.V1Seal, expectedHash.Value(), expectedVHash.Value())
 			if err != nil {
 				return nil, "", err
 			}
 		} else {
+			if len(s.trustedCertifierIDs) > 0 && iterR.V1Seal == nil {
+				return nil, fmt.Errorf("missing certifier seal\n")
+			}
 			err := s.verifyV1smr(iterR.V1SMR, iterR.V1MapInclusion, iterR.V1Seal, expectedHash.Value(), iterR.Hash)
 			if err != nil {
 				return nil, "", err
@@ -360,24 +383,23 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 	return hi, iterR.NextToken, nil
 }
 
-func (s *SimpleHTTPStorage) verifyV1smr(smr []byte, inclusion []byte, seal *V1AuditorSig, key []byte, value []byte) error {
-	if seal == nil {
-		return fmt.Errorf("missing auditor seal")
-	}
-	//First verify auditor sig
-	pubk, ok := s.trustedAuditors[seal.Identity]
-	if !ok {
-		return fmt.Errorf("auditor identity not recognized")
-	}
-	h := sha3.New256()
-	h.Write(smr)
-	h.Write([]byte(fmt.Sprintf("%d", seal.Timestamp)))
-	d := h.Sum(nil)
-	if !ecdsa.Verify(pubk, d, seal.SigR, seal.SigS) {
-		return fmt.Errorf("auditor signature is incorrect")
-	}
-	if time.Now().Add(-time.Hour).UnixNano()/1e6 > seal.Timestamp {
-		return fmt.Errorf("auditor signature has expired")
+func (s *SimpleHTTPStorage) verifyV1smr(smr []byte, inclusion []byte, seal *V1CertifierSeal, key []byte, value []byte) error {
+	if seal != nil {
+		//First verify auditor sig
+		pubk, ok := s.trustedCertifiers[seal.Identity]
+		if !ok {
+			return fmt.Errorf("auditor identity not recognized")
+		}
+		h := sha3.New256()
+		h.Write(smr)
+		h.Write([]byte(fmt.Sprintf("%d", seal.Timestamp)))
+		d := h.Sum(nil)
+		if !ecdsa.Verify(pubk, d, seal.SigR, seal.SigS) {
+			return fmt.Errorf("auditor signature is incorrect")
+		}
+		if time.Now().Add(-time.Hour).UnixNano()/1e6 > seal.Timestamp {
+			return fmt.Errorf("auditor signature has expired")
+		}
 	}
 	pbinc := trillian.MapLeafInclusion{}
 	err := proto.Unmarshal(inclusion, &pbinc)

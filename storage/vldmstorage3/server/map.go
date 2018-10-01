@@ -43,6 +43,7 @@ func initmap() {
 		glog.Fatal(err)
 	}
 	vmap = trillian.NewTrillianMapClient(mapconn)
+	API.mapId = TreeID_Map
 }
 
 // func addToMap(key []byte, val []byte) (*trillian.SignedMapRoot, *trillian.MapLeafInclusion) {
