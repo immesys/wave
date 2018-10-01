@@ -136,5 +136,6 @@ func main() {
 	PublicKey = string(pub)
 	PrivateKey = string(priv)
 	initlog("OPERATIONS")
+	initlog("ROOT")
 	initmap("MAP")
 }

@@ -20,9 +20,13 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
+	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keyspb"
 	spb "github.com/google/trillian/crypto/sigpb"
+	_ "github.com/google/trillian/merkle/coniks"
 	_ "github.com/google/trillian/merkle/maphasher"
+	_ "github.com/google/trillian/merkle/rfc6962"
+	"github.com/google/trillian/types"
 	"github.com/immesys/wave/iapi"
 	"golang.org/x/crypto/sha3"
 )
@@ -53,11 +57,14 @@ type InfoResponse struct {
 	Version    string `json:"version"`
 }
 type ObjectResponse struct {
-	DER            []byte           `json:"der"`
-	V1SMR          []byte           `json:"v1smr"`
-	V1MapInclusion []byte           `json:"v1inclusion"`
-	V1MergePromise *MergePromise    `json:"v1promise"`
-	V1Seal         *V1CertifierSeal `json:"v1seal"`
+	DER              []byte           `json:"der"`
+	V1SMR            []byte           `json:"v1smr"`
+	V1MapInclusion   []byte           `json:"v1mapinclusion"`
+	V1MergePromise   *MergePromise    `json:"v1promise"`
+	V1SLR            []byte           `json:"v1slr"`
+	V1LogInclusion   []byte           `json:"v1loginclusion"`
+	V1LogConsistency [][]byte         `json:"v1logconsistency"`
+	V1Seal           *V1CertifierSeal `json:"v1seal"`
 }
 type V1CertifierSeal struct {
 	//Time in ms since epoch
@@ -69,12 +76,15 @@ type V1CertifierSeal struct {
 type NoSuchObjectResponse struct {
 }
 type IterateQueueResponse struct {
-	Hash           []byte           `json:"hash"`
-	NextToken      string           `json:"nextToken"`
-	V1MergePromise *MergePromise    `json:"v1promise"`
-	V1SMR          []byte           `json:"v1smr"`
-	V1MapInclusion []byte           `json:"v1inclusion"`
-	V1Seal         *V1CertifierSeal `json:"v1seal"`
+	Hash             []byte           `json:"hash"`
+	NextToken        string           `json:"nextToken"`
+	V1SMR            []byte           `json:"v1smr"`
+	V1MapInclusion   []byte           `json:"v1mapinclusion"`
+	V1MergePromise   *MergePromise    `json:"v1promise"`
+	V1SLR            []byte           `json:"v1slr"`
+	V1LogInclusion   []byte           `json:"v1loginclusion"`
+	V1LogConsistency [][]byte         `json:"v1logconsistency"`
+	V1Seal           *V1CertifierSeal `json:"v1seal"`
 }
 type EnqueueResponse struct {
 	V1MergePromise *MergePromise    `json:"v1promise"`
@@ -96,6 +106,11 @@ type SimpleHTTPStorage struct {
 	trustedCertifierIDs []string
 	mapTree             *trillian.Tree
 	mapVerifier         *client.MapVerifier
+	logTree             *trillian.Tree
+	logVerifier         *client.LogVerifier
+
+	//For log consistency checking
+	trustedLogRoot *types.LogRootV1
 }
 
 func (s *SimpleHTTPStorage) Location(context.Context) iapi.LocationSchemeInstance {
@@ -217,6 +232,8 @@ func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, seal *V1CertifierS
 		return fmt.Errorf("promise is for a different key")
 	}
 	if expectedcontent != nil && !bytes.Equal(mptbs.ValHash, expectedcontent) {
+		fmt.Printf("expected: %x\n", expectedcontent)
+		fmt.Printf("received: %x\n", mptbs.ValHash)
 		return fmt.Errorf("promise is for different content")
 	}
 
@@ -241,7 +258,11 @@ func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, seal *V1CertifierS
 func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstance) (content []byte, err error) {
 	b64 := hash.MultihashString()
 	certifierString := strings.Join(s.trustedCertifierIDs, ",")
-	resp, err := http.Get(fmt.Sprintf("%s/obj/%s?certifiers=%s", s.url, b64, certifierString))
+	var trusted uint64
+	if s.trustedLogRoot != nil {
+		trusted = s.trustedLogRoot.TreeSize
+	}
+	resp, err := http.Get(fmt.Sprintf("%s/obj/%s?certifiers=%s&trusted=%d", s.url, b64, certifierString, trusted))
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +297,16 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 			if len(s.trustedCertifierIDs) > 0 && rv.V1Seal == nil {
 				return nil, fmt.Errorf("missing certifier seal\n")
 			}
-			err := s.verifyV1smr(rv.V1SMR, rv.V1MapInclusion, rv.V1Seal, hash.Value(), rv.DER)
+			err := s.verifyV1(&verifyV1params{
+				MapRoot:        rv.V1SMR,
+				MapInclusion:   rv.V1MapInclusion,
+				LogRoot:        rv.V1SLR,
+				LogInclusion:   rv.V1LogInclusion,
+				LogConsistency: rv.V1LogConsistency,
+				Seal:           rv.V1Seal,
+				Key:            hash.Value(),
+				Value:          rv.DER,
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -312,7 +342,7 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 	}
 	if s.requireproof {
 		if len(s.trustedCertifierIDs) > 0 && enqueueResp.V1Seal == nil {
-			return nil, fmt.Errorf("missing certifier seal\n")
+			return fmt.Errorf("missing certifier seal\n")
 		}
 		err := s.verifyV1Promise(enqueueResp.V1MergePromise, enqueueResp.V1Seal, nil, nil)
 		if err != nil {
@@ -328,7 +358,11 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashSchemeInstance, iteratorToken string) (object iapi.HashSchemeInstance, nextToken string, err error) {
 	b64 := queueId.MultihashString()
 	certifierString := strings.Join(s.trustedCertifierIDs, ",")
-	resp, err := http.Get(fmt.Sprintf("%s/queue/%s?token=%s&certifiers=%s", s.url, b64, iteratorToken, certifierString))
+	var trusted uint64
+	if s.trustedLogRoot != nil {
+		trusted = s.trustedLogRoot.TreeSize
+	}
+	resp, err := http.Get(fmt.Sprintf("%s/queue/%s?token=%s&certifiers=%s&trusted=%d", s.url, b64, iteratorToken, certifierString, trusted))
 	if err != nil {
 		return nil, "", err
 	}
@@ -364,7 +398,7 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 		expectedVHash := iapi.KECCAK256.Instance(iterR.Hash)
 		if iterR.V1MergePromise != nil {
 			if len(s.trustedCertifierIDs) > 0 && iterR.V1Seal == nil {
-				return nil, fmt.Errorf("missing certifier seal\n")
+				return nil, "", fmt.Errorf("missing certifier seal\n")
 			}
 			err := s.verifyV1Promise(iterR.V1MergePromise, iterR.V1Seal, expectedHash.Value(), expectedVHash.Value())
 			if err != nil {
@@ -372,9 +406,18 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 			}
 		} else {
 			if len(s.trustedCertifierIDs) > 0 && iterR.V1Seal == nil {
-				return nil, fmt.Errorf("missing certifier seal\n")
+				return nil, "", fmt.Errorf("missing certifier seal\n")
 			}
-			err := s.verifyV1smr(iterR.V1SMR, iterR.V1MapInclusion, iterR.V1Seal, expectedHash.Value(), iterR.Hash)
+			err := s.verifyV1(&verifyV1params{
+				MapRoot:        iterR.V1SMR,
+				MapInclusion:   iterR.V1MapInclusion,
+				LogRoot:        iterR.V1SLR,
+				LogInclusion:   iterR.V1LogInclusion,
+				LogConsistency: iterR.V1LogConsistency,
+				Seal:           iterR.V1Seal,
+				Key:            expectedHash.Value(),
+				Value:          iterR.Hash,
+			})
 			if err != nil {
 				return nil, "", err
 			}
@@ -383,7 +426,103 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 	return hi, iterR.NextToken, nil
 }
 
-func (s *SimpleHTTPStorage) verifyV1smr(smr []byte, inclusion []byte, seal *V1CertifierSeal, key []byte, value []byte) error {
+type verifyV1params struct {
+	MapRoot        []byte
+	MapInclusion   []byte
+	LogRoot        []byte
+	LogInclusion   []byte
+	LogConsistency [][]byte
+	//TrustedLogRoot *types.LogRootV1
+	Seal  *V1CertifierSeal
+	Key   []byte
+	Value []byte
+}
+
+func (s *SimpleHTTPStorage) verifyV1(p *verifyV1params) error {
+	if p.Seal != nil {
+		pubk, ok := s.trustedCertifiers[p.Seal.Identity]
+		if !ok {
+			return fmt.Errorf("certifier identity not recognized")
+		}
+		h := sha3.New256()
+		h.Write(p.MapRoot)
+		h.Write([]byte(fmt.Sprintf("%d", p.Seal.Timestamp)))
+		d := h.Sum(nil)
+		if !ecdsa.Verify(pubk, d, p.Seal.SigR, p.Seal.SigS) {
+			return fmt.Errorf("certifier signature is incorrect")
+		}
+		if time.Now().Add(-time.Hour).UnixNano()/1e6 > p.Seal.Timestamp {
+			return fmt.Errorf("certifier signature has expired")
+		}
+	}
+	//Verify the map inclusion
+	pbinc := trillian.MapLeafInclusion{}
+	err := proto.Unmarshal(p.MapInclusion, &pbinc)
+	if err != nil {
+		return fmt.Errorf("malformed proof")
+	}
+	pbsmr := trillian.SignedMapRoot{}
+	err = proto.Unmarshal(p.MapRoot, &pbsmr)
+	if err != nil {
+		return fmt.Errorf("malformed proof")
+	}
+	if p.Key != nil && !bytes.Equal(pbinc.Leaf.Index, p.Key) {
+		return fmt.Errorf("malformed proof (wrong key)")
+	}
+	expectedValue := iapi.KECCAK256.Instance(p.Value).Value()
+	if p.Value != nil && !bytes.Equal(pbinc.Leaf.LeafValue, expectedValue) {
+		fmt.Printf("expected %x\n", expectedValue)
+		fmt.Printf("received %x\n", pbinc.Leaf.LeafValue)
+		return fmt.Errorf("malformed proof (wrong value)")
+	}
+	err = s.mapVerifier.VerifyMapLeafInclusion(&pbsmr, &pbinc)
+	if err != nil {
+		return fmt.Errorf("proof is invalid: %s", err)
+	}
+
+	//Verify the log inclusion
+	pbslr := trillian.SignedLogRoot{}
+	err = proto.Unmarshal(p.LogRoot, &pbslr)
+
+	if s.trustedLogRoot == nil {
+		fmt.Printf("skipping consistency proof %p\n", s)
+		//This is our first interaction with this storage
+		r, err := tcrypto.VerifySignedLogRoot(s.logVerifier.PubKey, s.logVerifier.SigHash, &pbslr)
+		if err != nil {
+			return fmt.Errorf("Log root signature fail: %v", err)
+		}
+		s.trustedLogRoot = r
+	} else if pbslr.TreeSize > int64(s.trustedLogRoot.TreeSize) {
+		fmt.Printf("doing consistency proof\n")
+		newRoot, err := s.logVerifier.VerifyRoot(s.trustedLogRoot, &pbslr, p.LogConsistency)
+		if err != nil {
+			//TODO store for sending to auditor
+			return fmt.Errorf("Log root consistency fail: %v", err)
+		}
+		s.trustedLogRoot = newRoot
+	}
+
+	//We are not using the typical Trillian method of verifying log roots
+	//because we are not checking consistency
+	leafHash, err := s.logVerifier.Hasher.HashLeaf(pbsmr.MapRoot)
+	if err != nil {
+		return err
+	}
+	logproof := trillian.Proof{}
+	err = proto.Unmarshal(p.LogInclusion, &logproof)
+	if err != nil {
+		return fmt.Errorf("malformed proof")
+	}
+	err = s.logVerifier.VerifyInclusionByHash(s.trustedLogRoot, leafHash, &logproof)
+	if err != nil {
+		return err
+	}
+
+	//TODO store log root for sending to auditor
+	return nil
+}
+
+func (s *SimpleHTTPStorage) verifyV1smr_(smr []byte, inclusion []byte, seal *V1CertifierSeal, key []byte, value []byte) error {
 	if seal != nil {
 		//First verify auditor sig
 		pubk, ok := s.trustedCertifiers[seal.Identity]
@@ -431,6 +570,8 @@ func (s *SimpleHTTPStorage) initmap() {
 	if pubk == nil {
 		panic(fmt.Sprintf("bad public key %q", s.publickey))
 	}
+
+	//Map
 	s.mapTree = &trillian.Tree{
 		TreeState:          trillian.TreeState_ACTIVE,
 		TreeType:           trillian.TreeType_MAP,
@@ -449,5 +590,22 @@ func (s *SimpleHTTPStorage) initmap() {
 	if err != nil {
 		panic(err)
 	}
-
+	//Map root log
+	s.logTree = &trillian.Tree{
+		TreeState:          trillian.TreeState_ACTIVE,
+		TreeType:           trillian.TreeType_LOG,
+		HashStrategy:       trillian.HashStrategy_RFC6962_SHA256,
+		HashAlgorithm:      spb.DigitallySigned_SHA256,
+		SignatureAlgorithm: spb.DigitallySigned_ECDSA,
+		DisplayName:        "OPERATIONS",
+		Description:        "for WAVE",
+		PublicKey: &keyspb.PublicKey{
+			Der: pubk.Bytes,
+		},
+		MaxRootDuration: ptypes.DurationProto(0 * time.Millisecond),
+	}
+	s.logVerifier, err = client.NewLogVerifierFromTree(s.logTree)
+	if err != nil {
+		panic(err)
+	}
 }

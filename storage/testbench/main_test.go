@@ -45,8 +45,8 @@ func init() {
 	storageconfig["provider"] = "http_v1"
 	storageconfig["url"] = "http://127.0.0.1:8080/v1"
 	storageconfig["v1key"] = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEGjdGkLtx+qUEYaPws/xU1yL35wn
-nebmxzLdRFPr8w6U395MSJbfIk7VZ8rGaeHIRNJm3YuRh54vqWSS3SIuqg==
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEKG6NaA54Fx6m7Ih019r1LDXDf7ay
+CQKL0D2lvjF0TcQP8Kx+lFrRyjvqBJrrv5KUPcbBYWXJwscLTDkwA3zBtg==
 -----END PUBLIC KEY-----`
 	storageconfig["v1auditors"] = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjxdbNOQuEkIhfN61raSYgijjygMf
@@ -146,15 +146,26 @@ func TestPutGetDelay(t *testing.T) {
 	//This has no perspective entity, probably not a problem for now
 	ctx := context.Background()
 	//About the size of an attestation
-	content := make([]byte, 80)
-	rand.Read(content)
-
-	hi, err := in.Put(ctx, content)
-	require.NoError(t, err)
-	time.Sleep(10 * time.Second)
-	readback, err := in.Get(ctx, hi)
-	require.NoError(t, err)
-	require.EqualValues(t, content, readback)
+	{
+		content := make([]byte, 80)
+		rand.Read(content)
+		hi, err := in.Put(ctx, content)
+		require.NoError(t, err)
+		time.Sleep(3 * time.Second)
+		readback, err := in.Get(ctx, hi)
+		require.NoError(t, err)
+		require.EqualValues(t, content, readback)
+	}
+	{
+		content := make([]byte, 80)
+		rand.Read(content)
+		hi, err := in.Put(ctx, content)
+		require.NoError(t, err)
+		time.Sleep(3 * time.Second)
+		readback, err := in.Get(ctx, hi)
+		require.NoError(t, err)
+		require.EqualValues(t, content, readback)
+	}
 }
 
 func TestEnqueDequeue(t *testing.T) {

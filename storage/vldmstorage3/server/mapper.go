@@ -8,11 +8,14 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/trillian"
+	"github.com/google/trillian/client"
 	"github.com/google/trillian/types"
 	"github.com/immesys/wave/storage/vldmstorage2/pb"
 )
 
 const LogBatchSize = 280
+
+var mapperLogClient *client.LogClient
 
 func PerformOneMap() (bool, error) {
 	start := time.Now()
@@ -97,33 +100,73 @@ func PerformOneMap() (bool, error) {
 	if err != nil {
 		panic(err)
 	}
-	//Here we would communicate with the auditors
-	{
-		ts, sigR, sigS, err := SignMapRoot("mock", smrbytes)
-		//error should not happen because we chose the identity
+
+	//Now we need to insert this into the root log
+	rootResp, err := logclient.QueueLeaf(context.Background(), &trillian.QueueLeafRequest{
+		LogId: TreeID_Root,
+		Leaf: &trillian.LogLeaf{
+			LeafValue: smr.MapRoot,
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	for {
+		llr, err := logclient.GetLatestSignedLogRoot(context.Background(), &trillian.GetLatestSignedLogRootRequest{
+			LogId: TreeID_Root,
+		})
 		if err != nil {
 			panic(err)
 		}
-		var newMapRoot types.MapRootV1
-		if err := newMapRoot.UnmarshalBinary(smr.MapRoot); err != nil {
+		rootloginclusion, err := logclient.GetInclusionProofByHash(context.Background(), &trillian.GetInclusionProofByHashRequest{
+			LogId:    TreeID_Root,
+			LeafHash: rootResp.QueuedLeaf.Leaf.LeafIdentityHash,
+			TreeSize: llr.SignedLogRoot.TreeSize,
+		})
+		if err != nil {
+			fmt.Printf("got error: %v", err)
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		slrbytes, err := proto.Marshal(rootloginclusion.SignedLogRoot)
+		if err != nil {
+			panic(err)
+		}
+		slrinc, err := proto.Marshal(rootloginclusion.Proof[0])
+		if err != nil {
 			panic(err)
 		}
 
-		err = DB.InsertSignedMapRoot(newMapRoot.Revision, "mock", ts, sigR, sigS)
-		if err != nil {
-			panic(err)
+		//Here we would communicate with the auditors
+		{
+			ts, sigR, sigS, err := SignMapRoot("mock", smrbytes)
+			//error should not happen because we chose the identity
+			if err != nil {
+				panic(err)
+			}
+			var newMapRoot types.MapRootV1
+			if err := newMapRoot.UnmarshalBinary(smr.MapRoot); err != nil {
+				panic(err)
+			}
+
+			dbsmr := &dbSMR{
+				Revision:      newMapRoot.Revision,
+				SigIdentity:   "mock",
+				Timestamp:     ts,
+				R:             sigR,
+				S:             sigS,
+				LogInclusion:  slrinc,
+				LogSignedRoot: slrbytes,
+				LogSize:       llr.SignedLogRoot.TreeSize,
+			}
+			err = DB.InsertSignedMapRoot(dbsmr)
+			if err != nil {
+				panic(err)
+			}
 		}
+		break
 	}
-	// llf := &trillian.LogLeaf{
-	// 	LeafValue: smrbytes,
-	// }
-	// _, err = logclient.QueueLeaf(ctx, &trillian.QueueLeafRequest{
-	// 	LogId: TreeID_Root,
-	// 	Leaf:  llf,
-	// })
-	// if err != nil {
-	// 	panic(err)
-	// }
 
 	d := time.Since(start)
 	fmt.Printf("Map run complete, took %.1f secs to update %d values (%0.2f/s)\n", d.Seconds(), len(setReq.Leaves), float64(len(setReq.Leaves))/d.Seconds())

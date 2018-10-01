@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -28,10 +27,11 @@ var PrivateKey string
 var PrivateKeyUnpacked *ecdsa.PrivateKey
 var TreeID_Op int64
 var TreeID_Map int64
+var TreeID_Root int64
 
 type PromiseObject struct {
 	Promise *simplehttp.MergePromise
-	Seals   []*simplehttp.V1AuditorSig
+	Seals   []*simplehttp.V1CertifierSeal
 	Key     []byte
 	Value   []byte
 }
@@ -42,8 +42,8 @@ var promises map[string]*PromiseObject
 func initstorage() {
 	optreeid := os.Getenv("VLDM_TREE_OPERATIONS")
 	maptreeid := os.Getenv("VLDM_TREE_MAP")
-
-	if optreeid == "" || maptreeid == "" {
+	roottreeid := os.Getenv("VLDM_TREE_ROOT")
+	if optreeid == "" || maptreeid == "" || roottreeid == "" {
 		fmt.Printf("Missing tree ids\n")
 		os.Exit(1)
 	}
@@ -53,6 +53,12 @@ func initstorage() {
 		fmt.Printf("could not parse tree id:%v\n", err)
 	}
 	TreeID_Op = v
+
+	v, err = strconv.ParseInt(roottreeid, 10, 64)
+	if err != nil {
+		fmt.Printf("could not parse tree id:%v\n", err)
+	}
+	TreeID_Root = v
 
 	v, err = strconv.ParseInt(maptreeid, 10, 64)
 	if err != nil {
@@ -83,81 +89,17 @@ func initstorage() {
 
 type GetMapKeyResponse struct {
 	Unmerged bool
-	Seal     *simplehttp.V1AuditorSig
+	Seal     *simplehttp.V1CertifierSeal
 	//If unmerged
 	MergePromise *simplehttp.MergePromise
 	//If merged
-	SignedMapRoot []byte
-	MapInclusion  []byte
-	SignedLogRoot []byte
-	LogInclusion  []byte
-	Value         []byte
+	SignedMapRoot  []byte
+	MapInclusion   []byte
+	SignedLogRoot  []byte
+	LogInclusion   []byte
+	Value          []byte
+	LogConsistency [][]byte
 }
-
-//
-// func GetMapKeyAtRev(key []byte, rev int64) (bool, *GetMapKeyResponse) {
-// 	resp2, err := vmap.GetLeavesByRevision(context.Background(), &trillian.GetMapLeavesByRevisionRequest{
-// 		MapId:    TreeID_Map,
-// 		Index:    [][]byte{key},
-// 		Revision: rev,
-// 	})
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	if resp2.MapLeafInclusion[0].Leaf.LeafValue == nil {
-// 		//check for promise rather
-// 		promisemu.Lock()
-// 		pv, ok := promises[string(key)]
-// 		promisemu.Unlock()
-// 		if ok {
-// 			return true, &GetMapKeyResponse{
-// 				Unmerged:     true,
-// 				MergePromise: pv.Promise,
-// 				Value:        pv.Value,
-// 			}
-// 		}
-// 	}
-//
-// 	smrbytes, err := proto.Marshal(resp2.MapRoot)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	h := sha256.New()
-// 	h.Write([]byte{0})
-// 	h.Write(smrbytes)
-// 	r := h.Sum(nil)
-// 	_ = r
-//
-// 	inclusion, err := proto.Marshal(resp2.MapLeafInclusion[0])
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	smr, err := proto.Marshal(resp2.MapRoot)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-//
-// 	if resp2.MapLeafInclusion[0].Leaf.LeafValue == nil {
-// 		return true, &GetMapKeyResponse{
-// 			SignedMapRoot: smr,
-// 			MapInclusion:  inclusion,
-// 		}
-// 	} else {
-// 		// pv := &PromiseObject{}
-// 		// fmt.Printf("leaf value is: %q", resp2.MapLeafInclusion[0].Leaf.LeafValue)
-// 		// err := json.Unmarshal(resp2.MapLeafInclusion[0].Leaf.LeafValue, pv)
-// 		// if err != nil {
-// 		// 	panic(err)
-// 		// }
-// 		return true, &GetMapKeyResponse{
-// 			SignedMapRoot: smr,
-// 			MapInclusion:  inclusion,
-// 			Value:         resp2.MapLeafInclusion[0].Leaf.LeafValue,
-// 		}
-// 	}
-// }
-
-var goodrev int64
 
 func MapSigTooOld(v *dbSMR) bool {
 	return time.Unix(0, v.Timestamp*1e6).Before(time.Now().Add(-1 * time.Hour))
@@ -173,7 +115,7 @@ func GetPromise(identities []string, key []byte) *PromiseObject {
 
 var ErrMapRootTooOld = errors.New("No recent map roots audited by the given ids found")
 
-func GetMapKeyValue(identities []string, key []byte) (*GetMapKeyResponse, error) {
+func GetMapKeyValue(identities []string, key []byte, trustedSize int64) (*GetMapKeyResponse, error) {
 	dbSMR, err := DB.GetLatestMapRootSignature(identities)
 	if err != nil {
 		return nil, err
@@ -182,11 +124,15 @@ func GetMapKeyValue(identities []string, key []byte) (*GetMapKeyResponse, error)
 	checkPromise := func() *GetMapKeyResponse {
 		pv := GetPromise(identities, key)
 		if pv != nil {
+			realValue, err := DB.RetrieveObject(pv.Value)
+			if err != nil {
+				panic(err)
+			}
 			return &GetMapKeyResponse{
 				Seal:         pv.Seals[0],
 				Unmerged:     true,
 				MergePromise: pv.Promise,
-				Value:        pv.Value,
+				Value:        realValue,
 			}
 		}
 		fmt.Printf("promise is nil\n")
@@ -220,15 +166,20 @@ func GetMapKeyValue(identities []string, key []byte) (*GetMapKeyResponse, error)
 		}
 	}
 
-	smrbytes, err := proto.Marshal(resp2.MapRoot)
-	if err != nil {
-		panic(err)
+	//Get consistency proof if required
+	var consistency [][]byte
+	if dbSMR.LogSize > trustedSize && trustedSize != 0 {
+		cp, err := logclient.GetConsistencyProof(context.Background(), &trillian.GetConsistencyProofRequest{
+			LogId:          TreeID_Root,
+			FirstTreeSize:  trustedSize,
+			SecondTreeSize: dbSMR.LogSize,
+		})
+		if err != nil {
+			panic(err)
+		}
+		consistency = cp.Proof.Hashes
 	}
-	h := sha256.New()
-	h.Write([]byte{0})
-	h.Write(smrbytes)
-	r := h.Sum(nil)
-	_ = r
+
 	inclusion, err := proto.Marshal(resp2.MapLeafInclusion[0])
 	if err != nil {
 		panic(err)
@@ -242,35 +193,39 @@ func GetMapKeyValue(identities []string, key []byte) (*GetMapKeyResponse, error)
 		return &GetMapKeyResponse{
 			SignedMapRoot: smr,
 			MapInclusion:  inclusion,
-			Seal: &simplehttp.V1AuditorSig{
+			Seal: &simplehttp.V1CertifierSeal{
 				Timestamp: dbSMR.Timestamp,
 				Identity:  dbSMR.SigIdentity,
 				SigR:      dbSMR.R,
 				SigS:      dbSMR.S,
 			},
+			SignedLogRoot:  dbSMR.LogSignedRoot,
+			LogInclusion:   dbSMR.LogInclusion,
+			LogConsistency: consistency,
 		}, nil
 	} else {
-		// pv := &PromiseObject{}
-		// fmt.Printf("leaf value is: %q", resp2.MapLeafInclusion[0].Leaf.LeafValue)
-		// err := json.Unmarshal(resp2.MapLeafInclusion[0].Leaf.LeafValue, pv)
-		// if err != nil {
-		// 	panic(err)
-		// }
+		realValue, err := DB.RetrieveObject(resp2.MapLeafInclusion[0].Leaf.LeafValue)
+		if err != nil {
+			return nil, err
+		}
 		return &GetMapKeyResponse{
 			SignedMapRoot: smr,
 			MapInclusion:  inclusion,
-			Value:         resp2.MapLeafInclusion[0].Leaf.LeafValue,
-			Seal: &simplehttp.V1AuditorSig{
+			Value:         realValue,
+			Seal: &simplehttp.V1CertifierSeal{
 				Timestamp: dbSMR.Timestamp,
 				Identity:  dbSMR.SigIdentity,
 				SigR:      dbSMR.R,
 				SigS:      dbSMR.S,
 			},
+			SignedLogRoot:  dbSMR.LogSignedRoot,
+			LogInclusion:   dbSMR.LogInclusion,
+			LogConsistency: consistency,
 		}, nil
 	}
 }
 
-func InsertKeyValue(identities []string, key []byte, value []byte) (*simplehttp.MergePromise, *simplehttp.V1AuditorSig, error) {
+func InsertKeyValue(identities []string, key []byte, value []byte) (*simplehttp.MergePromise, *simplehttp.V1CertifierSeal, error) {
 	//TODO check for existing merge promise for this value
 	hi := iapi.KECCAK256.Instance(value)
 	hasharr := hi.Value()
@@ -280,9 +235,9 @@ func InsertKeyValue(identities []string, key []byte, value []byte) (*simplehttp.
 	}
 	po := &PromiseObject{
 		Promise: mp,
-		Seals:   []*simplehttp.V1AuditorSig{asig},
+		Seals:   []*simplehttp.V1CertifierSeal{asig},
 		Key:     key,
-		Value:   value,
+		Value:   hasharr,
 	}
 	promisemu.Lock()
 	promises[string(key)] = po
@@ -301,6 +256,10 @@ func InsertKeyValue(identities []string, key []byte, value []byte) (*simplehttp.
 	})
 	if err != nil {
 		panic(err)
+	}
+	err = DB.InsertObject(hasharr, value)
+	if err != nil {
+		return nil, nil, err
 	}
 	return mp, asig, nil
 }

@@ -24,7 +24,7 @@ func ParsePrivateKey(in []byte) (*ecdsa.PrivateKey, error) {
 	}
 	return priv, err
 }
-func MakeMergePromise(key []byte, valhash []byte, auditorIDs []string, signingkey *ecdsa.PrivateKey) (*simplehttp.MergePromise, *simplehttp.V1AuditorSig, error) {
+func MakeMergePromise(key []byte, valhash []byte, auditorIDs []string, signingkey *ecdsa.PrivateKey) (*simplehttp.MergePromise, *simplehttp.V1CertifierSeal, error) {
 	if signingkey == nil {
 		panic("no signing key!")
 	}

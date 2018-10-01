@@ -32,9 +32,15 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{}"))
 		return
 	}
-	adz := r.URL.Query().Get("auditors")
+	adz := r.URL.Query().Get("certifiers")
 	ids := strings.Split(adz, ",")
-	mkr, err := GetMapKeyValue(ids, mh.Digest)
+	trustedSize, err := strconv.ParseInt(r.URL.Query().Get("trusted"), 10, 64)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	mkr, err := GetMapKeyValue(ids, mh.Digest, trustedSize)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
@@ -43,9 +49,12 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	if mkr.Value == nil {
 		w.WriteHeader(404)
 		rv := simplehttp.ObjectResponse{
-			V1SMR:          mkr.SignedMapRoot,
-			V1MapInclusion: mkr.MapInclusion,
-			V1Seal:         mkr.Seal,
+			V1SMR:            mkr.SignedMapRoot,
+			V1MapInclusion:   mkr.MapInclusion,
+			V1Seal:           mkr.Seal,
+			V1SLR:            mkr.SignedLogRoot,
+			V1LogInclusion:   mkr.LogInclusion,
+			V1LogConsistency: mkr.LogConsistency,
 		}
 		json.NewEncoder(w).Encode(&rv)
 		return
@@ -61,10 +70,13 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rv := simplehttp.ObjectResponse{
-		DER:            mkr.Value,
-		V1SMR:          mkr.SignedMapRoot,
-		V1MapInclusion: mkr.MapInclusion,
-		V1Seal:         mkr.Seal,
+		DER:              mkr.Value,
+		V1SMR:            mkr.SignedMapRoot,
+		V1MapInclusion:   mkr.MapInclusion,
+		V1Seal:           mkr.Seal,
+		V1SLR:            mkr.SignedLogRoot,
+		V1LogInclusion:   mkr.LogInclusion,
+		V1LogConsistency: mkr.LogConsistency,
 	}
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(&rv)
@@ -88,7 +100,7 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body.Close()
 	//TODO get from parameters
-	ids := params.Auditors
+	ids := params.Certifiers
 	hash := iapi.KECCAK256.Instance(params.DER)
 	promise, asig, err := InsertKeyValue(ids, hash.Value(), params.DER)
 	if err != nil {
@@ -133,14 +145,20 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("bad hash"))
 		return
 	}
-	adz := r.URL.Query().Get("auditors")
+	trustedSize, err := strconv.ParseInt(r.URL.Query().Get("trusted"), 10, 64)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	adz := r.URL.Query().Get("certifiers")
 	ids := strings.Split(adz, ",")
 	tohash := make([]byte, 40)
 	copy(tohash[:32], idmh.Digest)
 	binary.LittleEndian.PutUint64(tohash[32:], uint64(index))
 	hi := iapi.KECCAK256.Instance(tohash)
 	hiarr := hi.Value()
-	mkr, err := GetMapKeyValue(ids, hiarr)
+	mkr, err := GetMapKeyValue(ids, hiarr, trustedSize)
 	if err != nil {
 		fmt.Printf("case a\n")
 		w.WriteHeader(500)
@@ -150,9 +168,12 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 	if mkr.Value == nil {
 		w.WriteHeader(404)
 		rv := simplehttp.IterateQueueResponse{
-			V1SMR:          mkr.SignedMapRoot,
-			V1MapInclusion: mkr.MapInclusion,
-			V1Seal:         mkr.Seal,
+			V1SMR:            mkr.SignedMapRoot,
+			V1MapInclusion:   mkr.MapInclusion,
+			V1Seal:           mkr.Seal,
+			V1SLR:            mkr.SignedLogRoot,
+			V1LogInclusion:   mkr.LogInclusion,
+			V1LogConsistency: mkr.LogConsistency,
 		}
 		json.NewEncoder(w).Encode(&rv)
 		return
@@ -169,11 +190,14 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rv := simplehttp.IterateQueueResponse{
-		Hash:           mkr.Value,
-		NextToken:      fmt.Sprintf("%d", index+1),
-		V1SMR:          mkr.SignedMapRoot,
-		V1MapInclusion: mkr.MapInclusion,
-		V1Seal:         mkr.Seal,
+		Hash:             mkr.Value,
+		NextToken:        fmt.Sprintf("%d", index+1),
+		V1SMR:            mkr.SignedMapRoot,
+		V1MapInclusion:   mkr.MapInclusion,
+		V1Seal:           mkr.Seal,
+		V1SLR:            mkr.SignedLogRoot,
+		V1LogInclusion:   mkr.LogInclusion,
+		V1LogConsistency: mkr.LogConsistency,
 	}
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(&rv)
@@ -215,9 +239,8 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 
 	hi := iapi.KECCAK256.Instance(tohash)
 	hiarr := hi.Value()
-	//TODO get from params
-	auditorIds := req.Auditors
-	promise, asig, err := InsertKeyValue(auditorIds, hiarr, req.EntryHash)
+	certifierIDs := req.Certifiers
+	promise, asig, err := InsertKeyValue(certifierIDs, hiarr, req.EntryHash)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
