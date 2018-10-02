@@ -16,7 +16,6 @@ const LogBatchSize = 280
 
 func PerformOneMap() (bool, error) {
 	start := time.Now()
-	fmt.Printf("starting map run\n")
 	getRootReq := &trillian.GetSignedMapRootRequest{MapId: TreeID_Map}
 	getRootResp, err := vmap.GetSignedMapRoot(context.Background(), getRootReq)
 	if err != nil {
@@ -41,7 +40,7 @@ func PerformOneMap() (bool, error) {
 	} else {
 		fmt.Printf("bootstrapping first run\n")
 	}
-	fmt.Printf("Fetching entries [%d+] from log\n", startEntry)
+	fmt.Printf("Fetching entries [%d+] from log: ", startEntry)
 
 	// Get the entries from the log:
 	entryresp, err := logclient.GetLeavesByRange(context.Background(), &trillian.GetLeavesByRangeRequest{
@@ -55,6 +54,8 @@ func PerformOneMap() (bool, error) {
 	if len(entryresp.Leaves) == 0 {
 		fmt.Printf("No entries from log\n")
 		return false, nil
+	} else {
+		fmt.Printf("Found %d\n", len(entryresp.Leaves))
 	}
 
 	// Store updated map values:

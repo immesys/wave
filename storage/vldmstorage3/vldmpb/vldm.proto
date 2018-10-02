@@ -10,8 +10,12 @@ service VLDM {
   //rpc IterateQueue(IterateQueueParams) returns (IterateQueueResponse);
   //rpc AddToQueue(AddToQueueParams) returns (AddToQueueResponse);
 
-  rpc SubscribeMapHeads(SubscribeParams) returns (stream MapHead);
+  //For certifiers
   rpc SubmitSignedMapHead(SubmitParams) returns (SubmitResponse);
+
+  //For certifiers and auditors
+  rpc SubscribeMapHeads(SubscribeParams) returns (stream MapHead);
+  rpc GetLogHead(GetLogHeadParams) returns (GetLogHeadResponse);
   rpc GetLogConsistency(GetConsistencyParams) returns (GetConsistencyResponse);
   rpc GetLogItem(GetLogItemParams) returns (GetLogItemResponse);
 }
@@ -20,7 +24,7 @@ message SubscribeParams {
 
 }
 message MapHead {
-
+  bytes trillianSignedMapRoot = 1;
 }
 message SubmitParams {
 
@@ -28,17 +32,29 @@ message SubmitParams {
 message SubmitResponse {
 
 }
+
+message GetLogHeadParams {
+  //True if this is the oplog, false if it's the root log
+  bool isOperation = 1;
+}
+message GetLogHeadResponse {
+  bytes trillianSignedLogRoot = 1;
+}
 message GetConsistencyParams {
-  int64 from = 1;
-  int64 to = 2;
+  //True if this is the oplog, false if it's the root log
+  bool isOperation = 1;
+  int64 from = 2;
+  int64 to = 3;
 }
 message GetConsistencyResponse {
   bytes trillianProof = 1;
 }
 
 message GetLogItemParams {
-  int64 index = 1;
-  int64 size = 2;
+  //True if this is the oplog, false if it's the root log
+  bool isOperation = 1;
+  int64 index = 2;
+  int64 size = 3;
 }
 message GetLogItemResponse {
   bytes trillianGetEntryAndProofResponse = 1;
@@ -48,4 +64,22 @@ message GetLogItemResponse {
 // Used internally
 message MapperMetadata {
   int64 highest_fully_completed_seq = 1;
+}
+
+service Auditor {
+  rpc SubmitLogRoot(SubmitLogRootParams) returns (SubmitLogRootResponse);
+  rpc GetPeers(GetPeersParams) returns (GetPeersResponse);
+}
+
+message SubmitLogRootParams {
+  bytes SignedLogRoot = 1;
+}
+message SubmitLogRootResponse {
+  bool trustworthy = 1;
+}
+message GetPeersParams {
+  string publickey = 1;
+}
+message GetPeersResponse {
+  repeated string hosts = 1;
 }

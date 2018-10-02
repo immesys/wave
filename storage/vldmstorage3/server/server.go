@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"sync"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/trillian"
@@ -9,9 +10,12 @@ import (
 )
 
 type api struct {
-	logId  int64
-	mapId  int64
-	client trillian.TrillianLogClient
+	submu sync.Mutex
+	subs  []*mrsubscription
+}
+type mrsubscription struct {
+	Ch  chan *trillian.SignedMapRoot
+	Ctx context.Context
 }
 
 var API *api
@@ -20,9 +24,70 @@ func init() {
 	API = &api{}
 }
 
+func (a *api) SubmitMapRoot(mr *trillian.SignedMapRoot) {
+	newsubs := []*mrsubscription{}
+	a.submu.Lock()
+	for _, sub := range a.subs {
+		if sub.Ctx.Err() != nil {
+			continue
+		}
+		sub.Ch <- mr
+		newsubs = append(newsubs, sub)
+	}
+	a.subs = newsubs
+	a.submu.Unlock()
+}
+
+func (a *api) SubscribeMapHeads(p *vldmpb.SubscribeParams, r vldmpb.VLDM_SubscribeMapHeadsServer) error {
+	ch := make(chan *trillian.SignedMapRoot, 100)
+	a.submu.Lock()
+	a.subs = append(a.subs, &mrsubscription{
+		Ch:  ch,
+		Ctx: r.Context(),
+	})
+	a.submu.Unlock()
+	for {
+		select {
+		case mh := <-ch:
+			ba, err := proto.Marshal(mh)
+			if err != nil {
+				panic(err)
+			}
+			err = r.Send(&vldmpb.MapHead{
+				TrillianSignedMapRoot: ba,
+			})
+			if err != nil {
+				return err
+			}
+		case <-r.Context().Done():
+			return r.Context().Err()
+		}
+	}
+}
+func (a *api) GetLogHead(ctx context.Context, p *vldmpb.GetLogHeadParams) (*vldmpb.GetLogHeadResponse, error) {
+	logId = TreeID_Root
+	if p.IsOperation {
+		logId = TreeID_Op
+	}
+	resp, err := logclient.GetLatestSignedLogRoot(ctx, &trillian.GetLatestSignedLogRootRequest{
+		LogId: logId,
+	})
+	if err != nil {
+		return nil, err
+	}
+	ba, err := proto.Marshal(resp.SignedLogRoot)
+	if err != nil {
+		panic(err)
+	}
+	return &vldmpb.GetLogHeadResponse{TrillianSignedLogRoot: ba}, nil
+}
 func (a *api) GetLogItem(ctx context.Context, p *vldmpb.GetLogItemParams) (*vldmpb.GetLogItemResponse, error) {
-	resp, err := a.client.GetEntryAndProof(ctx, &trillian.GetEntryAndProofRequest{
-		LogId:     a.logId,
+	logId = TreeID_Root
+	if p.IsOperation {
+		logId = TreeID_Op
+	}
+	resp, err := logclient.GetEntryAndProof(ctx, &trillian.GetEntryAndProofRequest{
+		LogId:     logId,
 		LeafIndex: p.Index,
 		TreeSize:  p.Size,
 	})
@@ -37,8 +102,12 @@ func (a *api) GetLogItem(ctx context.Context, p *vldmpb.GetLogItemParams) (*vldm
 }
 
 func (a *api) GetLogConsistency(ctx context.Context, p *vldmpb.GetConsistencyParams) (*vldmpb.GetConsistencyResponse, error) {
+	logId = TreeID_Root
+	if p.IsOperation {
+		logId = TreeID_Op
+	}
 	resp, err := logclient.GetConsistencyProof(ctx, &trillian.GetConsistencyProofRequest{
-		LogId:          a.logId,
+		LogId:          logId,
 		FirstTreeSize:  p.From,
 		SecondTreeSize: p.To,
 	})
@@ -52,17 +121,7 @@ func (a *api) GetLogConsistency(ctx context.Context, p *vldmpb.GetConsistencyPar
 	return &vldmpb.GetConsistencyResponse{TrillianProof: ba}, nil
 }
 
-// func logSTH(logid int64, w http.ResponseWriter, r *http.Request) {
-// 	resp, err := logclient.GetLatestSignedLogRoot(context.Background(), &trillian.GetLatestSignedLogRootRequest{
-// 		LogId: logid,
-// 	})
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	ba, err := proto.Marshal(resp.SignedLogRoot)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	w.WriteHeader(200)
-// 	w.Write(ba)
-// }
+func (a *api) SubmitSignedMapHead(ctx context.Context, p *vldmpb.SubmitParams) (*vldmpb.SubmitResponse, error) {
+	//TODO
+	return nil, nil
+}

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
@@ -504,7 +504,7 @@ func (s *SimpleHTTPStorage) verifyV1(p *verifyV1params) error {
 
 	//We are not using the typical Trillian method of verifying log roots
 	//because we are not checking consistency
-	leafHash, err := s.logVerifier.Hasher.HashLeaf(pbsmr.MapRoot)
+	leafHash, err := s.logVerifier.Hasher.HashLeaf(p.MapRoot)
 	if err != nil {
 		return err
 	}

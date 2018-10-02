@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/google/trillian"
+	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keyspb"
 	spb "github.com/google/trillian/crypto/sigpb"
 	_ "github.com/google/trillian/merkle/coniks"
@@ -28,6 +29,7 @@ var OpLogTree *trillian.Tree
 var RootLogTree *trillian.Tree
 var logclient trillian.TrillianLogClient
 var logId int64
+var logverifier *client.LogVerifier
 
 func initlogs() {
 	pubk, _ := pem.Decode([]byte(PublicKey))
@@ -72,8 +74,10 @@ func initlogs() {
 		glog.Fatal(err)
 	}
 	logclient = trillian.NewTrillianLogClient(logconn)
-	API.logId = TreeID_Op
-	API.client = logclient
+	logverifier, err = client.NewLogVerifierFromTree(RootLogTree)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // func addToLog(value []byte) int64 {

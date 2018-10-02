@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
+	"github.com/google/trillian/merkle/rfc6962"
 	"github.com/google/trillian/types"
 	"github.com/immesys/wave/storage/vldmstorage2/pb"
 )
@@ -17,9 +18,8 @@ const LogBatchSize = 280
 
 var mapperLogClient *client.LogClient
 
-func PerformOneMap() (bool, error) {
+func PerformOneMap(certifierIDs []string) (bool, error) {
 	start := time.Now()
-	fmt.Printf("starting map run\n")
 	getRootReq := &trillian.GetSignedMapRootRequest{MapId: TreeID_Map}
 	getRootResp, err := vmap.GetSignedMapRoot(context.Background(), getRootReq)
 	if err != nil {
@@ -44,7 +44,7 @@ func PerformOneMap() (bool, error) {
 	} else {
 		fmt.Printf("bootstrapping first run\n")
 	}
-	fmt.Printf("Fetching entries [%d+] from log\n", startEntry)
+	fmt.Printf("Fetching entries [%d+] from log: ", startEntry)
 
 	// Get the entries from the log:
 	entryresp, err := logclient.GetLeavesByRange(context.Background(), &trillian.GetLeavesByRangeRequest{
@@ -58,6 +58,8 @@ func PerformOneMap() (bool, error) {
 	if len(entryresp.Leaves) == 0 {
 		fmt.Printf("No entries from log\n")
 		return false, nil
+	} else {
+		fmt.Printf("Found %d\n", len(entryresp.Leaves))
 	}
 
 	// Store updated map values:
@@ -80,7 +82,6 @@ func PerformOneMap() (bool, error) {
 		})
 		endID = l.LeafIndex
 	}
-
 	mapperMetadata.HighestFullyCompletedSeq = endID
 
 	mapperBytes, err := proto.Marshal(mapperMetadata)
@@ -94,7 +95,6 @@ func PerformOneMap() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
 	smr := setResp.GetMapRoot()
 	smrbytes, err := proto.Marshal(setResp.MapRoot)
 	if err != nil {
@@ -105,7 +105,7 @@ func PerformOneMap() (bool, error) {
 	rootResp, err := logclient.QueueLeaf(context.Background(), &trillian.QueueLeafRequest{
 		LogId: TreeID_Root,
 		Leaf: &trillian.LogLeaf{
-			LeafValue: smr.MapRoot,
+			LeafValue: smrbytes,
 		},
 	})
 	if err != nil {
@@ -124,7 +124,6 @@ func PerformOneMap() (bool, error) {
 			TreeSize: llr.SignedLogRoot.TreeSize,
 		})
 		if err != nil {
-			fmt.Printf("got error: %v", err)
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
@@ -139,8 +138,8 @@ func PerformOneMap() (bool, error) {
 		}
 
 		//Here we would communicate with the auditors
-		{
-			ts, sigR, sigS, err := SignMapRoot("mock", smrbytes)
+		for _, certifier := range certifierIDs {
+			ts, sigR, sigS, err := SignMapRoot(certifier, smrbytes)
 			//error should not happen because we chose the identity
 			if err != nil {
 				panic(err)
@@ -152,7 +151,7 @@ func PerformOneMap() (bool, error) {
 
 			dbsmr := &dbSMR{
 				Revision:      newMapRoot.Revision,
-				SigIdentity:   "mock",
+				SigIdentity:   certifier,
 				Timestamp:     ts,
 				R:             sigR,
 				S:             sigS,
@@ -174,9 +173,75 @@ func PerformOneMap() (bool, error) {
 	return true, nil
 }
 
-func startMappingLoops() {
+func primeSigRoots(certifierIDs []string) {
+	resp, err := vmap.GetSignedMapRoot(context.Background(), &trillian.GetSignedMapRootRequest{
+		MapId: TreeID_Map,
+	})
+	if err != nil {
+		panic(err)
+	}
+	smrbytes, err := proto.Marshal(resp.MapRoot)
+	if err != nil {
+		panic(err)
+	}
+	llr, err := logclient.GetLatestSignedLogRoot(context.Background(), &trillian.GetLatestSignedLogRootRequest{
+		LogId: TreeID_Root,
+	})
+	if err != nil {
+		panic(err)
+	}
+	if llr.SignedLogRoot.TreeSize == 0 {
+		return
+	}
+	leafhash, _ := rfc6962.DefaultHasher.HashLeaf(smrbytes)
+	rootloginclusion, err := logclient.GetInclusionProofByHash(context.Background(), &trillian.GetInclusionProofByHashRequest{
+		LogId:    TreeID_Root,
+		LeafHash: leafhash,
+		TreeSize: llr.SignedLogRoot.TreeSize,
+	})
+	if err != nil {
+		panic("could not find inclusion proof for bootstrap\n")
+	}
+
+	slrbytes, err := proto.Marshal(rootloginclusion.SignedLogRoot)
+	if err != nil {
+		panic(err)
+	}
+	slrinc, err := proto.Marshal(rootloginclusion.Proof[0])
+	if err != nil {
+		panic(err)
+	}
+	for _, certifier := range certifierIDs {
+		ts, sigR, sigS, err := SignMapRoot(certifier, smrbytes)
+		//error should not happen because we chose the identity
+		if err != nil {
+			panic(err)
+		}
+		var newMapRoot types.MapRootV1
+		if err := newMapRoot.UnmarshalBinary(resp.MapRoot.MapRoot); err != nil {
+			panic(err)
+		}
+
+		dbsmr := &dbSMR{
+			Revision:      newMapRoot.Revision,
+			SigIdentity:   certifier,
+			Timestamp:     ts,
+			R:             sigR,
+			S:             sigS,
+			LogInclusion:  slrinc,
+			LogSignedRoot: slrbytes,
+			LogSize:       llr.SignedLogRoot.TreeSize,
+		}
+		err = DB.InsertSignedMapRoot(dbsmr)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+func startMappingLoops(certifierIDs []string) {
+	primeSigRoots(certifierIDs)
 	for {
-		found, err := PerformOneMap()
+		found, err := PerformOneMap(certifierIDs)
 		if err != nil {
 			panic(err)
 		}

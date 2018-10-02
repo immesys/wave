@@ -5,14 +5,18 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/gorilla/pat"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/storage/simplehttp"
+	"github.com/immesys/wave/storage/vldmstorage3/vldmpb"
 	multihash "github.com/multiformats/go-multihash"
+	"google.golang.org/grpc"
 )
 
 const VersionBanner = "VLDM 0.1.0"
@@ -256,10 +260,18 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 func main() {
+
+	certifierIDs := []string{"mock"}
 	initstorage()
 	initlogs()
 	initmap()
-	go startMappingLoops()
+	dbconnstr := os.Getenv("DATABASE")
+	if dbconnstr == "" {
+		fmt.Printf("Missing $DATABASE of the form trillian:trillian@tcp(127.0.0.1:3306)/trillian\n")
+		os.Exit(1)
+	}
+	InitDB(dbconnstr)
+	go startMappingLoops(certifierIDs)
 
 	r := pat.New()
 	r.Post("/v1/obj", PutHandler)
@@ -267,11 +279,16 @@ func main() {
 	r.Get("/v1/obj/{hash}", GetHandler)
 	r.Get("/v1/queue/{id}", IterateHandler)
 	r.Post("/v1/queue/{id}", EnqueueHandler)
-	// r.Get("/v1/audit/oplog/consistency", OplogConsistencyHandler)
-	// r.Get("/v1/audit/oplog/sth", OplogSTHHandler)
-	// r.Get("/v1/audit/oplog/item", OplogItemHandler)
+
+	grpcServer := grpc.NewServer()
+	l, err := net.Listen("tcp", "0.0.0.0:4520")
+	if err != nil {
+		panic(err)
+	}
+	vldmpb.RegisterVLDMServer(grpcServer, API)
+	go grpcServer.Serve(l)
 
 	http.Handle("/", r)
-	err := http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
 	panic(err)
 }

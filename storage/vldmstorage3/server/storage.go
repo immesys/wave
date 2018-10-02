@@ -135,7 +135,6 @@ func GetMapKeyValue(identities []string, key []byte, trustedSize int64) (*GetMap
 				Value:        realValue,
 			}
 		}
-		fmt.Printf("promise is nil\n")
 		return nil
 	}
 
