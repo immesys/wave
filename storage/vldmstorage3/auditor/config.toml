@@ -1,0 +1,16 @@
+# Which server we are auditing
+targetaddress = "127.0.0.1:4520"
+targetpublickey = """
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEKG6NaA54Fx6m7Ih019r1LDXDf7ay
+CQKL0D2lvjF0TcQP8Kx+lFrRyjvqBJrrv5KUPcbBYWXJwscLTDkwA3zBtg==
+-----END PUBLIC KEY-----"""
+
+outputfile = "audit.log"
+databasepath = "audit.db"
+mapserver = "localhost:8090"
+
+# Who our peers are for gossiping
+peerlistenport = 5001
+peers = [
+]
