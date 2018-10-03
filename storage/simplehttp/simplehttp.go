@@ -163,7 +163,13 @@ func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashS
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.Post(fmt.Sprintf("%s/obj", s.url), "application/json", &buf)
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/obj", s.url), &buf)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +231,14 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 	if s.trustedLogRoot != nil {
 		trusted = s.trustedLogRoot.TreeSize
 	}
-	resp, err := http.Get(fmt.Sprintf("%s/obj/%s?trusted=%d", s.url, b64, trusted))
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/obj/%s?trusted=%d", s.url, b64, trusted), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	resp, err := http.DefaultClient.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +294,12 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 		panic(err)
 	}
 	b64 := queueId.MultihashString()
-	resp, err := http.Post(fmt.Sprintf("%s/queue/%s", s.url, b64), "application/json", &buf)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/queue/%s", s.url, b64), &buf)
+	if err != nil {
+		return err
+	}
+	req = req.WithContext(ctx)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -313,7 +331,13 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 	if s.trustedLogRoot != nil {
 		trusted = s.trustedLogRoot.TreeSize
 	}
-	resp, err := http.Get(fmt.Sprintf("%s/queue/%s?token=%s&trusted=%d", s.url, b64, iteratorToken, trusted))
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/queue/%s?token=%s&trusted=%d", s.url, b64, iteratorToken, trusted), nil)
+	if err != nil {
+		return nil, "", err
+	}
+	req = req.WithContext(ctx)
+	resp, err := http.DefaultClient.Do(req)
+
 	if err != nil {
 		return nil, "", err
 	}
