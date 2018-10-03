@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
-	"math/big"
 	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -13,10 +12,10 @@ import (
 )
 
 type db struct {
-	db       *sql.DB
-	mu       sync.RWMutex
-	sigRoots map[string]*dbSMR
-	lru      *reqcache.LRUCache
+	db   *sql.DB
+	mu   sync.RWMutex
+	root *dbSMR
+	lru  *reqcache.LRUCache
 }
 
 var DB *db
@@ -27,8 +26,7 @@ func InitDB(connstring string) error {
 		return err
 	}
 	DB = &db{
-		db:       h,
-		sigRoots: make(map[string]*dbSMR),
+		db: h,
 	}
 
 	DB.lru = reqcache.NewLRUCache(10000, DB.getobject, nil)
@@ -84,19 +82,15 @@ func (d *db) RetrieveObject(hash []byte) ([]byte, error) {
 	return obj.([]byte), nil
 }
 
-func (d *db) InsertSignedMapRoot(v *dbSMR) error {
+func (d *db) InsertMapRoot(v *dbSMR) error {
 	d.mu.Lock()
-	d.sigRoots[v.SigIdentity] = v
+	d.root = v
 	d.mu.Unlock()
 	return nil
 }
 
 type dbSMR struct {
-	Revision    uint64
-	SigIdentity string
-	Timestamp   int64
-	R           *big.Int
-	S           *big.Int
+	Revision uint64
 
 	//Proof the SMR is in the log
 	LogInclusion  []byte
@@ -104,15 +98,8 @@ type dbSMR struct {
 	LogSize       int64
 }
 
-func (d *db) GetLatestMapRootSignature(identities []string) (*dbSMR, error) {
-	var found *dbSMR
+func (d *db) GetLatestMapRoot() *dbSMR {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	for _, id := range identities {
-		e, ok := d.sigRoots[id]
-		if ok && (found == nil || found.Revision < e.Revision) {
-			found = e
-		}
-	}
-	return found, nil
+	return d.root
 }

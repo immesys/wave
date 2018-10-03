@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/gorilla/pat"
 	"github.com/immesys/wave/iapi"
@@ -36,15 +35,13 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{}"))
 		return
 	}
-	adz := r.URL.Query().Get("certifiers")
-	ids := strings.Split(adz, ",")
 	trustedSize, err := strconv.ParseInt(r.URL.Query().Get("trusted"), 10, 64)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	mkr, err := GetMapKeyValue(ids, mh.Digest, trustedSize)
+	mkr, err := GetMapKeyValue(mh.Digest, trustedSize)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
@@ -55,7 +52,6 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		rv := simplehttp.ObjectResponse{
 			V1SMR:            mkr.SignedMapRoot,
 			V1MapInclusion:   mkr.MapInclusion,
-			V1Seal:           mkr.Seal,
 			V1SLR:            mkr.SignedLogRoot,
 			V1LogInclusion:   mkr.LogInclusion,
 			V1LogConsistency: mkr.LogConsistency,
@@ -68,7 +64,6 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		rv := simplehttp.ObjectResponse{
 			DER:            mkr.Value,
 			V1MergePromise: mkr.MergePromise,
-			V1Seal:         mkr.Seal,
 		}
 		json.NewEncoder(w).Encode(&rv)
 		return
@@ -77,7 +72,6 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		DER:              mkr.Value,
 		V1SMR:            mkr.SignedMapRoot,
 		V1MapInclusion:   mkr.MapInclusion,
-		V1Seal:           mkr.Seal,
 		V1SLR:            mkr.SignedLogRoot,
 		V1LogInclusion:   mkr.LogInclusion,
 		V1LogConsistency: mkr.LogConsistency,
@@ -103,10 +97,8 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body.Close()
-	//TODO get from parameters
-	ids := params.Certifiers
 	hash := iapi.KECCAK256.Instance(params.DER)
-	promise, asig, err := InsertKeyValue(ids, hash.Value(), params.DER)
+	promise, err := InsertKeyValue(hash.Value(), params.DER)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
@@ -115,7 +107,6 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 	resp := simplehttp.PutObjectResponse{
 		Hash:           hash.Multihash(),
 		V1MergePromise: promise,
-		V1Seal:         asig,
 	}
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(&resp)
@@ -155,14 +146,12 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	adz := r.URL.Query().Get("certifiers")
-	ids := strings.Split(adz, ",")
 	tohash := make([]byte, 40)
 	copy(tohash[:32], idmh.Digest)
 	binary.LittleEndian.PutUint64(tohash[32:], uint64(index))
 	hi := iapi.KECCAK256.Instance(tohash)
 	hiarr := hi.Value()
-	mkr, err := GetMapKeyValue(ids, hiarr, trustedSize)
+	mkr, err := GetMapKeyValue(hiarr, trustedSize)
 	if err != nil {
 		fmt.Printf("case a\n")
 		w.WriteHeader(500)
@@ -174,7 +163,6 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		rv := simplehttp.IterateQueueResponse{
 			V1SMR:            mkr.SignedMapRoot,
 			V1MapInclusion:   mkr.MapInclusion,
-			V1Seal:           mkr.Seal,
 			V1SLR:            mkr.SignedLogRoot,
 			V1LogInclusion:   mkr.LogInclusion,
 			V1LogConsistency: mkr.LogConsistency,
@@ -188,7 +176,6 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 			Hash:           mkr.Value,
 			NextToken:      fmt.Sprintf("%d", index+1),
 			V1MergePromise: mkr.MergePromise,
-			V1Seal:         mkr.Seal,
 		}
 		json.NewEncoder(w).Encode(&rv)
 		return
@@ -198,7 +185,6 @@ func IterateHandler(w http.ResponseWriter, r *http.Request) {
 		NextToken:        fmt.Sprintf("%d", index+1),
 		V1SMR:            mkr.SignedMapRoot,
 		V1MapInclusion:   mkr.MapInclusion,
-		V1Seal:           mkr.Seal,
 		V1SLR:            mkr.SignedLogRoot,
 		V1LogInclusion:   mkr.LogInclusion,
 		V1LogConsistency: mkr.LogConsistency,
@@ -243,8 +229,7 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 
 	hi := iapi.KECCAK256.Instance(tohash)
 	hiarr := hi.Value()
-	certifierIDs := req.Certifiers
-	promise, asig, err := InsertKeyValue(certifierIDs, hiarr, req.EntryHash)
+	promise, err := InsertKeyValue(hiarr, req.EntryHash)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
@@ -254,7 +239,6 @@ func EnqueueHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(201)
 	resp := simplehttp.EnqueueResponse{
 		V1MergePromise: promise,
-		V1Seal:         asig,
 	}
 	json.NewEncoder(w).Encode(&resp)
 	return

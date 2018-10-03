@@ -11,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/trillian"
@@ -89,7 +88,6 @@ func initstorage() {
 
 type GetMapKeyResponse struct {
 	Unmerged bool
-	Seal     *simplehttp.V1CertifierSeal
 	//If unmerged
 	MergePromise *simplehttp.MergePromise
 	//If merged
@@ -101,12 +99,7 @@ type GetMapKeyResponse struct {
 	LogConsistency [][]byte
 }
 
-func MapSigTooOld(v *dbSMR) bool {
-	return time.Unix(0, v.Timestamp*1e6).Before(time.Now().Add(-1 * time.Hour))
-}
-func GetPromise(identities []string, key []byte) *PromiseObject {
-	//TODO if promise object is lacking a signature by the given identities
-	//then go get another signature on it
+func GetPromise(key []byte) *PromiseObject {
 	promisemu.Lock()
 	p := promises[string(key)]
 	promisemu.Unlock()
@@ -115,21 +108,17 @@ func GetPromise(identities []string, key []byte) *PromiseObject {
 
 var ErrMapRootTooOld = errors.New("No recent map roots certified by the given ids found")
 
-func GetMapKeyValue(identities []string, key []byte, trustedSize int64) (*GetMapKeyResponse, error) {
-	dbSMR, err := DB.GetLatestMapRootSignature(identities)
-	if err != nil {
-		return nil, err
-	}
+func GetMapKeyValue(key []byte, trustedSize int64) (*GetMapKeyResponse, error) {
+	dbSMR := DB.GetLatestMapRoot()
 
 	checkPromise := func() *GetMapKeyResponse {
-		pv := GetPromise(identities, key)
+		pv := GetPromise(key)
 		if pv != nil {
 			realValue, err := DB.RetrieveObject(pv.Value)
 			if err != nil {
 				panic(err)
 			}
 			return &GetMapKeyResponse{
-				Seal:         pv.Seals[0],
 				Unmerged:     true,
 				MergePromise: pv.Promise,
 				Value:        realValue,
@@ -146,9 +135,6 @@ func GetMapKeyValue(identities []string, key []byte, trustedSize int64) (*GetMap
 		return p, nil
 	}
 
-	if MapSigTooOld(dbSMR) {
-		return nil, ErrMapRootTooOld
-	}
 	resp2, err := vmap.GetLeavesByRevision(context.Background(), &trillian.GetMapLeavesByRevisionRequest{
 		MapId:    TreeID_Map,
 		Index:    [][]byte{key},
@@ -190,14 +176,8 @@ func GetMapKeyValue(identities []string, key []byte, trustedSize int64) (*GetMap
 
 	if resp2.MapLeafInclusion[0].Leaf.LeafValue == nil {
 		return &GetMapKeyResponse{
-			SignedMapRoot: smr,
-			MapInclusion:  inclusion,
-			Seal: &simplehttp.V1CertifierSeal{
-				Timestamp: dbSMR.Timestamp,
-				Identity:  dbSMR.SigIdentity,
-				SigR:      dbSMR.R,
-				SigS:      dbSMR.S,
-			},
+			SignedMapRoot:  smr,
+			MapInclusion:   inclusion,
 			SignedLogRoot:  dbSMR.LogSignedRoot,
 			LogInclusion:   dbSMR.LogInclusion,
 			LogConsistency: consistency,
@@ -208,15 +188,9 @@ func GetMapKeyValue(identities []string, key []byte, trustedSize int64) (*GetMap
 			return nil, err
 		}
 		return &GetMapKeyResponse{
-			SignedMapRoot: smr,
-			MapInclusion:  inclusion,
-			Value:         realValue,
-			Seal: &simplehttp.V1CertifierSeal{
-				Timestamp: dbSMR.Timestamp,
-				Identity:  dbSMR.SigIdentity,
-				SigR:      dbSMR.R,
-				SigS:      dbSMR.S,
-			},
+			SignedMapRoot:  smr,
+			MapInclusion:   inclusion,
+			Value:          realValue,
 			SignedLogRoot:  dbSMR.LogSignedRoot,
 			LogInclusion:   dbSMR.LogInclusion,
 			LogConsistency: consistency,
@@ -224,17 +198,16 @@ func GetMapKeyValue(identities []string, key []byte, trustedSize int64) (*GetMap
 	}
 }
 
-func InsertKeyValue(identities []string, key []byte, value []byte) (*simplehttp.MergePromise, *simplehttp.V1CertifierSeal, error) {
+func InsertKeyValue(key []byte, value []byte) (*simplehttp.MergePromise, error) {
 	//TODO check for existing merge promise for this value
 	hi := iapi.KECCAK256.Instance(value)
 	hasharr := hi.Value()
-	mp, asig, err := MakeMergePromise(key, hasharr, identities, PrivateKeyUnpacked)
+	mp, err := MakeMergePromise(key, hasharr, PrivateKeyUnpacked)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	po := &PromiseObject{
 		Promise: mp,
-		Seals:   []*simplehttp.V1CertifierSeal{asig},
 		Key:     key,
 		Value:   hasharr,
 	}
@@ -258,9 +231,9 @@ func InsertKeyValue(identities []string, key []byte, value []byte) (*simplehttp.
 	}
 	err = DB.InsertObject(hasharr, value)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return mp, asig, nil
+	return mp, nil
 }
 
 func Exists(queueid []byte, index int64) bool {

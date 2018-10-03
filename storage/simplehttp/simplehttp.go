@@ -46,27 +46,24 @@ type MergePromiseTBS struct {
 	MergeBy int64
 }
 type PutObjectRequest struct {
-	DER        []byte   `json:"der"`
-	Certifiers []string `json:"v1certifiers"`
+	DER []byte `json:"der"`
 }
 type PutObjectResponse struct {
-	Hash           []byte           `json:"hash"`
-	V1MergePromise *MergePromise    `json:"v1promise"`
-	V1Seal         *V1CertifierSeal `json:"v1seal"`
+	Hash           []byte        `json:"hash"`
+	V1MergePromise *MergePromise `json:"v1promise"`
 }
 type InfoResponse struct {
 	HashScheme string `json:"hashScheme"`
 	Version    string `json:"version"`
 }
 type ObjectResponse struct {
-	DER              []byte           `json:"der"`
-	V1SMR            []byte           `json:"v1smr"`
-	V1MapInclusion   []byte           `json:"v1mapinclusion"`
-	V1MergePromise   *MergePromise    `json:"v1promise"`
-	V1SLR            []byte           `json:"v1slr"`
-	V1LogInclusion   []byte           `json:"v1loginclusion"`
-	V1LogConsistency [][]byte         `json:"v1logconsistency"`
-	V1Seal           *V1CertifierSeal `json:"v1seal"`
+	DER              []byte        `json:"der"`
+	V1SMR            []byte        `json:"v1smr"`
+	V1MapInclusion   []byte        `json:"v1mapinclusion"`
+	V1MergePromise   *MergePromise `json:"v1promise"`
+	V1SLR            []byte        `json:"v1slr"`
+	V1LogInclusion   []byte        `json:"v1loginclusion"`
+	V1LogConsistency [][]byte      `json:"v1logconsistency"`
 }
 type V1CertifierSeal struct {
 	//Time in ms since epoch
@@ -78,40 +75,35 @@ type V1CertifierSeal struct {
 type NoSuchObjectResponse struct {
 }
 type IterateQueueResponse struct {
-	Hash             []byte           `json:"hash"`
-	NextToken        string           `json:"nextToken"`
-	V1SMR            []byte           `json:"v1smr"`
-	V1MapInclusion   []byte           `json:"v1mapinclusion"`
-	V1MergePromise   *MergePromise    `json:"v1promise"`
-	V1SLR            []byte           `json:"v1slr"`
-	V1LogInclusion   []byte           `json:"v1loginclusion"`
-	V1LogConsistency [][]byte         `json:"v1logconsistency"`
-	V1Seal           *V1CertifierSeal `json:"v1seal"`
+	Hash             []byte        `json:"hash"`
+	NextToken        string        `json:"nextToken"`
+	V1SMR            []byte        `json:"v1smr"`
+	V1MapInclusion   []byte        `json:"v1mapinclusion"`
+	V1MergePromise   *MergePromise `json:"v1promise"`
+	V1SLR            []byte        `json:"v1slr"`
+	V1LogInclusion   []byte        `json:"v1loginclusion"`
+	V1LogConsistency [][]byte      `json:"v1logconsistency"`
 }
 type EnqueueResponse struct {
-	V1MergePromise *MergePromise    `json:"v1promise"`
-	V1Seal         *V1CertifierSeal `json:"v1seal"`
+	V1MergePromise *MergePromise `json:"v1promise"`
 }
 type NoSuchQueueEntryResponse struct {
 }
 type EnqueueRequest struct {
-	EntryHash  []byte   `json:"entryHash"`
-	Certifiers []string `json:"v1certifiers"`
+	EntryHash []byte `json:"entryHash"`
 }
 
 type SimpleHTTPStorage struct {
-	url                 string
-	requireproof        bool
-	publickey           string
-	unpackedpubkey      *ecdsa.PublicKey
-	trustedCertifiers   map[string]*ecdsa.PublicKey
-	trustedCertifierIDs []string
-	mapTree             *trillian.Tree
-	mapVerifier         *client.MapVerifier
-	logTree             *trillian.Tree
-	logVerifier         *client.LogVerifier
-	auditors            []string
-	lastAuditTX         time.Time
+	url            string
+	requireproof   bool
+	publickey      string
+	unpackedpubkey *ecdsa.PublicKey
+	mapTree        *trillian.Tree
+	mapVerifier    *client.MapVerifier
+	logTree        *trillian.Tree
+	logVerifier    *client.LogVerifier
+	auditors       []string
+	lastAuditTX    time.Time
 
 	//For log consistency checking
 	trustedLogRoot       *types.LogRootV1
@@ -147,25 +139,6 @@ func (s *SimpleHTTPStorage) Initialize(ctx context.Context, name string, config 
 		s.unpackedpubkey = pubk
 
 		s.requireproof = true
-		s.trustedCertifiers = make(map[string]*ecdsa.PublicKey)
-		if config["v1certifiers"] != "" {
-			for _, certifier := range strings.Split(config["v1certifiers"], ";") {
-				//id := sha3.Sum256([]byte(certifier))
-				//idstring := base64.URLEncoding.EncodeToString(id[:])
-				idstring := "mock"
-				s.trustedCertifierIDs = append(s.trustedCertifierIDs, idstring)
-				der, trailing := pem.Decode([]byte(certifier))
-				if len(trailing) != 0 {
-					return fmt.Errorf("auditor public key is invalid")
-				}
-				pub, err := x509.ParsePKIXPublicKey(der.Bytes)
-				if err != nil {
-					panic(err)
-				}
-				pubk := pub.(*ecdsa.PublicKey)
-				s.trustedCertifiers[idstring] = pubk
-			}
-		}
 		if config["v1auditors"] != "" {
 			for _, auditor := range strings.Split(config["v1auditors"], ";") {
 				s.auditors = append(s.auditors, auditor)
@@ -183,8 +156,7 @@ func (s *SimpleHTTPStorage) Status(ctx context.Context) (operational bool, info 
 func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashSchemeInstance, error) {
 	buf := bytes.Buffer{}
 	putRequest := &PutObjectRequest{
-		DER:        content,
-		Certifiers: s.trustedCertifierIDs,
+		DER: content,
 	}
 	enc := json.NewEncoder(&buf)
 	err := enc.Encode(putRequest)
@@ -215,10 +187,7 @@ func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashS
 	}
 	expectedHash := iapi.KECCAK256.Instance(content)
 	if s.requireproof {
-		if len(s.trustedCertifierIDs) > 0 && rv.V1Seal == nil {
-			return nil, fmt.Errorf("missing certifier seal\n")
-		}
-		err := s.verifyV1Promise(rv.V1MergePromise, rv.V1Seal, expectedHash.Value(), expectedHash.Value())
+		err := s.verifyV1Promise(rv.V1MergePromise, expectedHash.Value(), expectedHash.Value())
 		if err != nil {
 			return nil, err
 		}
@@ -226,7 +195,7 @@ func (s *SimpleHTTPStorage) Put(ctx context.Context, content []byte) (iapi.HashS
 	return hi, nil
 }
 
-func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, seal *V1CertifierSeal, expectedkey []byte, expectedcontent []byte) error {
+func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, expectedkey []byte, expectedcontent []byte) error {
 	hash := sha3.Sum256(mp.TBS)
 	if !ecdsa.Verify(s.unpackedpubkey, hash[:], mp.SigR, mp.SigS) {
 		return fmt.Errorf("signature is invalid")
@@ -248,32 +217,15 @@ func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, seal *V1CertifierS
 		return fmt.Errorf("promise is for different content")
 	}
 
-	//Now we need to verify that the auditor signature is valid
-	if seal != nil {
-		pubk, ok := s.trustedCertifiers[seal.Identity]
-		if !ok {
-			return fmt.Errorf("certifier identity not recognized")
-		}
-		h := sha3.New256()
-		h.Write(mp.TBS)
-		h.Write(mp.SigR.Bytes())
-		h.Write(mp.SigS.Bytes())
-		h.Write([]byte(fmt.Sprintf("%d", seal.Timestamp)))
-		d := h.Sum(nil)
-		if !ecdsa.Verify(pubk, d, seal.SigR, seal.SigS) {
-			return fmt.Errorf("certifier signature is invalid")
-		}
-	}
 	return nil
 }
 func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstance) (content []byte, err error) {
 	b64 := hash.MultihashString()
-	certifierString := strings.Join(s.trustedCertifierIDs, ",")
 	var trusted uint64
 	if s.trustedLogRoot != nil {
 		trusted = s.trustedLogRoot.TreeSize
 	}
-	resp, err := http.Get(fmt.Sprintf("%s/obj/%s?certifiers=%s&trusted=%d", s.url, b64, certifierString, trusted))
+	resp, err := http.Get(fmt.Sprintf("%s/obj/%s?trusted=%d", s.url, b64, trusted))
 	if err != nil {
 		return nil, err
 	}
@@ -296,25 +248,18 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 	if s.requireproof {
 		if rv.V1MergePromise != nil {
 			fmt.Printf("promise\n")
-			if len(s.trustedCertifierIDs) > 0 && rv.V1Seal == nil {
-				return nil, fmt.Errorf("missing certifier seal\n")
-			}
-			err := s.verifyV1Promise(rv.V1MergePromise, rv.V1Seal, hash.Value(), hash.Value())
+			err := s.verifyV1Promise(rv.V1MergePromise, hash.Value(), hash.Value())
 			if err != nil {
 				return nil, err
 			}
 		} else {
 			fmt.Printf("inclusion\n")
-			if len(s.trustedCertifierIDs) > 0 && rv.V1Seal == nil {
-				return nil, fmt.Errorf("missing certifier seal\n")
-			}
 			err := s.verifyV1(&verifyV1params{
 				MapRoot:        rv.V1SMR,
 				MapInclusion:   rv.V1MapInclusion,
 				LogRoot:        rv.V1SLR,
 				LogInclusion:   rv.V1LogInclusion,
 				LogConsistency: rv.V1LogConsistency,
-				Seal:           rv.V1Seal,
 				Key:            hash.Value(),
 				Value:          rv.DER,
 			})
@@ -329,8 +274,7 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashSchemeInstance, object iapi.HashSchemeInstance) error {
 	buf := bytes.Buffer{}
 	queueRequest := &EnqueueRequest{
-		EntryHash:  object.Multihash(),
-		Certifiers: s.trustedCertifierIDs,
+		EntryHash: object.Multihash(),
 	}
 	err := json.NewEncoder(&buf).Encode(queueRequest)
 	if err != nil {
@@ -352,10 +296,7 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 		return fmt.Errorf("Remote sent invalid response")
 	}
 	if s.requireproof {
-		if len(s.trustedCertifierIDs) > 0 && enqueueResp.V1Seal == nil {
-			return fmt.Errorf("missing certifier seal\n")
-		}
-		err := s.verifyV1Promise(enqueueResp.V1MergePromise, enqueueResp.V1Seal, nil, nil)
+		err := s.verifyV1Promise(enqueueResp.V1MergePromise, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -368,12 +309,11 @@ func (s *SimpleHTTPStorage) Enqueue(ctx context.Context, queueId iapi.HashScheme
 
 func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashSchemeInstance, iteratorToken string) (object iapi.HashSchemeInstance, nextToken string, err error) {
 	b64 := queueId.MultihashString()
-	certifierString := strings.Join(s.trustedCertifierIDs, ",")
 	var trusted uint64
 	if s.trustedLogRoot != nil {
 		trusted = s.trustedLogRoot.TreeSize
 	}
-	resp, err := http.Get(fmt.Sprintf("%s/queue/%s?token=%s&certifiers=%s&trusted=%d", s.url, b64, iteratorToken, certifierString, trusted))
+	resp, err := http.Get(fmt.Sprintf("%s/queue/%s?token=%s&trusted=%d", s.url, b64, iteratorToken, trusted))
 	if err != nil {
 		return nil, "", err
 	}
@@ -408,24 +348,17 @@ func (s *SimpleHTTPStorage) IterateQueue(ctx context.Context, queueId iapi.HashS
 		expectedHash := iapi.KECCAK256.Instance(expectedHashContents)
 		expectedVHash := iapi.KECCAK256.Instance(iterR.Hash)
 		if iterR.V1MergePromise != nil {
-			if len(s.trustedCertifierIDs) > 0 && iterR.V1Seal == nil {
-				return nil, "", fmt.Errorf("missing certifier seal\n")
-			}
-			err := s.verifyV1Promise(iterR.V1MergePromise, iterR.V1Seal, expectedHash.Value(), expectedVHash.Value())
+			err := s.verifyV1Promise(iterR.V1MergePromise, expectedHash.Value(), expectedVHash.Value())
 			if err != nil {
 				return nil, "", err
 			}
 		} else {
-			if len(s.trustedCertifierIDs) > 0 && iterR.V1Seal == nil {
-				return nil, "", fmt.Errorf("missing certifier seal\n")
-			}
 			err := s.verifyV1(&verifyV1params{
 				MapRoot:        iterR.V1SMR,
 				MapInclusion:   iterR.V1MapInclusion,
 				LogRoot:        iterR.V1SLR,
 				LogInclusion:   iterR.V1LogInclusion,
 				LogConsistency: iterR.V1LogConsistency,
-				Seal:           iterR.V1Seal,
 				Key:            expectedHash.Value(),
 				Value:          iterR.Hash,
 			})
@@ -443,29 +376,11 @@ type verifyV1params struct {
 	LogRoot        []byte
 	LogInclusion   []byte
 	LogConsistency [][]byte
-	//TrustedLogRoot *types.LogRootV1
-	Seal  *V1CertifierSeal
-	Key   []byte
-	Value []byte
+	Key            []byte
+	Value          []byte
 }
 
 func (s *SimpleHTTPStorage) verifyV1(p *verifyV1params) error {
-	if p.Seal != nil {
-		pubk, ok := s.trustedCertifiers[p.Seal.Identity]
-		if !ok {
-			return fmt.Errorf("certifier identity not recognized")
-		}
-		h := sha3.New256()
-		h.Write(p.MapRoot)
-		h.Write([]byte(fmt.Sprintf("%d", p.Seal.Timestamp)))
-		d := h.Sum(nil)
-		if !ecdsa.Verify(pubk, d, p.Seal.SigR, p.Seal.SigS) {
-			return fmt.Errorf("certifier signature is incorrect")
-		}
-		if time.Now().Add(-time.Hour).UnixNano()/1e6 > p.Seal.Timestamp {
-			return fmt.Errorf("certifier signature has expired")
-		}
-	}
 	//Verify the map inclusion
 	pbinc := trillian.MapLeafInclusion{}
 	err := proto.Unmarshal(p.MapInclusion, &pbinc)

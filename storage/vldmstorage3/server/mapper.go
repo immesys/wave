@@ -138,32 +138,23 @@ func PerformOneMap(certifierIDs []string) (bool, error) {
 		}
 
 		//Here we would communicate with the auditors
-		for _, certifier := range certifierIDs {
-			ts, sigR, sigS, err := SignMapRoot(certifier, smrbytes)
-			//error should not happen because we chose the identity
-			if err != nil {
-				panic(err)
-			}
-			var newMapRoot types.MapRootV1
-			if err := newMapRoot.UnmarshalBinary(smr.MapRoot); err != nil {
-				panic(err)
-			}
 
-			dbsmr := &dbSMR{
-				Revision:      newMapRoot.Revision,
-				SigIdentity:   certifier,
-				Timestamp:     ts,
-				R:             sigR,
-				S:             sigS,
-				LogInclusion:  slrinc,
-				LogSignedRoot: slrbytes,
-				LogSize:       llr.SignedLogRoot.TreeSize,
-			}
-			err = DB.InsertSignedMapRoot(dbsmr)
-			if err != nil {
-				panic(err)
-			}
+		var newMapRoot types.MapRootV1
+		if err := newMapRoot.UnmarshalBinary(smr.MapRoot); err != nil {
+			panic(err)
 		}
+
+		dbsmr := &dbSMR{
+			Revision:      newMapRoot.Revision,
+			LogInclusion:  slrinc,
+			LogSignedRoot: slrbytes,
+			LogSize:       llr.SignedLogRoot.TreeSize,
+		}
+		err = DB.InsertMapRoot(dbsmr)
+		if err != nil {
+			panic(err)
+		}
+
 		break
 	}
 
@@ -211,32 +202,23 @@ func primeSigRoots(certifierIDs []string) {
 	if err != nil {
 		panic(err)
 	}
-	for _, certifier := range certifierIDs {
-		ts, sigR, sigS, err := SignMapRoot(certifier, smrbytes)
-		//error should not happen because we chose the identity
-		if err != nil {
-			panic(err)
-		}
-		var newMapRoot types.MapRootV1
-		if err := newMapRoot.UnmarshalBinary(resp.MapRoot.MapRoot); err != nil {
-			panic(err)
-		}
 
-		dbsmr := &dbSMR{
-			Revision:      newMapRoot.Revision,
-			SigIdentity:   certifier,
-			Timestamp:     ts,
-			R:             sigR,
-			S:             sigS,
-			LogInclusion:  slrinc,
-			LogSignedRoot: slrbytes,
-			LogSize:       llr.SignedLogRoot.TreeSize,
-		}
-		err = DB.InsertSignedMapRoot(dbsmr)
-		if err != nil {
-			panic(err)
-		}
+	var newMapRoot types.MapRootV1
+	if err := newMapRoot.UnmarshalBinary(resp.MapRoot.MapRoot); err != nil {
+		panic(err)
 	}
+
+	dbsmr := &dbSMR{
+		Revision:      newMapRoot.Revision,
+		LogInclusion:  slrinc,
+		LogSignedRoot: slrbytes,
+		LogSize:       llr.SignedLogRoot.TreeSize,
+	}
+	err = DB.InsertMapRoot(dbsmr)
+	if err != nil {
+		panic(err)
+	}
+
 }
 func startMappingLoops(certifierIDs []string) {
 	primeSigRoots(certifierIDs)
