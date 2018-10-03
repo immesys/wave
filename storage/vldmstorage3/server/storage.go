@@ -113,7 +113,7 @@ func GetPromise(identities []string, key []byte) *PromiseObject {
 	return p
 }
 
-var ErrMapRootTooOld = errors.New("No recent map roots audited by the given ids found")
+var ErrMapRootTooOld = errors.New("No recent map roots certified by the given ids found")
 
 func GetMapKeyValue(identities []string, key []byte, trustedSize int64) (*GetMapKeyResponse, error) {
 	dbSMR, err := DB.GetLatestMapRootSignature(identities)

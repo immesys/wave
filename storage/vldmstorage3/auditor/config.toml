@@ -11,6 +11,6 @@ databasepath = "audit.db"
 mapserver = "localhost:8090"
 
 # Who our peers are for gossiping
-peerlistenport = 5001
+peerlistenaddress = "0.0.0.0:5001"
 peers = [
 ]

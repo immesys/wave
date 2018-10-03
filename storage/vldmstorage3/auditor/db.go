@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/pem"
+	"fmt"
 	"time"
 
 	"github.com/dgraph-io/badger"
@@ -99,12 +100,39 @@ func (a *adt) LoadStateFromDB() {
 	}
 }
 
+func (a *adt) haveWeVerified(roothash []byte) bool {
+	found := false
+	err := a.db.View(func(txn *badger.Txn) error {
+		hash := []byte(fmt.Sprintf("verifiedroots/%x", roothash))
+		_, err := txn.Get(hash)
+		if err == nil {
+			found = true
+		} else if err != badger.ErrKeyNotFound {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return found
+}
+
+func (a *adt) storeVerified(roothash []byte) {
+	err := a.db.Update(func(txn *badger.Txn) error {
+		hash := []byte(fmt.Sprintf("verifiedroots/%x", roothash))
+		return txn.Set(hash, []byte("1"))
+	})
+	if err != nil {
+		panic(err)
+	}
+}
 func (a *adt) defaultstate() *state {
 	treeid := a.initmap()
 	return &state{
 		MapTreeId:    treeid,
 		OpLogIndex:   0,
-		RootLogIndex: 0,
+		RootLogIndex: -1,
 	}
 }
 

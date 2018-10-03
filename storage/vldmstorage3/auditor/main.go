@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -17,6 +18,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
+	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keyspb"
 	spb "github.com/google/trillian/crypto/sigpb"
 	_ "github.com/google/trillian/merkle/coniks"
@@ -30,12 +32,13 @@ import (
 )
 
 type Config struct {
-	TargetPublicKey string
-	TargetAddress   string
-	Peers           []string
-	OutputFile      string
-	DatabasePath    string
-	MapServer       string
+	TargetPublicKey   string
+	TargetAddress     string
+	Peers             []string
+	PeerListenAddress string
+	OutputFile        string
+	DatabasePath      string
+	MapServer         string
 }
 
 type adt struct {
@@ -43,6 +46,7 @@ type adt struct {
 	peers       map[string]struct{}
 	db          *badger.DB
 	state       *state
+	statemu     sync.Mutex
 	tgt         vldmpb.VLDMClient
 	mapClient   trillian.TrillianMapClient
 	adminClient trillian.TrillianAdminClient
@@ -182,6 +186,7 @@ func main() {
 	a := NewAuditor(os.Args[1])
 	a.dialTarget()
 	go a.StartServer()
+	go a.Gossip()
 	a.ScanTarget()
 }
 
@@ -195,7 +200,7 @@ func (a *adt) dialTarget() {
 }
 func (a *adt) StartServer() {
 	grpcServer := grpc.NewServer()
-	l, err := net.Listen("tcp", "0.0.0.0:4521")
+	l, err := net.Listen("tcp", a.cfg.PeerListenAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -311,15 +316,17 @@ func (a *adt) UpdateRootLog() {
 func (a *adt) ScanTarget() {
 	for {
 		time.Sleep(1 * time.Second)
+		a.statemu.Lock()
 		//Update our log heads
 		a.UpdateRootLog()
 		a.UpdateOpLog()
 
 		if a.state.RootLogIndex == int64(a.state.RootLogHead.TreeSize-1) {
+			a.statemu.Unlock()
 			continue
 		}
 		//For every new entry in the root log, update our map to match and verify
-		for i := a.state.RootLogIndex; i < int64(a.state.RootLogHead.TreeSize); i++ {
+		for i := a.state.RootLogIndex + 1; i < int64(a.state.RootLogHead.TreeSize); i++ {
 			maproot, err := a.tgt.GetLogItem(context.Background(), &vldmpb.GetLogItemParams{
 				IsOperation: false,
 				Index:       i,
@@ -347,7 +354,25 @@ func (a *adt) ScanTarget() {
 			a.state.RootLogIndex = i
 			a.SaveStateToDB()
 		}
-
+		a.storeVerified(a.state.RootLogHead.RootHash)
+		a.statemu.Unlock()
+	}
+}
+func (a *adt) Gossip() {
+	for {
+		for p, _ := range a.peers {
+			peerconn, err := grpc.Dial(p, grpc.WithInsecure(), grpc.WithBlock(), grpc.FailOnNonTempDialError(true))
+			if err != nil {
+				fmt.Printf("peer dial error: %v\n", err)
+				continue
+			}
+			peer := vldmpb.NewAuditorClient(peerconn)
+			peer.SubmitLogRoot(context.Background(), &vldmpb.SubmitLogRootParams{
+				SignedLogRoot: a.state.SignedRootLogHead,
+			})
+			peerconn.Close()
+		}
+		time.Sleep(30 * time.Minute)
 	}
 }
 
@@ -425,7 +450,67 @@ func (a *adt) updateAndVerifyMap(mapindex int64, expected *trillian.SignedMapRoo
 }
 
 func (a *adt) SubmitLogRoot(ctx context.Context, p *vldmpb.SubmitLogRootParams) (*vldmpb.SubmitLogRootResponse, error) {
-	panic("ni")
+	lr := trillian.SignedLogRoot{}
+	err := proto.Unmarshal(p.SignedLogRoot, &lr)
+	if err != nil {
+		return nil, fmt.Errorf("bad signed log root\n")
+	}
+
+	//Verify the signature manually. We don't care about SLR from different keys
+	logroot, err := tcrypto.VerifySignedLogRoot(a.logVerifier.PubKey, a.logVerifier.SigHash, &lr)
+	if err != nil {
+		return nil, fmt.Errorf("bad signature: %v\n", err)
+	}
+
+	fmt.Printf("received root log from peer\n")
+	if a.haveWeVerified(logroot.RootHash) {
+		return &vldmpb.SubmitLogRootResponse{
+			Trustworthy: true,
+		}, nil
+	}
+	//Need to perform a quick consistency check
+	if logroot.TreeSize >= a.state.RootLogHead.TreeSize {
+		a.UpdateRootLog()
+	}
+	a.statemu.Lock()
+	defer a.statemu.Unlock()
+	if logroot.TreeSize == a.state.RootLogHead.TreeSize {
+		//must equal
+		if !bytes.Equal(logroot.RootHash, a.state.RootLogHead.RootHash) {
+			a.logViolation("peer SLR with same tree size has different hash: peer=%x ours=%x\n", p.SignedLogRoot, a.state.SignedRootLogHead)
+			os.Exit(1)
+		}
+	} else if logroot.TreeSize > a.state.RootLogHead.TreeSize {
+		a.logViolation("received valid log root with greater tree size received=%x ours=%x\n", p.SignedLogRoot, a.state.SignedRootLogHead)
+		os.Exit(1)
+	} else {
+		//Passed is smaller
+		cresp, err := a.tgt.GetLogConsistency(context.Background(), &vldmpb.GetConsistencyParams{
+			From: int64(logroot.TreeSize),
+			To:   int64(a.state.RootLogHead.TreeSize),
+		})
+		if err != nil {
+			panic(err)
+		}
+		proof := trillian.Proof{}
+		err = proto.Unmarshal(cresp.TrillianProof, &proof)
+		if err != nil {
+			panic(err)
+		}
+		signedcurrenthead := trillian.SignedLogRoot{}
+		err = proto.Unmarshal(a.state.SignedRootLogHead, &signedcurrenthead)
+		if err != nil {
+			panic(err)
+		}
+		_, err = a.logVerifier.VerifyRoot(logroot, &signedcurrenthead, proof.Hashes)
+		if err != nil {
+			a.logViolation("peer SLR is inconsistent with ours: peer=%x ours=%x\n", p.SignedLogRoot, a.state.SignedRootLogHead)
+			os.Exit(1)
+		}
+	}
+	return &vldmpb.SubmitLogRootResponse{
+		Trustworthy: true,
+	}, nil
 }
 
 func (a *adt) logViolation(f string, args ...interface{}) {

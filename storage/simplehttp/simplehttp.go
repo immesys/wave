@@ -28,7 +28,9 @@ import (
 	_ "github.com/google/trillian/merkle/rfc6962"
 	"github.com/google/trillian/types"
 	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/storage/vldmstorage3/vldmpb"
 	"golang.org/x/crypto/sha3"
+	"google.golang.org/grpc"
 )
 
 var _ iapi.StorageDriverInterface = &SimpleHTTPStorage{}
@@ -108,9 +110,12 @@ type SimpleHTTPStorage struct {
 	mapVerifier         *client.MapVerifier
 	logTree             *trillian.Tree
 	logVerifier         *client.LogVerifier
+	auditors            []string
+	lastAuditTX         time.Time
 
 	//For log consistency checking
-	trustedLogRoot *types.LogRootV1
+	trustedLogRoot       *types.LogRootV1
+	trustedLogRootSerial []byte
 }
 
 func (s *SimpleHTTPStorage) Location(context.Context) iapi.LocationSchemeInstance {
@@ -119,7 +124,6 @@ func (s *SimpleHTTPStorage) Location(context.Context) iapi.LocationSchemeInstanc
 }
 
 func (s *SimpleHTTPStorage) PreferredHashScheme() iapi.HashScheme {
-	//TODO
 	return iapi.KECCAK256
 }
 func (s *SimpleHTTPStorage) Initialize(ctx context.Context, name string, config map[string]string) error {
@@ -144,21 +148,28 @@ func (s *SimpleHTTPStorage) Initialize(ctx context.Context, name string, config 
 
 		s.requireproof = true
 		s.trustedCertifiers = make(map[string]*ecdsa.PublicKey)
-		for _, auditor := range strings.Split(config["v1auditors"], ";") {
-			//id := sha3.Sum256([]byte(auditor))
-			//idstring := base64.URLEncoding.EncodeToString(id[:])
-			idstring := "mock"
-			s.trustedCertifierIDs = append(s.trustedCertifierIDs, idstring)
-			der, trailing := pem.Decode([]byte(auditor))
-			if len(trailing) != 0 {
-				return fmt.Errorf("auditor public key is invalid")
+		if config["v1certifiers"] != "" {
+			for _, certifier := range strings.Split(config["v1certifiers"], ";") {
+				//id := sha3.Sum256([]byte(certifier))
+				//idstring := base64.URLEncoding.EncodeToString(id[:])
+				idstring := "mock"
+				s.trustedCertifierIDs = append(s.trustedCertifierIDs, idstring)
+				der, trailing := pem.Decode([]byte(certifier))
+				if len(trailing) != 0 {
+					return fmt.Errorf("auditor public key is invalid")
+				}
+				pub, err := x509.ParsePKIXPublicKey(der.Bytes)
+				if err != nil {
+					panic(err)
+				}
+				pubk := pub.(*ecdsa.PublicKey)
+				s.trustedCertifiers[idstring] = pubk
 			}
-			pub, err := x509.ParsePKIXPublicKey(der.Bytes)
-			if err != nil {
-				panic(err)
+		}
+		if config["v1auditors"] != "" {
+			for _, auditor := range strings.Split(config["v1auditors"], ";") {
+				s.auditors = append(s.auditors, auditor)
 			}
-			pubk := pub.(*ecdsa.PublicKey)
-			s.trustedCertifiers[idstring] = pubk
 		}
 		s.initmap()
 	}
@@ -485,21 +496,25 @@ func (s *SimpleHTTPStorage) verifyV1(p *verifyV1params) error {
 	err = proto.Unmarshal(p.LogRoot, &pbslr)
 
 	if s.trustedLogRoot == nil {
-		fmt.Printf("skipping consistency proof %p\n", s)
 		//This is our first interaction with this storage
 		r, err := tcrypto.VerifySignedLogRoot(s.logVerifier.PubKey, s.logVerifier.SigHash, &pbslr)
 		if err != nil {
 			return fmt.Errorf("Log root signature fail: %v", err)
 		}
 		s.trustedLogRoot = r
+		s.trustedLogRootSerial = p.LogRoot
 	} else if pbslr.TreeSize > int64(s.trustedLogRoot.TreeSize) {
 		fmt.Printf("doing consistency proof\n")
 		newRoot, err := s.logVerifier.VerifyRoot(s.trustedLogRoot, &pbslr, p.LogConsistency)
 		if err != nil {
-			//TODO store for sending to auditor
+			s.txAuditors(p.LogRoot)
+			s.txAuditors(s.trustedLogRootSerial)
 			return fmt.Errorf("Log root consistency fail: %v", err)
+		} else {
+			s.maybeTxAuditors(p.LogRoot)
 		}
 		s.trustedLogRoot = newRoot
+		s.trustedLogRootSerial = p.LogRoot
 	}
 
 	//We are not using the typical Trillian method of verifying log roots
@@ -522,47 +537,26 @@ func (s *SimpleHTTPStorage) verifyV1(p *verifyV1params) error {
 	return nil
 }
 
-func (s *SimpleHTTPStorage) verifyV1smr_(smr []byte, inclusion []byte, seal *V1CertifierSeal, key []byte, value []byte) error {
-	if seal != nil {
-		//First verify auditor sig
-		pubk, ok := s.trustedCertifiers[seal.Identity]
-		if !ok {
-			return fmt.Errorf("auditor identity not recognized")
+func (s *SimpleHTTPStorage) txAuditors(root []byte) {
+	for _, auditor := range s.auditors {
+		peerconn, err := grpc.Dial(auditor, grpc.WithInsecure(), grpc.WithBlock(), grpc.FailOnNonTempDialError(true))
+		if err != nil {
+			fmt.Printf("auditor dial error: %v\n", err)
+			continue
 		}
-		h := sha3.New256()
-		h.Write(smr)
-		h.Write([]byte(fmt.Sprintf("%d", seal.Timestamp)))
-		d := h.Sum(nil)
-		if !ecdsa.Verify(pubk, d, seal.SigR, seal.SigS) {
-			return fmt.Errorf("auditor signature is incorrect")
-		}
-		if time.Now().Add(-time.Hour).UnixNano()/1e6 > seal.Timestamp {
-			return fmt.Errorf("auditor signature has expired")
-		}
+		peer := vldmpb.NewAuditorClient(peerconn)
+		peer.SubmitLogRoot(context.Background(), &vldmpb.SubmitLogRootParams{
+			SignedLogRoot: root,
+		})
+		peerconn.Close()
 	}
-	pbinc := trillian.MapLeafInclusion{}
-	err := proto.Unmarshal(inclusion, &pbinc)
-	if err != nil {
-		return fmt.Errorf("malformed proof")
+}
+
+func (s *SimpleHTTPStorage) maybeTxAuditors(root []byte) {
+	if time.Now().Add(-30 * time.Minute).After(s.lastAuditTX) {
+		s.txAuditors(root)
+		s.lastAuditTX = time.Now()
 	}
-	pbsmr := trillian.SignedMapRoot{}
-	err = proto.Unmarshal(smr, &pbsmr)
-	if err != nil {
-		return fmt.Errorf("malformed proof")
-	}
-	if key != nil && !bytes.Equal(pbinc.Leaf.Index, key) {
-		return fmt.Errorf("malformed proof (wrong key)")
-	}
-	if value != nil && !bytes.Equal(pbinc.Leaf.LeafValue, value) {
-		fmt.Printf("expected %x\n", value)
-		fmt.Printf("received %x\n", pbinc.Leaf.LeafValue)
-		return fmt.Errorf("malformed proof (wrong value)")
-	}
-	err = s.mapVerifier.VerifyMapLeafInclusion(&pbsmr, &pbinc)
-	if err != nil {
-		return fmt.Errorf("proof is invalid: %s", err)
-	}
-	return nil
 }
 
 func (s *SimpleHTTPStorage) initmap() {

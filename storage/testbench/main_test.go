@@ -48,10 +48,11 @@ func init() {
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEKG6NaA54Fx6m7Ih019r1LDXDf7ay
 CQKL0D2lvjF0TcQP8Kx+lFrRyjvqBJrrv5KUPcbBYWXJwscLTDkwA3zBtg==
 -----END PUBLIC KEY-----`
-	storageconfig["v1auditors"] = `-----BEGIN PUBLIC KEY-----
+	storageconfig["v1certifiers"] = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjxdbNOQuEkIhfN61raSYgijjygMf
 uVBgJsnNrDbraLaHGzbbrYX1BoDm9BomJHSSQpeOYTabcdQ9Jy9n8v45oA==
 -----END PUBLIC KEY-----`
+	storageconfig["v1auditors"] = "127.0.0.1:5001"
 	cfg := make(map[string]map[string]string)
 	cfg["default"] = storageconfig
 	ov, err := overlay.NewOverlay(cfg)
