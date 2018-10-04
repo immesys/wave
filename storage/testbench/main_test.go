@@ -14,13 +14,13 @@ import (
 )
 
 //Modify this to instantiate the storage provider you want to test:
-func getInstance(t *testing.T) iapi.StorageDriverInterface {
+func getInstance(t testing.TB) iapi.StorageDriverInterface {
 	return getSimpleHTTPStorageInstance(t)
 }
 
 var storageconfig map[string]string
 
-func getSimpleHTTPStorageInstance(t *testing.T) iapi.StorageDriverInterface {
+func getSimpleHTTPStorageInstance(t testing.TB) iapi.StorageDriverInterface {
 	sh := &simplehttp.SimpleHTTPStorage{}
 	require.NoError(t, sh.Initialize(context.Background(), "simplehttp", storageconfig))
 	return sh
@@ -43,14 +43,10 @@ func getSimpleHTTPStorageInstance(t *testing.T) iapi.StorageDriverInterface {
 func init() {
 	storageconfig = make(map[string]string)
 	storageconfig["provider"] = "http_v1"
-	storageconfig["url"] = "http://127.0.0.1:8080/v1"
+	storageconfig["url"] = "https://vldm.storage.bwave.io/v1"
 	storageconfig["v1key"] = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEKG6NaA54Fx6m7Ih019r1LDXDf7ay
-CQKL0D2lvjF0TcQP8Kx+lFrRyjvqBJrrv5KUPcbBYWXJwscLTDkwA3zBtg==
------END PUBLIC KEY-----`
-	storageconfig["v1certifiers"] = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjxdbNOQuEkIhfN61raSYgijjygMf
-uVBgJsnNrDbraLaHGzbbrYX1BoDm9BomJHSSQpeOYTabcdQ9Jy9n8v45oA==
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwo6w0SSVDM/EXPDFKpogJYtjDDZp
+s+QeDH7bL1HJuTOekmC/Ry1xcSXPTr1/WfywTdT6N1MmYdmz3EXaLJbsJA==
 -----END PUBLIC KEY-----`
 	storageconfig["v1auditors"] = "127.0.0.1:5001"
 	cfg := make(map[string]map[string]string)
@@ -245,7 +241,7 @@ func TestEnqueDequeueDelay(t *testing.T) {
 
 func BenchmarkPut2KB(b *testing.B) {
 	body := make([]byte, 2000)
-	in := getInstance(nil)
+	in := getInstance(b)
 	rand.Read(body)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -256,7 +252,7 @@ func BenchmarkPut2KB(b *testing.B) {
 
 func BenchmarkGet2KB(b *testing.B) {
 	body := make([]byte, 2000)
-	in := getInstance(nil)
+	in := getInstance(b)
 	rand.Read(body)
 	resp, _ := in.Put(context.Background(), body)
 	b.ResetTimer()
@@ -267,7 +263,7 @@ func BenchmarkGet2KB(b *testing.B) {
 
 func BenchmarkGet2KBDelay(b *testing.B) {
 	body := make([]byte, 2000)
-	in := getInstance(nil)
+	in := getInstance(b)
 	rand.Read(body)
 	resp, _ := in.Put(context.Background(), body)
 	time.Sleep(5 * time.Second)
@@ -284,7 +280,7 @@ func BenchmarkEnqueue(b *testing.B) {
 	other := make([]byte, 32)
 	rand.Read(other)
 	valhash := iapi.KECCAK256.Instance(other)
-	in := getInstance(nil)
+	in := getInstance(b)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		in.Enqueue(context.Background(), hash, valhash)
@@ -298,7 +294,7 @@ func BenchmarkDequeue(b *testing.B) {
 	other := make([]byte, 32)
 	rand.Read(other)
 	valhash := iapi.KECCAK256.Instance(other)
-	in := getInstance(nil)
+	in := getInstance(b)
 	in.Enqueue(context.Background(), hash, valhash)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

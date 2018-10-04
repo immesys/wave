@@ -19,3 +19,11 @@ defaultToUnrevoked = false
   provider = "http_v1"
   url = "https://standalone.storage.bwave.io/v1"
   version = "1"
+  
+  [storage.vldm]
+  provider = "http_v1"
+  url = "https://vldm.storage.bwave.io/v1"
+  v1key = """-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwo6w0SSVDM/EXPDFKpogJYtjDDZp
+s+QeDH7bL1HJuTOekmC/Ry1xcSXPTr1/WfywTdT6N1MmYdmz3EXaLJbsJA==
+-----END PUBLIC KEY-----"""

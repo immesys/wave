@@ -6,10 +6,24 @@ database = "/var/lib/wave/db"
 # This should ideally be below 1000 to prevent a non root service
 # from binding to this port
 listenIp = "127.0.0.1:410"
+httpListenIp = "127.0.0.1:411"
+
+# If you cannot reach storage, is the entity revoked or not?
+defaultToUnrevoked = false
 
 [storage]
-  # This is the default HTTPS server until we get AWS/Azure
+
+
+  # This is the default development server
   [storage.default]
   provider = "http_v1"
   url = "https://standalone.storage.bwave.io/v1"
   version = "1"
+
+  [storage.vldm]
+  provider = "http_v1"
+  url = "https://vldm.storage.bwave.io/v1"
+  v1key = """-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwo6w0SSVDM/EXPDFKpogJYtjDDZp
+s+QeDH7bL1HJuTOekmC/Ry1xcSXPTr1/WfywTdT6N1MmYdmz3EXaLJbsJA==
+-----END PUBLIC KEY-----"""

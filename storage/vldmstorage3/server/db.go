@@ -7,7 +7,7 @@ import (
 	"errors"
 	"sync"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/samkumar/reqcache"
 )
 
@@ -53,6 +53,8 @@ func (d *db) getobject(ctx context.Context, key interface{}) (interface{}, uint6
 	return value, 1, nil
 }
 
+var ErrAlreadyExists = errors.New("Already exists\n")
+
 func (d *db) InsertObject(hash []byte, object []byte) error {
 	k := base64.URLEncoding.EncodeToString(hash)
 	d.lru.Put(k, object, 1)
@@ -62,7 +64,16 @@ func (d *db) InsertObject(hash []byte, object []byte) error {
 	}
 	_, err = tx.Exec("INSERT INTO ValueMapping (Hash, Value) VALUES (?, ?)", k, object)
 	if err != nil {
-		panic(err)
+		me, ok := err.(*mysql.MySQLError)
+		if !ok {
+			panic(err)
+		}
+		if me.Number == 1062 {
+			//Record already existed
+			return ErrAlreadyExists
+		} else {
+			panic(err)
+		}
 	}
 	err = tx.Commit()
 	if err != nil {

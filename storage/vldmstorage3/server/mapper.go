@@ -69,18 +69,22 @@ func PerformOneMap(certifierIDs []string) (bool, error) {
 	}
 
 	endID := startEntry
-
+	included := make(map[string]bool)
 	for _, l := range entryresp.Leaves {
 		mp := &PromiseObject{}
 		err := json.Unmarshal(l.LeafValue, &mp)
 		if err != nil {
 			panic(err)
 		}
+		endID = l.LeafIndex
+		if included[string(mp.Key)] {
+			continue
+		}
 		setReq.Leaves = append(setReq.Leaves, &trillian.MapLeaf{
 			Index:     mp.Key,
 			LeafValue: mp.Value,
 		})
-		endID = l.LeafIndex
+		included[string(mp.Key)] = true
 	}
 	mapperMetadata.HighestFullyCompletedSeq = endID
 

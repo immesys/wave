@@ -96,10 +96,17 @@ func actionMkEntity(c *cli.Context) error {
 			os.Exit(1)
 		}
 	}
+	var revloc *pb.Location
+	if c.String("revocationlocation") != "" {
+		revloc = &pb.Location{
+			AgentLocation: c.String("revocationlocation"),
+		}
+	}
 	resp, err := conn.CreateEntity(context.Background(), &pb.CreateEntityParams{
-		ValidFrom:        time.Now().UnixNano() / 1e6,
-		ValidUntil:       time.Now().Add(*expiry).UnixNano() / 1e6,
-		SecretPassphrase: string(pass),
+		ValidFrom:          time.Now().UnixNano() / 1e6,
+		ValidUntil:         time.Now().Add(*expiry).UnixNano() / 1e6,
+		SecretPassphrase:   string(pass),
+		RevocationLocation: revloc,
 	})
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
@@ -126,7 +133,8 @@ func actionMkEntity(c *cli.Context) error {
 	fmt.Printf("wrote entity: %s\n", filename)
 	if !c.Bool("nopublish") {
 		presp, err := conn.PublishEntity(context.Background(), &pb.PublishEntityParams{
-			DER: resp.PublicDER,
+			DER:      resp.PublicDER,
+			Location: revloc,
 		})
 		if err != nil {
 			fmt.Printf("publish error: %v\n", err)

@@ -273,6 +273,7 @@ func main() {
 	go grpcServer.Serve(l)
 
 	http.Handle("/", r)
-	err = http.ListenAndServe(":8080", nil)
+	//err = http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServeTLS(":443", "certpublic", "certprivate", nil)
 	panic(err)
 }
