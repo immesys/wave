@@ -33,7 +33,7 @@
   branch = "master"
   name = "github.com/aristanetworks/goarista"
   packages = ["monotime"]
-  revision = "ff33da284e760fcdb03c33d37a719e5ed30ba844"
+  revision = "33151c4543a79b013e8e6799ef45b2ba88c3cd1c"
 
 [[projects]]
   branch = "master"
@@ -408,7 +408,7 @@
   branch = "master"
   name = "github.com/minio/sha256-simd"
   packages = ["."]
-  revision = "ad98a36ba0da87206e3378c556abbfeaeaa98668"
+  revision = "51976451ce1942acbb55707a983ed232fa027110"
 
 [[projects]]
   name = "github.com/mitchellh/go-homedir"
@@ -423,10 +423,10 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/mr-tron/base58"
   packages = ["base58"]
-  revision = "9ad991d48a423a0e52c77eac173b1b589665492a"
+  revision = "d724c80ecac7b49e4e562d58b2b4f4ee4ed8c312"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/multiformats/go-multiaddr"
@@ -535,8 +535,8 @@
 [[projects]]
   name = "github.com/rs/cors"
   packages = ["."]
-  revision = "3fb1b69b103a84de38a19c3c6ec073dd6caa4d3f"
-  version = "v1.5.0"
+  revision = "9a47f48565a795472d43519dd49aac781f3034fb"
+  version = "v1.6.0"
 
 [[projects]]
   branch = "master"
@@ -641,7 +641,7 @@
     "sha3",
     "ssh/terminal"
   ]
-  revision = "e3636079e1a4c1f337f212cc5cd2aca108f6c900"
+  revision = "7c1a557ab941a71c619514f229f0b27ccb0c27cf"
 
 [[projects]]
   branch = "master"
@@ -659,7 +659,7 @@
     "trace",
     "websocket"
   ]
-  revision = "4dfa2610cdf3b287375bbba5b8f2a14d3b01d8de"
+  revision = "49bb7cea24b1df9410e1712aa6433dae904ff66a"
 
 [[projects]]
   branch = "master"
@@ -675,7 +675,7 @@
     "unix",
     "windows"
   ]
-  revision = "e4b3c5e9061176387e7cea65e4dc5853801f3fb7"
+  revision = "fa43e7bc11baaae89f3f902b2b4d832b68234844"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -718,7 +718,7 @@
     "imports",
     "internal/fastwalk"
   ]
-  revision = "008d18139cb7769f4e539d7aecda5996c7b7217b"
+  revision = "8149dec50d887b3322b76ac694f08fe28a3e3627"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -734,7 +734,7 @@
     "googleapis/rpc/status",
     "protobuf/field_mask"
   ]
-  revision = "c7e5094acea1ca1b899e2259d80a6b0f882f81f8"
+  revision = "af9cb2a35e7f169ec875002c1829c9b315cddc04"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -817,12 +817,15 @@
 [[projects]]
   branch = "master"
   name = "vuvuzela.io/crypto"
-  packages = ["bn256"]
+  packages = [
+    "bn256",
+    "bn256ref"
+  ]
   revision = "61495c08530216116939f6dc3af094f4e4037b5f"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bf756b59e789816184cfcfb5f27aa75573f3eddea4215b44664c05efa914cd84"
+  inputs-digest = "f4a95739f9e471e4314fd69dafe689dfdfafd93aaa28e576ae1d36c011a370c8"
   solver-name = "gps-cdcl"
   solver-version = 1

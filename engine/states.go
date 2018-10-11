@@ -45,7 +45,7 @@ nextlocation:
 	for _, loc := range locs {
 		hashscheme, err := e.st.HashSchemeFor(loc)
 		if err != nil {
-			panic(err)
+			continue //problem with this location
 		}
 		for {
 			// get current token

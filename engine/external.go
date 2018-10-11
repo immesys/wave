@@ -450,14 +450,14 @@ func (e *Engine) CheckEntity(ctx context.Context, ent *iapi.Entity) (*Validity, 
 
 func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) (*iapi.Entity, *Validity, error) {
 	var err error
-	ent := getCachedEntity(hash)
+	ent := getCachedEntity(hash, loc)
 	if ent == nil {
 		ent, err = e.ws.GetEntityByHashSchemeInstanceG(ctx, hash)
 		if err != nil {
 			return nil, nil, err
 		}
 		if ent != nil {
-			cacheEntity(ent)
+			cacheEntity(ent, loc)
 		}
 	}
 
@@ -484,7 +484,7 @@ func (e *Engine) LookupEntity(ctx context.Context, hash iapi.HashSchemeInstance,
 		return nil, nil, err
 	}
 
-	cacheEntity(ent)
+	cacheEntity(ent, loc)
 
 	val, err := e.CheckEntity(ctx, ent)
 	//fmt.Printf("validity in lookup: %v\n", val)

@@ -8,10 +8,15 @@ import (
 )
 
 var cachemu sync.RWMutex
-var entityCache map[[32]byte]*ecacheItem
+var entityCache map[ecacheKey]*ecacheItem
 var rvkCache map[string]time.Time
 
 var entityCacheTime = 3 * time.Hour
+
+type ecacheKey struct {
+	Hash     [32]byte
+	Location string
+}
 
 type ecacheItem struct {
 	Val         *iapi.Entity
@@ -19,12 +24,14 @@ type ecacheItem struct {
 }
 
 func init() {
-	entityCache = make(map[[32]byte]*ecacheItem)
+	entityCache = make(map[ecacheKey]*ecacheItem)
 	rvkCache = make(map[string]time.Time)
 }
 
-func cacheEntity(e *iapi.Entity) {
-	k := e.ArrayKeccak256()
+func cacheEntity(e *iapi.Entity, loc iapi.LocationSchemeInstance) {
+	ar := e.ArrayKeccak256()
+	l := loc.(*iapi.LocationSchemeInstanceURL).SerdesForm.Value
+	k := ecacheKey{ar, l}
 	cachemu.Lock()
 	entityCache[k] = &ecacheItem{
 		Val:         e,
@@ -33,11 +40,13 @@ func cacheEntity(e *iapi.Entity) {
 	cachemu.Unlock()
 }
 
-func getCachedEntity(h iapi.HashSchemeInstance) *iapi.Entity {
-	ak := [32]byte{}
-	copy(ak[:], h.Value())
+func getCachedEntity(h iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance) *iapi.Entity {
+	l := loc.(*iapi.LocationSchemeInstanceURL).SerdesForm.Value
+	ar := [32]byte{}
+	copy(ar[:], h.Value())
+	k := ecacheKey{ar, l}
 	cachemu.RLock()
-	rez, ok := entityCache[ak]
+	rez, ok := entityCache[k]
 	cachemu.RUnlock()
 	if ok && rez.CheckExpiry.After(time.Now()) {
 		return rez.Val
