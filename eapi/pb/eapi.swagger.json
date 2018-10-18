@@ -1005,8 +1005,9 @@
     "pbEncryptMessageParams": {
       "type": "object",
       "properties": {
-        "perspective": {
-          "$ref": "#/definitions/pbPerspective"
+        "unused": {
+          "$ref": "#/definitions/pbPerspective",
+          "title": "This is no longer required"
         },
         "content": {
           "type": "string",
@@ -1707,6 +1708,10 @@
         },
         "requiredRTreePolicy": {
           "$ref": "#/definitions/pbRTreePolicy"
+        },
+        "subject": {
+          "type": "string",
+          "format": "byte"
         }
       }
     },

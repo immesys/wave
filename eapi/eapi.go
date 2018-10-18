@@ -1,6 +1,7 @@
 package eapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/pem"
 	"fmt"
@@ -715,6 +716,15 @@ func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.Ve
 			}, nil
 		}
 	}
+
+	if len(p.Subject) != 0 {
+		if !bytes.Equal(proof.Subject, p.Subject) {
+			return &pb.VerifyProofResponse{
+				Error: ToError(wve.Err(wve.ProofInvalid, "proof is well formed but the subject does not match")),
+			}, nil
+		}
+	}
+
 	return &pb.VerifyProofResponse{
 		Result: &proof,
 	}, nil

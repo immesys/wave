@@ -502,6 +502,7 @@ message BuildRTreeProofResponse {
 message VerifyProofParams {
   bytes       proofDER = 1;
   RTreePolicy requiredRTreePolicy = 2;
+  bytes     subject = 3;
 }
 message VerifyProofResponse {
   Error error = 1;
