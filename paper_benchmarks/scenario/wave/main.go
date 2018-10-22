@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/immesys/wave/eapi"
 	"github.com/immesys/wave/eapi/pb"
@@ -90,6 +91,7 @@ func MakePolicy() []byte {
 				AgentLocation: "default",
 			},
 		},
+		ValidUntil:  time.Now().Add(3*365*24*time.Hour).UnixNano() / 1e6,
 		BodyScheme:  eapi.BodySchemeWaveRef1,
 		SubjectHash: dst.Hash,
 		SubjectLocation: &pb.Location{
@@ -117,9 +119,6 @@ func MakePolicy() []byte {
 	}
 	attpub, err := waveconn.PublishAttestation(context.Background(), &pb.PublishAttestationParams{
 		DER: attresp.DER,
-		Location: &pb.Location{
-			AgentLocation: "default",
-		},
 	})
 	if err != nil {
 		panic(err)
@@ -132,18 +131,12 @@ func MakePolicy() []byte {
 			EntitySecret: &pb.EntitySecret{
 				DER: dst.SecretDER,
 			},
-			Location: &pb.Location{
-				AgentLocation: "default",
-			},
 		},
 	})
 	cl, err := waveconn.WaitForSyncComplete(context.Background(), &pb.SyncParams{
 		Perspective: &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{
 				DER: dst.SecretDER,
-			},
-			Location: &pb.Location{
-				AgentLocation: "default",
 			},
 		},
 	})
@@ -156,7 +149,7 @@ func MakePolicy() []byte {
 			break
 		}
 	}
-	proofresp, err := waveconn.BuildRTreeProof(context.Background(), &pb.BuildRTreeParams{
+	proofresp, err := waveconn.BuildRTreeProof(context.Background(), &pb.BuildRTreeProofParams{
 		Perspective: &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{
 				DER: dst.SecretDER,
@@ -165,8 +158,8 @@ func MakePolicy() []byte {
 				AgentLocation: "default",
 			},
 		},
-		SubjectHash:    dstresp.Hash,
-		RtreeNamespace: srcresp.Hash,
+		SubjectHash: dstresp.Hash,
+		Namespace:   srcresp.Hash,
 		Statements: []*pb.RTreePolicyStatement{
 			&pb.RTreePolicyStatement{
 				PermissionSet: srcresp.Hash,
@@ -264,6 +257,7 @@ func MakePolicy3() []byte {
 				AgentLocation: "default",
 			},
 		},
+		ValidUntil:  time.Now().Add(3*365*24*time.Hour).UnixNano() / 1e6,
 		BodyScheme:  eapi.BodySchemeWaveRef1,
 		SubjectHash: i1resp.Hash,
 		SubjectLocation: &pb.Location{
@@ -288,9 +282,6 @@ func MakePolicy3() []byte {
 	}
 	_, err = waveconn.PublishAttestation(context.Background(), &pb.PublishAttestationParams{
 		DER: attresp.DER,
-		Location: &pb.Location{
-			AgentLocation: "default",
-		},
 	})
 	if err != nil {
 		panic(err)
@@ -305,6 +296,7 @@ func MakePolicy3() []byte {
 				AgentLocation: "default",
 			},
 		},
+		ValidUntil:  time.Now().Add(3*365*24*time.Hour).UnixNano() / 1e6,
 		BodyScheme:  eapi.BodySchemeWaveRef1,
 		SubjectHash: i2resp.Hash,
 		SubjectLocation: &pb.Location{
@@ -332,9 +324,6 @@ func MakePolicy3() []byte {
 	}
 	_, err = waveconn.PublishAttestation(context.Background(), &pb.PublishAttestationParams{
 		DER: attresp.DER,
-		Location: &pb.Location{
-			AgentLocation: "default",
-		},
 	})
 	if err != nil {
 		panic(err)
@@ -349,6 +338,7 @@ func MakePolicy3() []byte {
 				AgentLocation: "default",
 			},
 		},
+		ValidUntil:  time.Now().Add(3*365*24*time.Hour).UnixNano() / 1e6,
 		BodyScheme:  eapi.BodySchemeWaveRef1,
 		SubjectHash: dstresp.Hash,
 		SubjectLocation: &pb.Location{
@@ -376,9 +366,6 @@ func MakePolicy3() []byte {
 	}
 	_, err = waveconn.PublishAttestation(context.Background(), &pb.PublishAttestationParams{
 		DER: attresp.DER,
-		Location: &pb.Location{
-			AgentLocation: "default",
-		},
 	})
 	if err != nil {
 		panic(err)
@@ -413,7 +400,7 @@ func MakePolicy3() []byte {
 			break
 		}
 	}
-	proofresp, err := waveconn.BuildRTreeProof(context.Background(), &pb.BuildRTreeParams{
+	proofresp, err := waveconn.BuildRTreeProof(context.Background(), &pb.BuildRTreeProofParams{
 		Perspective: &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{
 				DER: dst.SecretDER,
@@ -422,8 +409,8 @@ func MakePolicy3() []byte {
 				AgentLocation: "default",
 			},
 		},
-		SubjectHash:    dstresp.Hash,
-		RtreeNamespace: srcresp.Hash,
+		SubjectHash: dstresp.Hash,
+		Namespace:   srcresp.Hash,
 		Statements: []*pb.RTreePolicyStatement{
 			&pb.RTreePolicyStatement{
 				PermissionSet: srcresp.Hash,

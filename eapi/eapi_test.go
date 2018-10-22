@@ -334,7 +334,6 @@ func TestE2EEDirectEncryption(t *testing.T) {
 	msg := make([]byte, 512)
 	rand.Read(msg)
 	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
-		Perspective:     srcperspective,
 		Content:         msg,
 		SubjectHash:     dstpub.Hash,
 		SubjectLocation: &inmem,
@@ -386,7 +385,6 @@ func TestE2EEOAQUEEncryptionNS(t *testing.T) {
 	msg := make([]byte, 512)
 	rand.Read(msg)
 	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
-		Perspective:       dstperspective,
 		Content:           msg,
 		Namespace:         srcpub.Hash,
 		NamespaceLocation: &inmem,
@@ -441,7 +439,6 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 	msg := make([]byte, 512)
 	rand.Read(msg)
 	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
-		Perspective:       srcperspective,
 		Content:           msg,
 		Namespace:         srcpub.Hash,
 		NamespaceLocation: &inmem,
@@ -573,7 +570,6 @@ func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
 	msg := make([]byte, 512)
 	rand.Read(msg)
 	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
-		Perspective:       aPersp,
 		Content:           msg,
 		Namespace:         apubl.Hash,
 		NamespaceLocation: &inmem,
@@ -726,7 +722,6 @@ func TestE2EEOAQUEEncryptionDelegated2HopNarrowing(t *testing.T) {
 	msg := make([]byte, 512)
 	rand.Read(msg)
 	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
-		Perspective:       aPersp,
 		Content:           msg,
 		Namespace:         apubl.Hash,
 		NamespaceLocation: &inmem,

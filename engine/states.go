@@ -393,7 +393,7 @@ func (e *Engine) movePendingToLabelledAndActive(dest *iapi.Entity) (err error) {
 }
 
 func (e *Engine) insertActiveNameDeclaration(ctx context.Context, nd *iapi.NameDeclaration) error {
-	fmt.Printf("inserting active name declaration: %s\n", nd.Name)
+	//fmt.Printf("inserting active name declaration: %s\n", nd.Name)
 	err := e.ws.MoveNameDeclarationActiveP(e.ctx, nd)
 	if err != nil {
 		return err
@@ -588,7 +588,7 @@ func (e *Engine) moveAttestationToActiveWithoutProcessingKeys(d *iapi.Attestatio
 //of the dot is held
 func (e *Engine) insertActiveAttestation(d *iapi.Attestation) error {
 	//fmt.Printf("XIAA 0\n")
-	fmt.Printf("inserting active attestation\n")
+	//fmt.Printf("inserting active attestation\n")
 	val, err := e.CheckAttestation(e.ctx, d)
 	if err != nil {
 		return err

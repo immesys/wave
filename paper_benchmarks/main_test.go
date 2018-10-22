@@ -37,6 +37,8 @@ func TGraph(t *testing.T, outdegree int, depth int) {
 	}
 	//Graph built
 	tg.BuildCompare(t, last_tier[0], "1", depth, 101-depth)
+	fmt.Printf("#,")
+	tg.BuildCompare(t, last_tier[0], "1", depth, 101-depth)
 }
 
 // func TestD30(t *testing.T) {
@@ -54,14 +56,14 @@ func TestDepth(t *testing.T) {
 
 func BenchmarkDecryptAttestationVerifier(b *testing.B) {
 	ctx := context.Background()
-	srcpub, srcsec := createEntity(nil)
+	srcpub, srcsec := createEntity(b)
 	srcpublish, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
 		DER:      srcpub,
 		Location: &inmem,
 	})
 	require.NoError(b, err)
 
-	dstpub, dstsec := createEntity(nil)
+	dstpub, dstsec := createEntity(b)
 	dstpublish, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
 		DER:      dstpub,
 		Location: &inmem,
@@ -105,8 +107,7 @@ func BenchmarkDecryptAttestationVerifier(b *testing.B) {
 	require.NoError(b, err)
 	require.Nil(b, att.Error)
 	pubresp, err := eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 	require.NoError(b, err)
 	require.Nil(b, pubresp.Error)
@@ -132,14 +133,14 @@ func BenchmarkDecryptAttestationVerifier(b *testing.B) {
 
 func BenchmarkDecryptAttestationDirect(b *testing.B) {
 	ctx := context.Background()
-	srcpub, srcsec := createEntity(nil)
+	srcpub, srcsec := createEntity(b)
 	srcpublish, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
 		DER:      srcpub,
 		Location: &inmem,
 	})
 	require.NoError(b, err)
 
-	dstpub, dstsec := createEntity(nil)
+	dstpub, dstsec := createEntity(b)
 	dstpublish, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
 		DER:      dstpub,
 		Location: &inmem,
@@ -183,8 +184,7 @@ func BenchmarkDecryptAttestationDirect(b *testing.B) {
 	require.NoError(b, err)
 	require.Nil(b, att.Error)
 	pubresp, err := eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 	require.NoError(b, err)
 	require.Nil(b, pubresp.Error)
@@ -214,14 +214,14 @@ func BenchmarkDecryptAttestationDirect(b *testing.B) {
 
 func BenchmarkDecryptAttestationOAQUE(b *testing.B) {
 	ctx := context.Background()
-	srcpub, srcsec := createEntity(nil)
+	srcpub, srcsec := createEntity(b)
 	srcpublish, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
 		DER:      srcpub,
 		Location: &inmem,
 	})
 	require.NoError(b, err)
 
-	dstpub, dstsec := createEntity(nil)
+	dstpub, dstsec := createEntity(b)
 	dstpublish, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
 		DER:      dstpub,
 		Location: &inmem,
@@ -265,8 +265,7 @@ func BenchmarkDecryptAttestationOAQUE(b *testing.B) {
 	require.NoError(b, err)
 	require.Nil(b, att.Error)
 	pubresp, err := eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 	require.NoError(b, err)
 	require.Nil(b, pubresp.Error)
@@ -297,14 +296,14 @@ func BenchmarkDecryptAttestationOAQUE(b *testing.B) {
 
 func BenchmarkCreateAttestation(b *testing.B) {
 	ctx := context.Background()
-	srcpub, srcsec := createEntity(nil)
+	srcpub, srcsec := createEntity(b)
 	srcpublish, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
 		DER:      srcpub,
 		Location: &inmem,
 	})
 	require.NoError(b, err)
 
-	dstpub, _ := createEntity(nil)
+	dstpub, _ := createEntity(b)
 	dstpublish, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
 		DER:      dstpub,
 		Location: &inmem,
@@ -352,6 +351,6 @@ func BenchmarkCreateAttestation(b *testing.B) {
 
 func BenchmarkCreateEntity(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, _ = createEntity(nil)
+		_, _ = createEntity(b)
 	}
 }

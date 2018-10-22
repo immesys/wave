@@ -218,7 +218,7 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 			if err != nil {
 				return nil, wve.Err(wve.ProofInvalid, "unexpected encrypted attestation")
 			}
-			fmt.Printf("pe %d current subject: \n%x\nnext attester: %x\n", pe, cursubj.Value(), nextAttest.Value())
+			//fmt.Printf("pe %d current subject: \n%x\nnext attester: %x\n", pe, cursubj.Value(), nextAttest.Value())
 			if !HashSchemeInstanceEqual(cursubj, nextAttest) {
 
 				return nil, wve.Err(wve.ProofInvalid, "path has broken links")

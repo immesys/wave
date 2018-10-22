@@ -21,7 +21,7 @@ import (
 var eapi *exapi.EAPI
 var inmem pb.Location
 
-func createEntity(t *testing.T) (public []byte, secret []byte) {
+func createEntity(t testing.TB) (public []byte, secret []byte) {
 	ctx := context.Background()
 	rv, err := eapi.CreateEntity(ctx, &pb.CreateEntityParams{})
 	require.NoError(t, err)
@@ -42,9 +42,9 @@ func init() {
 	go memoryserver.Main()
 	time.Sleep(100 * time.Millisecond)
 	cfg := make(map[string]map[string]string)
-	cfg["inmem"] = make(map[string]string)
-	cfg["inmem"]["provider"] = "http_v1"
-	cfg["inmem"]["url"] = "http://localhost:8080/v1"
+	cfg["default"] = make(map[string]string)
+	cfg["default"]["provider"] = "http_v1"
+	cfg["default"]["url"] = "http://localhost:8080/v1"
 	//inmem := iapi.NewLocationSchemeInstanceURL(cfg["inmem"]["url"], 1)
 	inmem.LocationURI = &pb.LocationURI{
 		URI:     "http://localhost:8080/v1",
@@ -97,7 +97,7 @@ func (t *TestGraph) BuildCompare(tst *testing.T, dst string, perms string, edges
 	require.NoError(tst, err)
 }
 
-func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTreeResponse {
+func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTreeProofResponse {
 	ctx := context.Background()
 	perspective := &pb.Perspective{
 		EntitySecret: &pb.EntitySecret{
@@ -129,10 +129,10 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 		}
 	}
 	then = time.Now()
-	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeParams{
-		Perspective:    perspective,
-		SubjectHash:    t.pubs[dst].Hash,
-		RtreeNamespace: t.pubs["ns"].Hash,
+	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeProofParams{
+		Perspective: perspective,
+		SubjectHash: t.pubs[dst].Hash,
+		Namespace:   t.pubs["ns"].Hash,
 		Statements: []*pb.RTreePolicyStatement{
 			&pb.RTreePolicyStatement{
 				PermissionSet: t.pubs["ns"].Hash,
@@ -202,8 +202,7 @@ func (t *TestGraph) Edge(tst *testing.T, src, dst string, perms string, ttl int)
 	require.NoError(tst, err)
 	require.Nil(tst, att.Error)
 	pubresp, err := eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
-		DER:      att.DER,
-		Location: &inmem,
+		DER: att.DER,
 	})
 	require.NoError(tst, err)
 	require.Nil(tst, pubresp.Error)

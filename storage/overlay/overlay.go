@@ -92,6 +92,7 @@ func (ov *Overlay) Status(ctx context.Context) (map[string]iapi.StorageDriverSta
 }
 
 func (ov *Overlay) PutBlob(ctx context.Context, loc iapi.LocationSchemeInstance, content []byte) (iapi.HashSchemeInstance, error) {
+	//fmt.Printf("doing putb to %s\n", loc.(*iapi.LocationSchemeInstanceURL).SerdesForm.Value)
 	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
 	defer scancel()
 	p, err := ov.getProvider(sctx, loc)
@@ -130,6 +131,7 @@ func (ov *Overlay) GetEntity(ctx context.Context, loc iapi.LocationSchemeInstanc
 	return rpe.Entity, nil
 }
 func (ov *Overlay) PutEntity(ctx context.Context, loc iapi.LocationSchemeInstance, ent *iapi.Entity) (iapi.HashSchemeInstance, error) {
+	//fmt.Printf("doing pute to %s\n", loc.(*iapi.LocationSchemeInstanceURL).SerdesForm.Value)
 	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
 	defer scancel()
 	p, err := ov.getProvider(sctx, loc)
@@ -205,6 +207,7 @@ func (ov *Overlay) GetAttestation(ctx context.Context, loc iapi.LocationSchemeIn
 	return rpa.Attestation, nil
 }
 func (ov *Overlay) PutAttestation(ctx context.Context, loc iapi.LocationSchemeInstance, att *iapi.Attestation) (iapi.HashSchemeInstance, error) {
+	//fmt.Printf("doing puta to %s\n", loc.(*iapi.LocationSchemeInstanceURL).SerdesForm.Value)
 	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
 	defer scancel()
 	p, err := ov.getProvider(sctx, loc)
@@ -240,6 +243,7 @@ func (ov *Overlay) IterateQeueue(ctx context.Context, loc iapi.LocationSchemeIns
 	return p.IterateQueue(sctx, queueId, token)
 }
 func (ov *Overlay) Enqueue(ctx context.Context, loc iapi.LocationSchemeInstance, queueId iapi.HashSchemeInstance, object iapi.HashSchemeInstance) error {
+	//fmt.Printf("doing enq to %s\n", loc.(*iapi.LocationSchemeInstanceURL).SerdesForm.Value)
 	sctx, scancel := context.WithTimeout(ctx, MaximumTimeout)
 	defer scancel()
 	p, err := ov.getProvider(sctx, loc)

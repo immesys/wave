@@ -70,6 +70,7 @@ func (d *db) InsertObject(hash []byte, object []byte) error {
 		}
 		if me.Number == 1062 {
 			//Record already existed
+			tx.Rollback()
 			return ErrAlreadyExists
 		} else {
 			panic(err)

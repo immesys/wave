@@ -260,13 +260,13 @@ func (s *SimpleHTTPStorage) Get(ctx context.Context, hash iapi.HashSchemeInstanc
 	}
 	if s.requireproof {
 		if rv.V1MergePromise != nil {
-			fmt.Printf("promise\n")
+			//fmt.Printf("promise\n")
 			err := s.verifyV1Promise(rv.V1MergePromise, hash.Value(), hash.Value())
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			fmt.Printf("inclusion\n")
+			//fmt.Printf("inclusion\n")
 			err := s.verifyV1(&verifyV1params{
 				MapRoot:        rv.V1SMR,
 				MapInclusion:   rv.V1MapInclusion,
@@ -443,7 +443,7 @@ func (s *SimpleHTTPStorage) verifyV1(p *verifyV1params) error {
 		s.trustedLogRoot = r
 		s.trustedLogRootSerial = p.LogRoot
 	} else if pbslr.TreeSize > int64(s.trustedLogRoot.TreeSize) {
-		fmt.Printf("doing consistency proof\n")
+		//fmt.Printf("doing consistency proof\n")
 		newRoot, err := s.logVerifier.VerifyRoot(s.trustedLogRoot, &pbslr, p.LogConsistency)
 		if err != nil {
 			s.txAuditors(p.LogRoot)
