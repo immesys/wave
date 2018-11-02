@@ -15,7 +15,7 @@ import (
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
 	"github.com/ucbrise/starwave/crypto/cryptutils"
-	"github.com/ucbrise/starwave/crypto/oaque"
+	"github.com/samkumar/embedded-pairing/lang/go/wkdibe"
 	"github.com/ucbrise/vuvuzelacrypto/ibe"
 	bn256 "vuvuzela.io/crypto/bn256"
 
@@ -274,7 +274,7 @@ func NewEntityKeySchemeInstance(oid asn1.ObjectIdentifier, capabilities ...Capab
 		if err != nil {
 			return nil, err
 		}
-		params, master, err := oaque.Setup(rand.Reader, 20, true)
+		params, master := wkdibe.Setup(20, true)
 		paramsblob := params.Marshal()
 		if err != nil {
 			return nil, err
@@ -1199,8 +1199,6 @@ func (k *EntityKey_OAQUE_BN256_S20_Params) GenerateChildKey(ctx context.Context,
 		return nil, fmt.Errorf("only [][]byte identities are supported")
 	}
 	if len(id) != 20 {
-		fmt.Printf("A\n")
-		panic(id)
 		return nil, fmt.Errorf("only 20 slot identities are supported")
 	}
 	ch := serdes.EntityPublicOAQUE_BN256_s20{
@@ -1330,6 +1328,7 @@ func (k *EntityKey_OAQUE_BN256_S20) EncryptMessage(ctx context.Context, content 
 	nonce := sharedSecret[16:]
 	innerciphertext := aesGCMEncrypt(aesk, content, nonce)
 	al := slotsToAttrMap(k.AttributeSet)
+	wkdibe.
 	oaqueciphertext, err := oaque.Encrypt(nil, k.Params, al, groupElement)
 	if err != nil {
 		return nil, fmt.Errorf("oaque encryption failure")
