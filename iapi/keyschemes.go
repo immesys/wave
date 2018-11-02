@@ -44,12 +44,12 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 			SerdesForm: e,
 			PublicKey:  ba,
 		}, nil
-	case e.Key.OID.Equal(serdes.EntityIBE_BN256_ParamsOID):
-		rv := &EntityKey_IBE_Params_BN256{
+	case e.Key.OID.Equal(serdes.EntityIBE_BLS12381_ParamsOID):
+		rv := &EntityKey_IBE_Params_BLS12381{
 			SerdesForm: e,
 			PublicKey:  &ibe.MasterPublicKey{},
 		}
-		err := rv.PublicKey.UnmarshalBinary(e.Key.Content.(serdes.EntityParamsIBE_BN256))
+		err := rv.PublicKey.UnmarshalBinary(e.Key.Content.(serdes.EntityParamsIBE_BLS12381))
 		if err != nil {
 			return nil, err
 		}

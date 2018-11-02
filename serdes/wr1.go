@@ -6,7 +6,7 @@ type WR1BodyCiphertext struct {
 	VerifierBodyCiphertext         []byte
 	ProverBodyCiphertext           []byte
 	EnvelopeCiphertext             []byte
-	EnvelopeKey_IBE_BN256          []byte
+	EnvelopeKey_IBE_BLS12381       []byte
 	EnvelopeKey_Curve25519         []byte
 	EnvelopeKey_Curve25519Attester []byte
 }
@@ -30,25 +30,25 @@ type Ed25519OuterSignature struct {
 	Signature    []byte
 }
 
-type EntityPublicIBE_BN256 struct {
-	Params EntityParamsIBE_BN256
+type EntityPublicIBE_BLS12381 struct {
+	Params EntityParamsIBE_BLS12381
 	ID     []byte
 }
-type EntityPublicOAQUE_BN256_s20 struct {
-	Params       EntityParamsOQAUE_BN256_s20
+type EntityPublicOAQUE_BLS12381_s20 struct {
+	Params       EntityParamsOQAUE_BLS12381_s20
 	AttributeSet [][]byte
 }
 type EntityPublicEd25519 []byte
 type EntityPublicCurve25519 []byte
-type EntityParamsOQAUE_BN256_s20 []byte
-type EntityParamsIBE_BN256 []byte
+type EntityParamsOQAUE_BLS12381_s20 []byte
+type EntityParamsIBE_BLS12381 []byte
 
 type EntitySecretEd25519 []byte
 type EntitySecretCurve25519 []byte
-type EntitySecretOQAUE_BN256_s20 []byte
-type EntitySecretMasterOQAUE_BN256_s20 []byte
-type EntitySecretMasterIBE_BN256 []byte
-type EntitySecretIBE_BN256 []byte
+type EntitySecretOQAUE_BLS12381_s20 []byte
+type EntitySecretMasterOQAUE_BLS12381_s20 []byte
+type EntitySecretMasterIBE_BLS12381 []byte
+type EntitySecretIBE_BLS12381 []byte
 
 type KeyringAESCiphertext struct {
 	Ciphertext []byte
@@ -56,7 +56,7 @@ type KeyringAESCiphertext struct {
 	Iterations int
 }
 
-type WR1DomainVisibilityKey_IBE_BN256 EntityKeyringEntry
-type WR1PartitionKey_OAQUE_BN256_s20 EntityKeyringEntry
+type WR1DomainVisibilityKey_IBE_BLS12381 EntityKeyringEntry
+type WR1PartitionKey_OAQUE_BLS12381_s20 EntityKeyringEntry
 
 type AVKeyAES128GCM []byte

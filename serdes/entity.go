@@ -40,14 +40,14 @@ type EntityKeyringEntry struct {
 	Private asn1.External
 }
 
-type BN256OAQUEKeyringBundle struct {
-	Params  EntityParamsOQAUE_BN256_s20
-	Entries []BN256OAQUEKeyringBundleEntry
+type BLS12381OAQUEKeyringBundle struct {
+	Params  EntityParamsOQAUE_BLS12381_s20
+	Entries []BLS12381OAQUEKeyringBundleEntry
 }
 
-type BN256OAQUEKeyringBundleEntry struct {
+type BLS12381OAQUEKeyringBundleEntry struct {
 	PartitionChange []PartitionChange
-	Key             EntitySecretOQAUE_BN256_s20
+	Key             EntitySecretOQAUE_BLS12381_s20
 }
 
 type PartitionChange struct {
