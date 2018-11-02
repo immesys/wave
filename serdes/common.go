@@ -7,63 +7,76 @@ import (
 )
 
 var (
-	WaveOID                               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157}
-	WaveObjectOID                         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2}
-	AttestationOID                        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 1}
-	EntityOID                             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 2}
-	ExplicitProofOID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 3}
-	EntitySecretOID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 4}
-	WaveEncryptedMessageOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 5}
-	WaveNameDeclarationOID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 6}
-	AttestationBodySchemeOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3}
-	UnencryptedBodyOID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 1}
-	WR1BodyOID                            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 2}
-	PSKBodySchemeOID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 3}
-	AttestationVerifierKeySchemeOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4}
-	VerifierKeyAES128OID                  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4, 1}
-	OuterSignatureSchemeOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5}
-	EphemeralEd25519OID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5, 1}
-	OuterSignatureBindingSchemeOID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 6}
-	SignedOuterKeyOID                     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 6, 1}
-	LocationSchemeOID                     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 8}
-	LocationURLOID                        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 8, 1}
-	LocationEthereumOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 8, 2}
-	HashSchemeOID                         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 9}
-	Sha3_256OID                           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 9, 1}
-	Keccak_256OID                         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 9, 2}
-	RevocationSchemeOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 10}
-	CommitmentRevocationOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 10, 1}
-	EntityKeySchemeOID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11}
-	EntityEd25519OID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 1}
-	EntityCurve25519OID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 2}
-	EntityOAQUE_BN256_S20_AttributeSetOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 3}
-	EntityOAQUE_BN256_S20_ParamsOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 4}
-	EntityIBE_BN256_ParamsOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 5}
-	EntityIBE_BN256_PublicOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 6}
-	PolicySchemeOID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12}
-	TrustLevelPolicyOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 1}
-	ResourceTreePolicyOID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 2}
-	PolicyAddendumOID                     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13}
-	WR1DomainVisibilityKey_IBE_BN256OID   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 1}
-	WR1PartitionKey_OAQUE_BN256_s20OID    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 2}
+	WaveOID                         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157}
+	WaveObjectOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2}
+	AttestationOID                  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 1}
+	EntityOID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 2}
+	ExplicitProofOID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 3}
+	EntitySecretOID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 4}
+	WaveEncryptedMessageOID         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 5}
+	WaveNameDeclarationOID          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 2, 6}
+	AttestationBodySchemeOID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3}
+	UnencryptedBodyOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 1}
+	WR1BodyOID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 2}
+	PSKBodySchemeOID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 3, 3}
+	AttestationVerifierKeySchemeOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4}
+	VerifierKeyAES128OID            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 4, 1}
+	OuterSignatureSchemeOID         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5}
+	EphemeralEd25519OID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 5, 1}
+	OuterSignatureBindingSchemeOID  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 6}
+	SignedOuterKeyOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 6, 1}
+	LocationSchemeOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 8}
+	LocationURLOID                  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 8, 1}
+	LocationEthereumOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 8, 2}
+	HashSchemeOID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 9}
+	Sha3_256OID                     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 9, 1}
+	Keccak_256OID                   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 9, 2}
+	RevocationSchemeOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 10}
+	CommitmentRevocationOID         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 10, 1}
+	EntityKeySchemeOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11}
+	EntityEd25519OID                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 1}
+	EntityCurve25519OID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 2}
+
+	//EntityOAQUE_BN256_S20_AttributeSetOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 3}
+	//EntityOAQUE_BN256_S20_ParamsOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 4}
+	//EntityIBE_BN256_ParamsOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 5}
+	//EntityIBE_BN256_PublicOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 6}
+
+	EntityOAQUE_BLS12381_S20_AttributeSetOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 7}
+	EntityOAQUE_BLS12381_S20_ParamsOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 8}
+	EntityIBE_BLS12381_ParamsOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 9}
+	EntityIBE_BLS12381_PublicOID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 11, 10}
+
+	PolicySchemeOID                        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12}
+	TrustLevelPolicyOID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 1}
+	ResourceTreePolicyOID                  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 12, 2}
+	PolicyAddendumOID                      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13}
+	WR1DomainVisibilityKey_IBE_BLS12381OID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 6}
+	WR1PartitionKey_OAQUE_BLS12381_s20OID  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 7}
 	//WR1EncryptionKey_OAQUE_BN256_s20OID    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 3}
-	WR1EncryptionBundle_OAQUE_BN256_s20OID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 4}
-	EntitySecretKeySchemeOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14}
-	EntitySecretEd25519OID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 1}
-	EntitySecretCurve25519OID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 2}
-	EntitySecretOAQUE_BN256_S20OID         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 3}
-	EntitySecretOAQUE_BN256_S20_MasterOID  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 4}
-	EntitySecretIBE_BN256_MasterOID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 5}
-	EntitySecretIBE_BN256OID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 6}
-	EntityKeyringSchemeOID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15}
-	PlaintextKeyringOID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 1}
-	KeyringAES128_GCM_PBKDF2OID            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 2}
-	E2EEMessageKeySchemesOID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16}
-	MessageKeyCurve25519ECDHOID            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 1}
-	MessageKeyWR1OID                       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 2}
-	NameDeclarationKeySchemesOID           = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17}
-	NameDeclarationKeyWR1OID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 1}
-	NameDeclarationKeyNoneOID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 2}
+	WR1EncryptionBundle_OAQUE_BLS12381_s20OID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 13, 5}
+	EntitySecretKeySchemeOID                  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14}
+	EntitySecretEd25519OID                    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 1}
+	EntitySecretCurve25519OID                 = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 2}
+
+	// EntitySecretOAQUE_BN256_S20OID         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 3}
+	// EntitySecretOAQUE_BN256_S20_MasterOID  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 4}
+	// EntitySecretIBE_BN256_MasterOID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 5}
+	// EntitySecretIBE_BN256OID               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 6}
+	EntitySecretOAQUE_BLS12381_S20OID        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 7}
+	EntitySecretOAQUE_BLS12381_S20_MasterOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 8}
+	EntitySecretIBE_BLS12381_MasterOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 9}
+	EntitySecretIBE_BLS12381OID              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 14, 10}
+
+	EntityKeyringSchemeOID       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15}
+	PlaintextKeyringOID          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 1}
+	KeyringAES128_GCM_PBKDF2OID  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 15, 2}
+	E2EEMessageKeySchemesOID     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16}
+	MessageKeyCurve25519ECDHOID  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 1}
+	MessageKeyWR1OID             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 16, 2}
+	NameDeclarationKeySchemesOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17}
+	NameDeclarationKeyWR1OID     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 1}
+	NameDeclarationKeyNoneOID    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 51157, 17, 2}
 )
 
 const CapCertification = 1
@@ -99,10 +112,12 @@ func init() {
 		{EphemeralEd25519OID, Ed25519OuterSignature{}},
 		{EntityEd25519OID, EntityPublicEd25519{}},
 		{EntityCurve25519OID, EntityPublicCurve25519{}},
-		{EntityOAQUE_BN256_S20_AttributeSetOID, EntityPublicOAQUE_BN256_s20{}},
-		{EntityOAQUE_BN256_S20_ParamsOID, EntityParamsOQAUE_BN256_s20{}},
-		{EntityIBE_BN256_ParamsOID, EntityParamsIBE_BN256{}},
-		{EntityIBE_BN256_PublicOID, EntityPublicIBE_BN256{}},
+
+		{EntityOAQUE_BLS12381_S20_AttributeSetOID, EntityPublicOAQUE_BLS12381_s20{}},
+		{EntityOAQUE_BLS12381_S20_ParamsOID, EntityParamsOQAUE_BLS12381_s20{}},
+		{EntityIBE_BLS12381_ParamsOID, EntityParamsIBE_BLS12381{}},
+		{EntityIBE_BLS12381_PublicOID, EntityPublicIBE_BLS12381{}},
+
 		{AttestationOID, WaveAttestation{}},
 		{UnencryptedBodyOID, AttestationBody{}},
 		{TrustLevelPolicyOID, TrustLevel{}},
@@ -111,15 +126,15 @@ func init() {
 
 		{EntitySecretEd25519OID, EntitySecretEd25519{}},
 		{EntitySecretCurve25519OID, EntitySecretCurve25519{}},
-		{EntitySecretOAQUE_BN256_S20OID, EntitySecretOQAUE_BN256_s20{}},
-		{EntitySecretOAQUE_BN256_S20_MasterOID, EntitySecretMasterOQAUE_BN256_s20{}},
-		{EntitySecretIBE_BN256_MasterOID, EntitySecretMasterIBE_BN256{}},
-		{EntitySecretIBE_BN256OID, EntitySecretIBE_BN256{}},
+		{EntitySecretOAQUE_BLS12381_S20OID, EntitySecretOQAUE_BLS12381_s20{}},
+		{EntitySecretOAQUE_BLS12381_S20_MasterOID, EntitySecretMasterOQAUE_BLS12381_s20{}},
+		{EntitySecretIBE_BLS12381_MasterOID, EntitySecretMasterIBE_BLS12381{}},
+		{EntitySecretIBE_BLS12381OID, EntitySecretIBE_BLS12381{}},
 
-		{WR1DomainVisibilityKey_IBE_BN256OID, WR1DomainVisibilityKey_IBE_BN256{}},
-		{WR1PartitionKey_OAQUE_BN256_s20OID, WR1PartitionKey_OAQUE_BN256_s20{}},
+		{WR1DomainVisibilityKey_IBE_BLS12381OID, WR1DomainVisibilityKey_IBE_BLS12381{}},
+		{WR1PartitionKey_OAQUE_BLS12381_s20OID, WR1PartitionKey_OAQUE_BLS12381_s20{}},
 
-		{WR1EncryptionBundle_OAQUE_BN256_s20OID, BN256OAQUEKeyringBundle{}},
+		{WR1EncryptionBundle_OAQUE_BLS12381_s20OID, BLS12381OAQUEKeyringBundle{}},
 		{PlaintextKeyringOID, EntityKeyring{}},
 		{EntitySecretOID, WaveEntitySecret{}},
 		{KeyringAES128_GCM_PBKDF2OID, KeyringAESCiphertext{}},

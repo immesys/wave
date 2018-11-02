@@ -3,6 +3,7 @@ package iapi
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/immesys/asn1"
@@ -368,27 +369,43 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 				fmt.Printf("Bad oaque params\n")
 				continue
 			}
-			for i := 0; i < len(parts); i++ {
-				priv := oaque.PrivateKey{}
-				ok = priv.Unmarshal(kb.Entries[i].Key)
-				if !ok {
-					fmt.Printf("COULD NOT UNMARSHAL KEY\n")
-					continue
-				}
+			erv := make([]SlottedSecretKey, len(parts))
+			do := make(chan int, 10)
+			wg := sync.WaitGroup{}
+			numworkers := 10
+			wg.Add(numworkers)
+			worker := func() {
+				for i := range do {
+					priv := oaque.PrivateKey{}
+					ok = priv.Unmarshal(kb.Entries[i].Key)
+					if !ok {
+						fmt.Printf("COULD NOT UNMARSHAL KEY\n")
+						continue
+					}
 
-				esk := &EntitySecretKey_OAQUE_BN256_S20{
-					SerdesForm: &serdes.EntityKeyringEntry{
-						Public: serdes.EntityPublicKey{
-							Capabilities: []int{int(CapEncryption)},
+					esk := &EntitySecretKey_OAQUE_BN256_S20{
+						SerdesForm: &serdes.EntityKeyringEntry{
+							Public: serdes.EntityPublicKey{
+								Capabilities: []int{int(CapEncryption)},
+							},
 						},
-					},
-					Params:       &pub,
-					PrivateKey:   &priv,
-					AttributeSet: parts[i],
+						Params:       &pub,
+						PrivateKey:   &priv,
+						AttributeSet: parts[i],
+					}
+					erv[i] = esk
 				}
-				//fmt.Printf("KB %2d : %s : %x\n", i, WR1PartitionToString(parts[i]), esk.IdHash())
-				rv = append(rv, esk)
+				wg.Done()
 			}
+			for i := 0; i < numworkers; i++ {
+				go worker()
+			}
+			for i := 0; i < len(parts); i++ {
+				do <- i
+			}
+			close(do)
+			wg.Wait()
+			rv = append(rv, erv...)
 		}
 	}
 	return rv
