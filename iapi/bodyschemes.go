@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/consts"
@@ -429,6 +430,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	for i := 0; i < len(partitions); i++ {
 		togenerate[i%workers] = append(togenerate[i%workers], i)
 	}
+	then := time.Now()
 	wg := sync.WaitGroup{}
 	wg.Add(workers)
 	for i := 0; i < workers; i++ {
@@ -465,7 +467,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		}(i)
 	}
 	wg.Wait()
-
+	fmt.Printf("key generation took %s\n", time.Since(then))
 	includeE2Ebundle := false
 
 	var e2eBundle serdes.BN256OAQUEKeyringBundle
