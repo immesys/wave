@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/consts"
@@ -343,6 +344,7 @@ func isPolicyE2EE(p PolicySchemeInstance) (HashSchemeInstance, LocationSchemeIns
 }
 
 func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
+	fmt.Printf("encrypt body called\n")
 	ec := ecp.(WR1BodyEncryptionContext)
 	//Step 0 generate the WR1 keys
 	// - IBE key using the domain visibility from the policy
@@ -425,7 +427,8 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 
 	//Generating these delegated keys is a bit of a pain. Sequentially its about 1.5s on my machine.
 	//If we split it over multiple cores it goes down to about 250 ms
-	if true {
+	then := time.Now()
+	if false {
 		workers := runtime.NumCPU() / 2
 		batches := make([][]int, workers)
 		numperworker := len(partitions) / workers
@@ -443,6 +446,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 			}
 			batches[i] = batch
 		}
+
 		wg := sync.WaitGroup{}
 		wg.Add(workers)
 		for i := 0; i < workers; i++ {
@@ -532,7 +536,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		wg.Wait()
 		//fmt.Printf("slow method took %s\n", time.Since(then))
 	}
-
+	fmt.Printf("key generation took %s\n", time.Since(then))
 	includeE2Ebundle := false
 
 	var e2eBundle serdes.BLS12381OAQUEKeyringBundle
