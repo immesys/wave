@@ -320,14 +320,13 @@ func BenchmarkCreateAttestation(b *testing.B) {
 		}
 	}
 	policy := pb.RTreePolicy{
-		Namespace:     srcpublish.Hash,
-		Indirections:  uint32(5),
-		VisibilityURI: [][]byte{[]byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}},
+		Namespace:    srcpublish.Hash,
+		Indirections: uint32(5),
 		Statements: []*pb.RTreePolicyStatement{
 			&pb.RTreePolicyStatement{
 				PermissionSet: srcpublish.Hash,
 				Permissions:   permarr,
-				Resource:      "common/resource/with/longer/uri/for/testing/purposes/9/10/11/12",
+				Resource:      "common/resource",
 			},
 		},
 	}
@@ -336,7 +335,7 @@ func BenchmarkCreateAttestation(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r, _ := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		_, _ = eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
 			Perspective: &pb.Perspective{
 				EntitySecret: &pb.EntitySecret{
 					DER: srcsec,
@@ -348,7 +347,7 @@ func BenchmarkCreateAttestation(b *testing.B) {
 			SubjectLocation: &inmem,
 			Policy:          pbpolicy,
 		})
-		fmt.Printf("attestation size: %d (%d)\n", len(r.DER), len(r.DER)/1024)
+		//fmt.Printf("attestation size: %d (%d)\n", len(r.DER), len(r.DER)/1024)
 	}
 }
 
