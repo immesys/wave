@@ -71,25 +71,16 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 	case e.Key.OID.Equal(serdes.EntityOAQUE_BLS12381_S20_ParamsOID):
 		rv := &EntityKey_OAQUE_BLS12381_S20_Params{
 			SerdesForm: e,
-			Params:     &wkdibe.Params{},
-		}
-		blob := e.Key.Content.(serdes.EntityParamsOQAUE_BLS12381_s20)
-		ok := rv.Params.Unmarshal(blob, wkdIBECompressed, wkdIBEChecked)
-		if !ok {
-			return nil, fmt.Errorf("could not unmarshal oaque params")
+			Params:     nil,
 		}
 		return rv, nil
 	case e.Key.OID.Equal(serdes.EntityOAQUE_BLS12381_S20_AttributeSetOID):
 		rv := &EntityKey_OAQUE_BLS12381_S20{
 			SerdesForm: e,
-			Params:     &wkdibe.Params{},
+			Params:     nil,
 		}
 		obj := e.Key.Content.(serdes.EntityPublicOAQUE_BLS12381_s20)
 		rv.AttributeSet = obj.AttributeSet
-		ok := rv.Params.Unmarshal(obj.Params, wkdIBECompressed, wkdIBEChecked)
-		if !ok {
-			return nil, fmt.Errorf("could not unmarshal oaque params")
-		}
 		return rv, nil
 	}
 	return &UnsupportedKeyScheme{SerdesForm: e}, nil
@@ -435,7 +426,7 @@ func (ek *EntitySecretKey_Ed25519) DecryptMessage(ctx context.Context, data []by
 func (ek *EntitySecretKey_Ed25519) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
 	return nil, fmt.Errorf("this key does not support such decryption")
 }
-func (ek *EntitySecretKey_Ed25519) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
+func (ek *EntitySecretKey_Ed25519) GenerateChildSecretKey(ctx context.Context, identity interface{}, delegable bool) (EntitySecretKeySchemeInstance, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
 }
 func (ek *EntitySecretKey_Ed25519) Equal(rhs EntitySecretKeySchemeInstance) bool {
@@ -604,7 +595,7 @@ func (ek *EntitySecretKey_Curve25519) Equal(rhs EntitySecretKeySchemeInstance) b
 	}
 	return bytes.Equal(ek.SerdesForm.Private.Bytes, ekrhs.SerdesForm.Private.Bytes)
 }
-func (ek *EntitySecretKey_Curve25519) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
+func (ek *EntitySecretKey_Curve25519) GenerateChildSecretKey(ctx context.Context, identity interface{}, delegable bool) (EntitySecretKeySchemeInstance, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
 }
 func (ek *EntitySecretKey_Curve25519) Public() EntityKeySchemeInstance {
@@ -649,7 +640,7 @@ func (k *UnsupportedSecretKeyScheme) SecretCanonicalForm() *serdes.EntityKeyring
 func (k *UnsupportedSecretKeyScheme) DecryptMessage(ctx context.Context, data []byte) ([]byte, error) {
 	panic("Operation called on unsupported secret key scheme")
 }
-func (k *UnsupportedSecretKeyScheme) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
+func (k *UnsupportedSecretKeyScheme) GenerateChildSecretKey(ctx context.Context, identity interface{}, delegable bool) (EntitySecretKeySchemeInstance, error) {
 	panic("Operation called on unsupported secret key scheme")
 }
 func (k *UnsupportedSecretKeyScheme) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
@@ -819,7 +810,7 @@ func (ek *EntitySecretKey_IBE_Master_BLS12381) DecryptMessageAsChild(ctx context
 	}
 	return content, nil
 }
-func (ek *EntitySecretKey_IBE_Master_BLS12381) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
+func (ek *EntitySecretKey_IBE_Master_BLS12381) GenerateChildSecretKey(ctx context.Context, identity interface{}, delegable bool) (EntitySecretKeySchemeInstance, error) {
 	id, ok := identity.([]byte)
 	if !ok {
 		return nil, fmt.Errorf("this key only supports []byte identities")
@@ -1066,7 +1057,7 @@ func (k *EntitySecretKey_IBE_BLS12381) DecryptMessage(ctx context.Context, ciphe
 func (ek *EntitySecretKey_IBE_BLS12381) DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
 }
-func (k *EntitySecretKey_IBE_BLS12381) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
+func (k *EntitySecretKey_IBE_BLS12381) GenerateChildSecretKey(ctx context.Context, identity interface{}, delegable bool) (EntitySecretKeySchemeInstance, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
 }
 func (k *EntitySecretKey_IBE_BLS12381) Public() EntityKeySchemeInstance {
@@ -1164,15 +1155,25 @@ type EntityKey_OAQUE_BLS12381_S20_Params struct {
 	Params     *wkdibe.Params
 }
 
+func (k *EntityKey_OAQUE_BLS12381_S20_Params) checkparams() {
+	if k.Params == nil {
+		blob := k.SerdesForm.Key.Content.(serdes.EntityParamsOQAUE_BLS12381_s20)
+		k.Params = &wkdibe.Params{}
+		ok := k.Params.Unmarshal(blob, wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			k.Params = nil
+		}
+	}
+}
 func (k *EntityKey_OAQUE_BLS12381_S20_Params) Supported() bool {
 	return true
 }
 func (k *EntityKey_OAQUE_BLS12381_S20_Params) IdentifyingBlob(ctx context.Context) (string, error) {
-	ba := k.Params.Marshal(wkdIBECompressed)
+	ba := k.SerdesForm.Key.Content.(serdes.EntityParamsOQAUE_BLS12381_s20)
 	return string(ba), nil
 }
 func (k *EntityKey_OAQUE_BLS12381_S20_Params) SystemIdentifyingBlob(ctx context.Context) (string, error) {
-	params := k.Params.Marshal(wkdIBECompressed)
+	params := k.SerdesForm.Key.Content.(serdes.EntityParamsOQAUE_BLS12381_s20)
 	return KECCAK256.Instance(params).MultihashString(), nil
 }
 func (k *EntityKey_OAQUE_BLS12381_S20_Params) HasCapability(c Capability) bool {
@@ -1196,6 +1197,10 @@ func (k *EntityKey_OAQUE_BLS12381_S20_Params) EncryptMessage(ctx context.Context
 	return nil, fmt.Errorf("this key cannot perform encryption")
 }
 func (k *EntityKey_OAQUE_BLS12381_S20_Params) GenerateChildKey(ctx context.Context, identity interface{}) (EntityKeySchemeInstance, error) {
+	k.checkparams()
+	if k.Params == nil {
+		return nil, fmt.Errorf("bad parameters")
+	}
 	id, ok := identity.([][]byte)
 	if !ok {
 		return nil, fmt.Errorf("only [][]byte identities are supported")
@@ -1211,14 +1216,15 @@ func (k *EntityKey_OAQUE_BLS12381_S20_Params) GenerateChildKey(ctx context.Conte
 		Capabilities: k.SerdesForm.Capabilities,
 		Key:          asn1.NewExternal(ch),
 	}
-	return &EntityKey_OAQUE_BLS12381_S20{SerdesForm: &cf, Params: k.Params, AttributeSet: id}, nil
+	rv := &EntityKey_OAQUE_BLS12381_S20{SerdesForm: &cf, Params: k.Params, AttributeSet: id}
+	return rv, nil
 }
 func (k *EntityKey_OAQUE_BLS12381_S20_Params) CanonicalForm() *serdes.EntityPublicKey {
 	return k.SerdesForm
 }
 
 func (ek *EntityKey_OAQUE_BLS12381_S20_Params) GobEncode() ([]byte, error) {
-	pubkey := ek.Params.Marshal(wkdIBECompressed)
+	pubkey := ek.SerdesForm.Key.Content.(serdes.EntityParamsOQAUE_BLS12381_s20)
 
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
@@ -1244,12 +1250,6 @@ func (ek *EntityKey_OAQUE_BLS12381_S20_Params) GobDecode(ba []byte) error {
 	err = dec.Decode(&marshald)
 	if err != nil {
 		return err
-	}
-
-	ek.Params = &wkdibe.Params{}
-	ok := ek.Params.Unmarshal(marshald, wkdIBECompressed, wkdIBEChecked)
-	if !ok {
-		return fmt.Errorf("failed to unmarshal")
 	}
 	return nil
 }
@@ -1295,16 +1295,28 @@ type EntityKey_OAQUE_BLS12381_S20 struct {
 	AttributeSet [][]byte
 }
 
+func (k *EntityKey_OAQUE_BLS12381_S20) checkparams() {
+	if k.Params == nil {
+		blob := k.SerdesForm.Key.Content.(serdes.EntityPublicOAQUE_BLS12381_s20).Params
+		k.Params = &wkdibe.Params{}
+		ok := k.Params.Unmarshal(blob, wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			k.Params = nil
+		}
+	}
+}
+
 func (k *EntityKey_OAQUE_BLS12381_S20) Supported() bool {
 	return true
 }
 func (k *EntityKey_OAQUE_BLS12381_S20) IdentifyingBlob(ctx context.Context) (string, error) {
-	ba := k.Params.Marshal(wkdIBECompressed)
+	obj := k.SerdesForm.Key.Content.(serdes.EntityPublicOAQUE_BLS12381_s20)
+	ba := obj.Params
 	subid := bytes.Join(k.AttributeSet, []byte(","))
 	return string(ba) + "/" + string(subid), nil
 }
 func (k *EntityKey_OAQUE_BLS12381_S20) SystemIdentifyingBlob(ctx context.Context) (string, error) {
-	params := k.Params.Marshal(wkdIBECompressed)
+	params := k.SerdesForm.Key.Content.(serdes.EntityPublicOAQUE_BLS12381_s20).Params
 	return KECCAK256.Instance(params).MultihashString(), nil
 }
 func (k *EntityKey_OAQUE_BLS12381_S20) HasCapability(c Capability) bool {
@@ -1325,6 +1337,10 @@ func (k *EntityKey_OAQUE_BLS12381_S20) VerifyMessage(ctx context.Context, data [
 	return fmt.Errorf("this key cannot perform verification")
 }
 func (k *EntityKey_OAQUE_BLS12381_S20) EncryptMessage(ctx context.Context, content []byte) ([]byte, error) {
+	k.checkparams()
+	if k.Params == nil {
+		return nil, fmt.Errorf("bad parameters")
+	}
 	sharedSecret, groupElement := wkdutils.GenerateKey(make([]byte, 16+12))
 	aesk := sharedSecret[:16]
 	nonce := sharedSecret[16:]
@@ -1342,6 +1358,10 @@ func (k *EntityKey_OAQUE_BLS12381_S20) EncryptMessage(ctx context.Context, conte
 	return rv, nil
 }
 func (k *EntityKey_OAQUE_BLS12381_S20) GenerateChildKey(ctx context.Context, identity interface{}) (EntityKeySchemeInstance, error) {
+	k.checkparams()
+	if k.Params == nil {
+		return nil, fmt.Errorf("bad parameters")
+	}
 	id, ok := identity.([][]byte)
 	if !ok {
 		return nil, fmt.Errorf("only [][]byte identities are supported")
@@ -1372,7 +1392,7 @@ func (k *EntityKey_OAQUE_BLS12381_S20) CanonicalForm() *serdes.EntityPublicKey {
 }
 
 func (ek *EntityKey_OAQUE_BLS12381_S20) GobEncode() ([]byte, error) {
-	pubkey := ek.Params.Marshal(wkdIBECompressed)
+	pubkey := ek.SerdesForm.Key.Content.(serdes.EntityPublicOAQUE_BLS12381_s20).Params
 
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
@@ -1533,7 +1553,7 @@ func slotsToAttrMap(id [][]byte) wkdibe.AttributeList {
 	return rv
 }
 
-func (k *EntitySecretKey_OAQUE_BLS12381_S20) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
+func (k *EntitySecretKey_OAQUE_BLS12381_S20) GenerateChildSecretKey(ctx context.Context, identity interface{}, delegable bool) (EntitySecretKeySchemeInstance, error) {
 	id, ok := identity.([][]byte)
 	if !ok {
 		return nil, fmt.Errorf("only [][]byte identities are supported")
@@ -1550,7 +1570,12 @@ func (k *EntitySecretKey_OAQUE_BLS12381_S20) GenerateChildSecretKey(ctx context.
 		}
 	}
 	al := slotsToAttrMap(id)
-	privkey := wkdibe.QualifyKey(k.Params, k.PrivateKey, al)
+	var privkey *wkdibe.SecretKey
+	if delegable {
+		privkey = wkdibe.QualifyKey(k.Params, k.PrivateKey, al)
+	} else {
+		privkey = wkdibe.NonDelegableQualifyKey(k.Params, k.PrivateKey, al)
+	}
 	privblob := privkey.Marshal(wkdIBECompressed)
 	childparams := serdes.EntityParamsOQAUE_BLS12381_s20(k.Params.Marshal(wkdIBECompressed))
 	publicCF := serdes.EntityPublicOAQUE_BLS12381_s20{
@@ -1723,7 +1748,7 @@ func (ek *EntitySecretKey_OAQUE_BLS12381_S20_Master) Equal(rhs EntitySecretKeySc
 	}
 	return bytes.Equal(ek.SerdesForm.Private.Bytes, ekrhs.SerdesForm.Private.Bytes)
 }
-func (k *EntitySecretKey_OAQUE_BLS12381_S20_Master) GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error) {
+func (k *EntitySecretKey_OAQUE_BLS12381_S20_Master) GenerateChildSecretKey(ctx context.Context, identity interface{}, delegable bool) (EntitySecretKeySchemeInstance, error) {
 	id, ok := identity.([][]byte)
 	if !ok {
 		return nil, fmt.Errorf("only [][]byte identities are supported")
@@ -1733,7 +1758,12 @@ func (k *EntitySecretKey_OAQUE_BLS12381_S20_Master) GenerateChildSecretKey(ctx c
 		return nil, fmt.Errorf("only 20 slot identities are supported")
 	}
 	al := slotsToAttrMap(id)
-	privkey := wkdibe.KeyGen(k.Params, k.PrivateKey, al)
+	var privkey *wkdibe.SecretKey
+	if delegable {
+		privkey = wkdibe.KeyGen(k.Params, k.PrivateKey, al)
+	} else {
+		privkey = wkdibe.NonDelegableKeyGen(k.Params, k.PrivateKey, al)
+	}
 	privblob := privkey.Marshal(wkdIBECompressed)
 
 	publicCF := serdes.EntityPublicOAQUE_BLS12381_s20{

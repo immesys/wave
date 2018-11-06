@@ -101,7 +101,7 @@ type EntitySecretKeySchemeInstance interface {
 	SignMessage(ctx context.Context, content []byte) ([]byte, error)
 	DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error)
 	DecryptMessageAsChild(ctx context.Context, ciphertext []byte, identity interface{}) ([]byte, error)
-	GenerateChildSecretKey(ctx context.Context, identity interface{}) (EntitySecretKeySchemeInstance, error)
+	GenerateChildSecretKey(ctx context.Context, identity interface{}, delegable bool) (EntitySecretKeySchemeInstance, error)
 	SecretCanonicalForm() *serdes.EntityKeyringEntry
 	Equal(rhs EntitySecretKeySchemeInstance) bool
 }

@@ -271,19 +271,19 @@ func (e *EntitySecrets) WR1LabelKey(ctx context.Context, namespace []byte) (Enti
 	for _, kr := range e.Keyring {
 		master, ok := kr.(*EntitySecretKey_IBE_Master_BLS12381)
 		if ok {
-			return master.GenerateChildSecretKey(ctx, namespace)
+			return master.GenerateChildSecretKey(ctx, namespace, false)
 		}
 	}
 	return nil, fmt.Errorf("no WR1 label key found")
 }
-func (e *EntitySecrets) WR1BodyKey(ctx context.Context, slots [][]byte) (SlottedSecretKey, error) {
+func (e *EntitySecrets) WR1BodyKey(ctx context.Context, slots [][]byte, delegable bool) (SlottedSecretKey, error) {
 	if len(slots) != 20 {
 		return nil, fmt.Errorf("WR1 uses 20 slots")
 	}
 	for _, kr := range e.Keyring {
 		master, ok := kr.(*EntitySecretKey_OAQUE_BLS12381_S20_Master)
 		if ok {
-			rv, e := master.GenerateChildSecretKey(ctx, slots)
+			rv, e := master.GenerateChildSecretKey(ctx, slots, delegable)
 			return rv.(*EntitySecretKey_OAQUE_BLS12381_S20), e
 		}
 	}
@@ -433,10 +433,15 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 						continue
 					}
 
+					ch := serdes.EntityPublicOAQUE_BLS12381_s20{
+						Params:       kb.Params,
+						AttributeSet: parts[i],
+					}
 					esk := &EntitySecretKey_OAQUE_BLS12381_S20{
 						SerdesForm: &serdes.EntityKeyringEntry{
 							Public: serdes.EntityPublicKey{
 								Capabilities: []int{int(CapEncryption)},
+								Key:          asn1.NewExternal(ch),
 							},
 						},
 						Params:       &pub,

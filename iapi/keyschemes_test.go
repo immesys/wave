@@ -114,7 +114,7 @@ func TestIBE_BLS12381(t *testing.T) {
 
 	params := master.Public()
 
-	childpriv, err := master.GenerateChildSecretKey(context.Background(), []byte("foo"))
+	childpriv, err := master.GenerateChildSecretKey(context.Background(), []byte("foo"), true)
 	require.NoError(t, err)
 
 	childpub, err := params.GenerateChildKey(context.Background(), []byte("foo"))
@@ -148,7 +148,7 @@ func TestIBE_BLS12381(t *testing.T) {
 	require.NoError(t, err)
 	master2, err := EntitySecretKeySchemeInstanceFor(&readbackmaster)
 	require.NoError(t, err)
-	childpriv2, err := master2.GenerateChildSecretKey(context.Background(), []byte("foo"))
+	childpriv2, err := master2.GenerateChildSecretKey(context.Background(), []byte("foo"), true)
 	require.NoError(t, err)
 	plaintext2, err := childpriv2.DecryptMessage(context.Background(), ciphertext)
 	require.NoError(t, err)
@@ -191,7 +191,7 @@ func TestOAQUE(t *testing.T) {
 
 	slots := make([][]byte, 20)
 	slots[0] = []byte("foo")
-	k1, err := master.GenerateChildSecretKey(context.Background(), slots)
+	k1, err := master.GenerateChildSecretKey(context.Background(), slots, true)
 	require.NoError(t, err)
 
 	k1pub := k1.Public()
@@ -227,7 +227,7 @@ func TestOAQUEKeySchemeFor(t *testing.T) {
 
 	slots := make([][]byte, 20)
 	slots[0] = []byte("foo")
-	k1orig, err := master.GenerateChildSecretKey(context.Background(), slots)
+	k1orig, err := master.GenerateChildSecretKey(context.Background(), slots, true)
 	require.NoError(t, err)
 	k1cf := k1orig.SecretCanonicalForm()
 	k1, err := EntitySecretKeySchemeInstanceFor(k1cf)
@@ -262,7 +262,7 @@ func TestOAQUEDelegation(t *testing.T) {
 
 	slots := make([][]byte, 20)
 	slots[0] = []byte("foo")
-	k1, err := master.GenerateChildSecretKey(context.Background(), slots)
+	k1, err := master.GenerateChildSecretKey(context.Background(), slots, true)
 	require.NoError(t, err)
 
 	k1pub := k1.Public()

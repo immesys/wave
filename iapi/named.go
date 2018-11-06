@@ -213,7 +213,7 @@ func CreateNameDeclaration(ctx context.Context, p *PCreateNameDeclaration) (*RCr
 
 type WR1NameDeclarationDecryptionContext interface {
 	EntityByHashLoc(ctx context.Context, h HashSchemeInstance, loc LocationSchemeInstance) (*Entity, wve.WVE)
-	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
+	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, delegable bool, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
 	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 	WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 }
@@ -364,7 +364,7 @@ func ParseNameDeclaration(ctx context.Context, p *PParseNameDeclaration) (*RPars
 
 		//Try for full decryption
 		var bodykey []byte
-		uerr = p.Dctx.WR1OAQUEKeysForContent(ctx, ns, realpartition, func(k SlottedSecretKey) bool {
+		uerr = p.Dctx.WR1OAQUEKeysForContent(ctx, ns, false, realpartition, func(k SlottedSecretKey) bool {
 			var err error
 			bodykey, err = k.DecryptMessageAsChild(ctx, envelope.BodyKey, realpartition)
 			if err == nil {

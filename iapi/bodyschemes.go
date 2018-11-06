@@ -72,7 +72,7 @@ type WR1DecryptionContext interface {
 	WR1VerifierBodyKey(ctx context.Context) []byte
 	WR1ProverBodyKey(ctx context.Context) []byte
 	//WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error)
-	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
+	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, delegable bool, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
 	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 	WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 	WR1AttesterDirectDecryptionKey(ctx context.Context, onResult func(k EntitySecretKeySchemeInstance) bool) error
@@ -251,7 +251,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 	if bodyKeys == nil {
 		//Try decrypt with those labels
-		err = wr1dctx.WR1OAQUEKeysForContent(ctx, subjectHI, realpartition, func(k SlottedSecretKey) bool {
+		err = wr1dctx.WR1OAQUEKeysForContent(ctx, subjectHI, false, realpartition, func(k SlottedSecretKey) bool {
 			var err error
 			XXKey = k
 			bodyKeys, err = k.DecryptMessageAsChild(ctx, envelope.BodyKeys_OAQUE, realpartition)
@@ -321,7 +321,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 
 type WR1BodyEncryptionContext interface {
 	BodyEncryptionContext
-	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
+	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, delegable bool, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
 	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 	WR1EntityFromHash(ctx context.Context, hash HashSchemeInstance, loc LocationSchemeInstance) (*Entity, error)
 }
@@ -467,8 +467,8 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 					if isE2E {
 						//Also try generate the e2e key, which is in the namespace system
 						var sk SlottedSecretKey
-						ec.WR1OAQUEKeysForContent(ctx, e2eNS, partitions[idx], func(k SlottedSecretKey) bool {
-							esk, err := k.GenerateChildSecretKey(ctx, partitions[idx])
+						ec.WR1OAQUEKeysForContent(ctx, e2eNS, true, partitions[idx], func(k SlottedSecretKey) bool {
+							esk, err := k.GenerateChildSecretKey(ctx, partitions[idx], true)
 							if err != nil {
 								panic(err)
 							}
@@ -503,7 +503,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		for i := 0; i < workers; i++ {
 			go func(i int) {
 				for _, idx := range togenerate[i] {
-					k, err := attester.WR1BodyKey(ctx, partitions[idx])
+					k, err := attester.WR1BodyKey(ctx, partitions[idx], true)
 					if err != nil {
 						panic(err)
 					}
@@ -515,8 +515,8 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 						panic("not expecting this")
 						//Also try generate the e2e key, which is in the namespace system
 						var sk SlottedSecretKey
-						ec.WR1OAQUEKeysForContent(ctx, e2eNS, partitions[idx], func(k SlottedSecretKey) bool {
-							esk, err := k.GenerateChildSecretKey(ctx, partitions[idx])
+						ec.WR1OAQUEKeysForContent(ctx, e2eNS, true, partitions[idx], func(k SlottedSecretKey) bool {
+							esk, err := k.GenerateChildSecretKey(ctx, partitions[idx], true)
 							if err != nil {
 								panic(err)
 							}
@@ -580,7 +580,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	if err != nil {
 		panic(err)
 	}
-	params := sparams.(*EntityKey_OAQUE_BLS12381_S20_Params).Params.Marshal(wkdIBECompressed)
+	params := sparams.(*EntityKey_OAQUE_BLS12381_S20_Params).SerdesForm.Key.Content.(serdes.EntityParamsOQAUE_BLS12381_s20)
 	bundleCF := serdes.BLS12381OAQUEKeyringBundle{
 		Params:  params,
 		Entries: delegatedBundle,
