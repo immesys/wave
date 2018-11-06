@@ -53,13 +53,13 @@ func CalculateWR1Partition(validFrom time.Time, validUntil time.Time, userPrefix
 }
 
 //This generates the partitions and calculates the differences to generate the keyring bundle entries, but it does not generate the keys
-func CalculateEmptyKeyBundleEntries(startDat time.Time, endDat time.Time, userPrefix [][]byte) ([][][]byte, []serdes.BN256OAQUEKeyringBundleEntry, wve.WVE) {
+func CalculateEmptyKeyBundleEntries(startDat time.Time, endDat time.Time, userPrefix [][]byte) ([][][]byte, []serdes.BLS12381OAQUEKeyringBundleEntry, wve.WVE) {
 	partitions, err := CalculateKeyBundlePartitions(startDat, endDat, userPrefix)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rv := make([]serdes.BN256OAQUEKeyringBundleEntry, len(partitions))
+	rv := make([]serdes.BLS12381OAQUEKeyringBundleEntry, len(partitions))
 	current := make([][]byte, 20)
 	for i := 0; i < len(partitions); i++ {
 		for idx, p := range partitions[i] {
@@ -80,7 +80,7 @@ func CalculateEmptyKeyBundleEntries(startDat time.Time, endDat time.Time, userPr
 	return partitions, rv, nil
 }
 
-func DecodeKeyBundleEntries(be []serdes.BN256OAQUEKeyringBundleEntry) ([][][]byte, wve.WVE) {
+func DecodeKeyBundleEntries(be []serdes.BLS12381OAQUEKeyringBundleEntry) ([][][]byte, wve.WVE) {
 	rv := make([][][]byte, len(be))
 	current := make([][]byte, 20)
 	for i := 0; i < len(rv); i++ {

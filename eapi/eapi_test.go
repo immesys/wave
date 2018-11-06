@@ -299,7 +299,7 @@ func TestWrongPassphrase(t *testing.T) {
 
 func TestE2EEDirectEncryption(t *testing.T) {
 	ctx := context.Background()
-	srcPublic, srcSecret := createEntity(t)
+	srcPublic, _ := createEntity(t)
 	dstPublic, dstSecret := createEntity(t)
 	_ = dstSecret
 	srcpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
@@ -317,13 +317,13 @@ func TestE2EEDirectEncryption(t *testing.T) {
 	// require.NoError(t, uerr)
 	// dstdec, uerr := multihash.Decode(dstpub.Hash)
 	// require.NoError(t, uerr)
-	srcperspective := &pb.Perspective{
-		EntitySecret: &pb.EntitySecret{
-			DER:        srcSecret,
-			Passphrase: []byte("password"),
-		},
-		Location: &inmem,
-	}
+	// srcperspective := &pb.Perspective{
+	// 	EntitySecret: &pb.EntitySecret{
+	// 		DER:        srcSecret,
+	// 		Passphrase: []byte("password"),
+	// 	},
+	// 	Location: &inmem,
+	// }
 	dstperspective := &pb.Perspective{
 		EntitySecret: &pb.EntitySecret{
 			DER:        dstSecret,
@@ -376,12 +376,12 @@ func TestE2EEOAQUEEncryptionNS(t *testing.T) {
 		},
 		Location: &inmem,
 	}
-	dstperspective := &pb.Perspective{
-		EntitySecret: &pb.EntitySecret{
-			DER: dstSecret,
-		},
-		Location: &inmem,
-	}
+	// dstperspective := &pb.Perspective{
+	// 	EntitySecret: &pb.EntitySecret{
+	// 		DER: dstSecret,
+	// 	},
+	// 	Location: &inmem,
+	// }
 	msg := make([]byte, 512)
 	rand.Read(msg)
 	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
@@ -529,6 +529,7 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 }
 
 func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
+	fmt.Printf("A\n")
 	ctx := context.Background()
 	aPublic, aSecret := createEntity(t)
 	bPublic, bSecret := createEntity(t)
@@ -548,7 +549,7 @@ func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
 		Location: &inmem,
 	})
 	//fmt.Printf("CHASH: %s\n", base64.URLEncoding.EncodeToString(cpubl.Hash))
-
+	fmt.Printf("B\n")
 	aPersp := &pb.Perspective{
 		EntitySecret: &pb.EntitySecret{
 			DER: aSecret,
@@ -577,7 +578,7 @@ func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Nil(t, encrv.Error)
-
+	fmt.Printf("C\n")
 	//First attestation, A->B
 	policy := pb.RTreePolicy{
 		Namespace:    apubl.Hash,
@@ -604,7 +605,7 @@ func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
 		DER: att.DER,
 	})
-
+	fmt.Printf("D\n")
 	//Sync B's graph. Omitting this simulates out of order because B won;t
 	//have the key. SHould not matter for broadening test
 	if true {
@@ -626,7 +627,7 @@ func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-
+	fmt.Printf("E\n")
 	//Second attestation: B->C
 	policy = pb.RTreePolicy{
 		Namespace:    apubl.Hash,
@@ -648,12 +649,13 @@ func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
 			RTreePolicy: &policy,
 		},
 	})
+	fmt.Printf("E1/2\n")
 	require.NoError(t, err)
 	require.Nil(t, att.Error)
 	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
 		DER: att.DER,
 	})
-
+	fmt.Printf("F\n")
 	//Build C's graph
 	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
 		Perspective: cPersp,
@@ -671,7 +673,7 @@ func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-
+	fmt.Printf("G\n")
 	decrv, err := eapi.DecryptMessage(ctx, &pb.DecryptMessageParams{
 		Perspective: cPersp,
 		Ciphertext:  encrv.Ciphertext,
@@ -680,6 +682,7 @@ func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, decrv.Error)
 	require.Equal(t, decrv.Content, msg)
+	fmt.Printf("H\n")
 }
 
 func TestE2EEOAQUEEncryptionDelegated2HopNarrowing(t *testing.T) {

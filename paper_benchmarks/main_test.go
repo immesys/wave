@@ -46,6 +46,7 @@ func TGraph(t *testing.T, outdegree int, depth int) {
 // }
 
 func TestDepth(t *testing.T) {
+	t.Skip()
 	for i := 0; i < 30; i++ {
 		for j := 0; j < 10; j++ {
 			fmt.Printf("%d,", 1+i)
@@ -319,13 +320,14 @@ func BenchmarkCreateAttestation(b *testing.B) {
 		}
 	}
 	policy := pb.RTreePolicy{
-		Namespace:    srcpublish.Hash,
-		Indirections: uint32(5),
+		Namespace:     srcpublish.Hash,
+		Indirections:  uint32(5),
+		VisibilityURI: [][]byte{[]byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}, []byte{1}},
 		Statements: []*pb.RTreePolicyStatement{
 			&pb.RTreePolicyStatement{
 				PermissionSet: srcpublish.Hash,
 				Permissions:   permarr,
-				Resource:      "common/resource",
+				Resource:      "common/resource/with/longer/uri/for/testing/purposes/9/10/11/12",
 			},
 		},
 	}
@@ -334,7 +336,7 @@ func BenchmarkCreateAttestation(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		r, _ := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
 			Perspective: &pb.Perspective{
 				EntitySecret: &pb.EntitySecret{
 					DER: srcsec,
@@ -346,6 +348,7 @@ func BenchmarkCreateAttestation(b *testing.B) {
 			SubjectLocation: &inmem,
 			Policy:          pbpolicy,
 		})
+		fmt.Printf("attestation size: %d (%d)\n", len(r.DER), len(r.DER)/1024)
 	}
 }
 

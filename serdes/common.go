@@ -2,6 +2,7 @@ package serdes
 
 import (
 	"encoding/gob"
+	"fmt"
 
 	"github.com/immesys/asn1"
 )
@@ -152,6 +153,7 @@ func init() {
 		asn1.RegisterExternalType(t.O, t.I)
 		gob.Register(t.I)
 	}
+	fmt.Printf("finished registering gobs\n")
 }
 
 //--------------

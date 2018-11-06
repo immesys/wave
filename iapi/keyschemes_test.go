@@ -108,8 +108,8 @@ func TestCurve25519(t *testing.T) {
 	require.EqualValues(t, msg, readback2)
 }
 
-func TestIBE_BN256(t *testing.T) {
-	master, err := NewEntityKeySchemeInstance(serdes.EntityIBE_BN256_ParamsOID)
+func TestIBE_BLS12381(t *testing.T) {
+	master, err := NewEntityKeySchemeInstance(serdes.EntityIBE_BLS12381_ParamsOID)
 	require.NoError(t, err)
 
 	params := master.Public()
@@ -185,7 +185,7 @@ func TestIBE_BN256(t *testing.T) {
 }
 
 func TestOAQUE(t *testing.T) {
-	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BLS12381_S20_ParamsOID)
 	require.NoError(t, err)
 	params := master.Public()
 
@@ -214,7 +214,7 @@ func TestOAQUE(t *testing.T) {
 }
 
 func TestOAQUEKeySchemeFor(t *testing.T) {
-	masterorig, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	masterorig, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BLS12381_S20_ParamsOID)
 	require.NoError(t, err)
 	mastercf := masterorig.SecretCanonicalForm()
 	master, err := EntitySecretKeySchemeInstanceFor(mastercf)
@@ -255,7 +255,7 @@ func TestOAQUEKeySchemeFor(t *testing.T) {
 }
 
 func TestOAQUEDelegation(t *testing.T) {
-	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BLS12381_S20_ParamsOID)
 	require.NoError(t, err)
 	//	params, err := master.Public()
 	//	require.NoError(t, err)
@@ -272,7 +272,6 @@ func TestOAQUEDelegation(t *testing.T) {
 
 	msg := make([]byte, 64)
 	rand.Read(msg)
-
 	ciphertext, err := k2pub.EncryptMessage(context.Background(), msg)
 	require.NoError(t, err)
 
