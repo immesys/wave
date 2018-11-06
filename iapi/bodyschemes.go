@@ -512,6 +512,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 					delegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BLS12381_s20)
 
 					if isE2E {
+						panic("not expecting this")
 						//Also try generate the e2e key, which is in the namespace system
 						var sk SlottedSecretKey
 						ec.WR1OAQUEKeysForContent(ctx, e2eNS, partitions[idx], func(k SlottedSecretKey) bool {
