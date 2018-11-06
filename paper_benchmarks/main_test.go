@@ -334,7 +334,7 @@ func BenchmarkCreateAttestation(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		r, _ := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
 			Perspective: &pb.Perspective{
 				EntitySecret: &pb.EntitySecret{
 					DER: srcsec,
@@ -346,6 +346,7 @@ func BenchmarkCreateAttestation(b *testing.B) {
 			SubjectLocation: &inmem,
 			Policy:          pbpolicy,
 		})
+		fmt.Printf("attestation size: %d\n", len(r.DER))
 	}
 }
 

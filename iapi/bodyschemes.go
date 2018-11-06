@@ -514,6 +514,8 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		Params:  params,
 		Entries: delegatedBundle,
 	}
+	bundleCFDER, _ := asn1.Marshal(bundleCF)
+	fmt.Printf("bundle DER size: %d\n", len(bundleCFDER))
 	proverBodyKey := bodyKeys[0:16]
 	proverBodyNonce := bodyKeys[16:28]
 	verifierBodyKey := bodyKeys[28:44]
