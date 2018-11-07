@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
 	wkdutils "github.com/samkumar/embedded-pairing/lang/go/cryptutils"
@@ -1047,14 +1046,8 @@ func (k *EntitySecretKey_IBE_BLS12381) DecryptMessage(ctx context.Context, ciphe
 	if !ok {
 		return nil, fmt.Errorf("failed to unmarshal")
 	}
-	spew.Dump(id)
-	spew.Dump(k.PrivateKey)
-	spew.Dump(c)
 	sharedsecret := make([]byte, 16+12)
-	sharedsecret[0] = 8
-	rv := lqibe.Decrypt(&c, k.PrivateKey, lqid, sharedsecret)
-	fmt.Printf("shared secret is %x\n", sharedsecret)
-	fmt.Printf("rv is %x\n", rv)
+	 lqibe.Decrypt(&c, k.PrivateKey, lqid, sharedsecret)
 	content, ok := aesGCMDecrypt(sharedsecret[:16], ciphertext[lqibeCiphertextLength+2:], sharedsecret[16:])
 	if !ok {
 		return nil, fmt.Errorf("message failed to decrypt")
