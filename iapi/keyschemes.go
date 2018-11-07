@@ -12,19 +12,19 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
 	wkdutils "github.com/samkumar/embedded-pairing/lang/go/cryptutils"
+	lqibe "github.com/samkumar/embedded-pairing/lang/go/lqibe"
 	"github.com/samkumar/embedded-pairing/lang/go/wkdibe"
-	"github.com/ucbrise/vuvuzelacrypto/ibe"
-
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/sha3"
 )
 
-const wkdIBECompressed = true
-const wkdIBEChecked = false
+const wkdIBECompressed = false
+const wkdIBEChecked = true
 
 func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInstance, error) {
 	switch {
@@ -49,23 +49,23 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 	case e.Key.OID.Equal(serdes.EntityIBE_BLS12381_ParamsOID):
 		rv := &EntityKey_IBE_Params_BLS12381{
 			SerdesForm: e,
-			PublicKey:  &ibe.MasterPublicKey{},
+			PublicKey:  &lqibe.Params{},
 		}
-		err := rv.PublicKey.UnmarshalBinary(e.Key.Content.(serdes.EntityParamsIBE_BLS12381))
-		if err != nil {
-			return nil, err
+		ok := rv.PublicKey.Unmarshal(e.Key.Content.(serdes.EntityParamsIBE_BLS12381), wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			return nil, fmt.Errorf("failed to unmarshal")
 		}
 		return rv, nil
 	case e.Key.OID.Equal(serdes.EntityIBE_BLS12381_PublicOID):
 		rv := &EntityKey_IBE_BLS12381{
 			SerdesForm: e,
-			Params:     &ibe.MasterPublicKey{},
+			Params:     &lqibe.Params{},
 		}
 		obj := e.Key.Content.(serdes.EntityPublicIBE_BLS12381)
 		rv.ID = obj.ID
-		err := rv.Params.UnmarshalBinary(obj.Params)
-		if err != nil {
-			return nil, err
+		ok := rv.Params.Unmarshal(obj.Params, wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			return nil, fmt.Errorf("failed to unmarshal")
 		}
 		return rv, nil
 	case e.Key.OID.Equal(serdes.EntityOAQUE_BLS12381_S20_ParamsOID):
@@ -104,15 +104,15 @@ func EntitySecretKeySchemeInstanceFor(e *serdes.EntityKeyringEntry) (EntitySecre
 			PrivateKey: prv,
 		}, nil
 	case e.Private.OID.Equal(serdes.EntitySecretIBE_BLS12381_MasterOID):
-		mk := ibe.MasterPrivateKey{}
-		err := mk.UnmarshalBinary(e.Private.Content.(serdes.EntitySecretMasterIBE_BLS12381))
-		if err != nil {
-			return nil, err
+		mk := lqibe.MasterKey{}
+		ok := mk.Unmarshal(e.Private.Content.(serdes.EntitySecretMasterIBE_BLS12381), wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			return nil, fmt.Errorf("failed to unmarshal master key")
 		}
-		params := ibe.MasterPublicKey{}
-		err = params.UnmarshalBinary(e.Public.Key.Content.(serdes.EntityParamsIBE_BLS12381))
-		if err != nil {
-			return nil, err
+		params := lqibe.Params{}
+		ok = params.Unmarshal(e.Public.Key.Content.(serdes.EntityParamsIBE_BLS12381), wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			return nil, fmt.Errorf("failed to unmarshal params")
 		}
 		return &EntitySecretKey_IBE_Master_BLS12381{
 			SerdesForm: e,
@@ -121,15 +121,15 @@ func EntitySecretKeySchemeInstanceFor(e *serdes.EntityKeyringEntry) (EntitySecre
 		}, nil
 	case e.Private.OID.Equal(serdes.EntitySecretIBE_BLS12381OID):
 		obj := e.Public.Key.Content.(serdes.EntityPublicIBE_BLS12381)
-		params := ibe.MasterPublicKey{}
-		err := params.UnmarshalBinary(obj.Params)
-		if err != nil {
-			return nil, err
+		params := lqibe.Params{}
+		ok := params.Unmarshal(obj.Params, wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			return nil, fmt.Errorf("failed to unmarshal params")
 		}
-		priv := ibe.IdentityPrivateKey{}
-		err = priv.UnmarshalBinary(e.Private.Content.(serdes.EntitySecretIBE_BLS12381))
-		if err != nil {
-			return nil, err
+		priv := lqibe.SecretKey{}
+		ok = priv.Unmarshal(e.Private.Content.(serdes.EntitySecretIBE_BLS12381), wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			return nil, fmt.Errorf("failed to unmarshal secret key")
 		}
 		return &EntitySecretKey_IBE_BLS12381{
 			SerdesForm: e,
@@ -240,15 +240,11 @@ func NewEntityKeySchemeInstance(oid asn1.ObjectIdentifier, capabilities ...Capab
 		if err != nil {
 			return nil, err
 		}
-		params, master := ibe.Setup(rand.Reader)
-		paramsblob, err := params.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		masterblob, err := master.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
+		params, master := lqibe.Setup()
+		paramsblob := params.Marshal(wkdIBECompressed)
+
+		masterblob := master.Marshal(wkdIBECompressed)
+
 		ke := serdes.EntityKeyringEntry{
 			Public: serdes.EntityPublicKey{
 				Capabilities: capz,
@@ -666,17 +662,15 @@ var _ EntityKeySchemeInstance = &EntityKey_IBE_Params_BLS12381{}
 
 type EntityKey_IBE_Params_BLS12381 struct {
 	SerdesForm *serdes.EntityPublicKey
-	PublicKey  *ibe.MasterPublicKey
+	PublicKey  *lqibe.Params
 }
 
 func (ek *EntityKey_IBE_Params_BLS12381) Supported() bool {
 	return true
 }
 func (ek *EntityKey_IBE_Params_BLS12381) IdentifyingBlob(ctx context.Context) (string, error) {
-	ba, err := ek.PublicKey.MarshalJSON()
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal")
-	}
+	ba := ek.PublicKey.Marshal(wkdIBECompressed)
+
 	return string(ba), nil
 }
 func (ek *EntityKey_IBE_Params_BLS12381) SystemIdentifyingBlob(ctx context.Context) (string, error) {
@@ -724,13 +718,11 @@ func (ek *EntityKey_IBE_Params_BLS12381) CanonicalForm() *serdes.EntityPublicKey
 }
 
 func (ek *EntityKey_IBE_Params_BLS12381) GobEncode() ([]byte, error) {
-	pubkey, err := ek.PublicKey.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
+	pubkey := ek.PublicKey.Marshal(wkdIBECompressed)
+
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
-	err = enc.Encode(ek.SerdesForm)
+	err := enc.Encode(ek.SerdesForm)
 	if err != nil {
 		return nil, err
 	}
@@ -754,10 +746,10 @@ func (ek *EntityKey_IBE_Params_BLS12381) GobDecode(ba []byte) error {
 		return err
 	}
 
-	ek.PublicKey = &ibe.MasterPublicKey{}
-	err = ek.PublicKey.UnmarshalBinary(marshald)
-	if err != nil {
-		return err
+	ek.PublicKey = &lqibe.Params{}
+	ok := ek.PublicKey.Unmarshal(marshald, wkdIBECompressed, wkdIBEChecked)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
 	}
 	return nil
 }
@@ -766,8 +758,8 @@ var _ EntitySecretKeySchemeInstance = &EntitySecretKey_IBE_Master_BLS12381{}
 
 type EntitySecretKey_IBE_Master_BLS12381 struct {
 	SerdesForm *serdes.EntityKeyringEntry
-	PrivateKey *ibe.MasterPrivateKey
-	PublicKey  *ibe.MasterPublicKey
+	PrivateKey *lqibe.MasterKey
+	PublicKey  *lqibe.Params
 }
 
 func (ek *EntitySecretKey_IBE_Master_BLS12381) Supported() bool {
@@ -795,16 +787,28 @@ func (ek *EntitySecretKey_IBE_Master_BLS12381) DecryptMessageAsChild(ctx context
 	if !ok {
 		return nil, fmt.Errorf("this key only supports []byte identities")
 	}
-	privkey := ibe.Extract(ek.PrivateKey, id)
+	lqid := new(lqibe.ID).Hash(id)
+	privkey := lqibe.KeyGen(ek.PublicKey, ek.PrivateKey, lqid)
 	if privkey == nil {
 		return nil, fmt.Errorf("something is wrong with this key")
 	}
-	c := ibe.Ciphertext{}
-	err := c.UnmarshalBinary(ciphertext)
-	if err != nil {
-		return nil, err
+	if len(ciphertext) < 2 {
+		return nil, fmt.Errorf("bad ciphertext")
 	}
-	content, ok := ibe.Decrypt(privkey, c)
+	lqibeCiphertextLength := int(binary.BigEndian.Uint16(ciphertext[0:2]))
+	if len(ciphertext) < lqibeCiphertextLength+2 {
+		return nil, fmt.Errorf("invalid ciphertext")
+	}
+	lqibeCiphertextBA := ciphertext[2 : lqibeCiphertextLength+2]
+
+	c := lqibe.Ciphertext{}
+	ok = c.Unmarshal(lqibeCiphertextBA, wkdIBECompressed, wkdIBEChecked)
+	if !ok {
+		return nil, fmt.Errorf("failed to unmarshal")
+	}
+	sharedsecret := make([]byte, 16+12)
+	lqibe.Decrypt(&c, privkey, lqid, sharedsecret)
+	content, ok := aesGCMDecrypt(sharedsecret[:16], ciphertext[lqibeCiphertextLength+2:], sharedsecret[16:])
 	if !ok {
 		return nil, fmt.Errorf("message failed to decrypt")
 	}
@@ -815,14 +819,12 @@ func (ek *EntitySecretKey_IBE_Master_BLS12381) GenerateChildSecretKey(ctx contex
 	if !ok {
 		return nil, fmt.Errorf("this key only supports []byte identities")
 	}
-	privkey := ibe.Extract(ek.PrivateKey, id)
+	lqid := new(lqibe.ID).Hash(id)
+	privkey := lqibe.KeyGen(ek.PublicKey, ek.PrivateKey, lqid)
 	if privkey == nil {
 		return nil, fmt.Errorf("something is wrong with this key")
 	}
-	privblob, err := privkey.MarshalBinary()
-	if err != nil {
-		return nil, fmt.Errorf("something is wrong with this key")
-	}
+	privblob := privkey.Marshal(wkdIBECompressed)
 	publicCF := serdes.EntityPublicIBE_BLS12381{
 		Params: ek.SerdesForm.Public.Key.Content.(serdes.EntityParamsIBE_BLS12381),
 		ID:     id,
@@ -865,17 +867,11 @@ func (ek *EntitySecretKey_IBE_Master_BLS12381) SignAttestation(ctx context.Conte
 	return nil, fmt.Errorf("this key cannot perform attestation")
 }
 func (ek *EntitySecretKey_IBE_Master_BLS12381) GobEncode() ([]byte, error) {
-	pubkey, err := ek.PublicKey.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	privkey, err := ek.PrivateKey.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
+	pubkey := ek.PublicKey.Marshal(wkdIBECompressed)
+	privkey := ek.PrivateKey.Marshal(wkdIBECompressed)
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
-	err = enc.Encode(ek.SerdesForm)
+	err := enc.Encode(ek.SerdesForm)
 	if err != nil {
 		return nil, err
 	}
@@ -907,15 +903,15 @@ func (ek *EntitySecretKey_IBE_Master_BLS12381) GobDecode(ba []byte) error {
 	if err != nil {
 		return err
 	}
-	ek.PublicKey = &ibe.MasterPublicKey{}
-	err = ek.PublicKey.UnmarshalBinary(marshaldpub)
-	if err != nil {
-		return err
+	ek.PublicKey = &lqibe.Params{}
+	ok := ek.PublicKey.Unmarshal(marshaldpub, wkdIBECompressed, wkdIBEChecked)
+	if !ok {
+		return fmt.Errorf("could not unmarshal params")
 	}
-	ek.PrivateKey = &ibe.MasterPrivateKey{}
-	err = ek.PrivateKey.UnmarshalBinary(marshaldpriv)
-	if err != nil {
-		return err
+	ek.PrivateKey = &lqibe.MasterKey{}
+	ok = ek.PrivateKey.Unmarshal(marshaldpriv, wkdIBECompressed, wkdIBEChecked)
+	if !ok {
+		return fmt.Errorf("could not unmarshal secret key")
 	}
 	return nil
 }
@@ -924,7 +920,7 @@ var _ EntityKeySchemeInstance = &EntityKey_IBE_BLS12381{}
 
 type EntityKey_IBE_BLS12381 struct {
 	SerdesForm *serdes.EntityPublicKey
-	Params     *ibe.MasterPublicKey
+	Params     *lqibe.Params
 	ID         []byte
 }
 
@@ -932,14 +928,11 @@ func (k *EntityKey_IBE_BLS12381) Supported() bool {
 	return true
 }
 func (k *EntityKey_IBE_BLS12381) IdentifyingBlob(ctx context.Context) (string, error) {
-	js, err := k.Params.MarshalJSON()
-	if err != nil {
-		return "", fmt.Errorf("could not marshal")
-	}
-	return string(js) + "/" + string(k.ID), nil
+	params := k.SerdesForm.Key.Content.(serdes.EntityPublicIBE_BLS12381).Params
+	return string(params) + "/" + string(k.ID), nil
 }
 func (k *EntityKey_IBE_BLS12381) SystemIdentifyingBlob(ctx context.Context) (string, error) {
-	params, _ := k.Params.MarshalBinary()
+	params := k.SerdesForm.Key.Content.(serdes.EntityPublicIBE_BLS12381).Params
 	return KECCAK256.Instance(params).MultihashString(), nil
 }
 func (k *EntityKey_IBE_BLS12381) HasCapability(c Capability) bool {
@@ -960,8 +953,16 @@ func (k *EntityKey_IBE_BLS12381) VerifyMessage(ctx context.Context, data []byte,
 	return fmt.Errorf("this key cannot perform verification")
 }
 func (k *EntityKey_IBE_BLS12381) EncryptMessage(ctx context.Context, content []byte) ([]byte, error) {
-	ciphertext := ibe.Encrypt(rand.Reader, k.Params, k.ID, content)
-	return ciphertext.MarshalBinary()
+	sym := make([]byte, 16+12)
+	lqid := new(lqibe.ID).Hash(k.ID)
+	ciphertext := lqibe.Encrypt(sym, k.Params, lqid)
+	cipherbin := ciphertext.Marshal(wkdIBECompressed)
+	mainciphertext := aesGCMEncrypt(sym[:16], content, sym[16:])
+	fullciphertext := make([]byte, 2+len(cipherbin)+len(mainciphertext))
+	binary.BigEndian.PutUint16(fullciphertext[:2], uint16(len(cipherbin)))
+	copy(fullciphertext[2:], cipherbin)
+	copy(fullciphertext[2+len(cipherbin):], mainciphertext)
+	return fullciphertext, nil
 }
 func (k *EntityKey_IBE_BLS12381) GenerateChildKey(ctx context.Context, identity interface{}) (EntityKeySchemeInstance, error) {
 	return nil, fmt.Errorf("this key cannot generate child keys")
@@ -971,17 +972,9 @@ func (k *EntityKey_IBE_BLS12381) CanonicalForm() *serdes.EntityPublicKey {
 }
 
 func (ek *EntityKey_IBE_BLS12381) GobEncode() ([]byte, error) {
-	pubkey, err := ek.Params.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
-	err = enc.Encode(ek.SerdesForm)
-	if err != nil {
-		return nil, err
-	}
-	err = enc.Encode(pubkey)
+	err := enc.Encode(ek.SerdesForm)
 	if err != nil {
 		return nil, err
 	}
@@ -999,19 +992,14 @@ func (ek *EntityKey_IBE_BLS12381) GobDecode(ba []byte) error {
 	if err != nil {
 		return err
 	}
-	marshald := make([]byte, 0)
-	err = dec.Decode(&marshald)
-	if err != nil {
-		return err
-	}
 	err = dec.Decode(&ek.ID)
 	if err != nil {
 		return err
 	}
-	ek.Params = &ibe.MasterPublicKey{}
-	err = ek.Params.UnmarshalBinary(marshald)
-	if err != nil {
-		return err
+	ek.Params = &lqibe.Params{}
+	ok := ek.Params.Unmarshal(ek.SerdesForm.Key.Content.(serdes.EntityPublicIBE_BLS12381).Params, wkdIBECompressed, wkdIBEChecked)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
 	}
 	return nil
 }
@@ -1020,8 +1008,8 @@ var _ EntitySecretKeySchemeInstance = &EntitySecretKey_IBE_BLS12381{}
 
 type EntitySecretKey_IBE_BLS12381 struct {
 	SerdesForm *serdes.EntityKeyringEntry
-	PrivateKey *ibe.IdentityPrivateKey
-	Params     *ibe.MasterPublicKey
+	PrivateKey *lqibe.SecretKey
+	Params     *lqibe.Params
 	ID         []byte
 }
 
@@ -1043,12 +1031,31 @@ func (k *EntitySecretKey_IBE_BLS12381) SecretCanonicalForm() *serdes.EntityKeyri
 	return k.SerdesForm
 }
 func (k *EntitySecretKey_IBE_BLS12381) DecryptMessage(ctx context.Context, ciphertext []byte) ([]byte, error) {
-	c := ibe.Ciphertext{}
-	err := c.UnmarshalBinary(ciphertext)
-	if err != nil {
-		return nil, err
+	id := k.ID
+	lqid := new(lqibe.ID).Hash(id)
+	if len(ciphertext) < 2 {
+		return nil, fmt.Errorf("bad ciphertext")
 	}
-	content, ok := ibe.Decrypt(k.PrivateKey, c)
+	lqibeCiphertextLength := int(binary.BigEndian.Uint16(ciphertext[0:2]))
+	if len(ciphertext) < lqibeCiphertextLength+2 {
+		return nil, fmt.Errorf("invalid ciphertext")
+	}
+	lqibeCiphertextBA := ciphertext[2 : lqibeCiphertextLength+2]
+
+	c := lqibe.Ciphertext{}
+	ok := c.Unmarshal(lqibeCiphertextBA, wkdIBECompressed, wkdIBEChecked)
+	if !ok {
+		return nil, fmt.Errorf("failed to unmarshal")
+	}
+	spew.Dump(id)
+	spew.Dump(k.PrivateKey)
+	spew.Dump(c)
+	sharedsecret := make([]byte, 16+12)
+	sharedsecret[0] = 8
+	rv := lqibe.Decrypt(&c, k.PrivateKey, lqid, sharedsecret)
+	fmt.Printf("shared secret is %x\n", sharedsecret)
+	fmt.Printf("rv is %x\n", rv)
+	content, ok := aesGCMDecrypt(sharedsecret[:16], ciphertext[lqibeCiphertextLength+2:], sharedsecret[16:])
 	if !ok {
 		return nil, fmt.Errorf("message failed to decrypt")
 	}
@@ -1085,29 +1092,13 @@ func (k *EntitySecretKey_IBE_BLS12381) SignAttestation(ctx context.Context, cont
 }
 
 func (ek *EntitySecretKey_IBE_BLS12381) GobEncode() ([]byte, error) {
-	pubkey, err := ek.Params.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	privkey, err := ek.PrivateKey.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
-	err = enc.Encode(ek.SerdesForm)
-	if err != nil {
-		return nil, err
-	}
-	err = enc.Encode(pubkey)
+	err := enc.Encode(ek.SerdesForm)
 	if err != nil {
 		return nil, err
 	}
 	err = enc.Encode(ek.ID)
-	if err != nil {
-		return nil, err
-	}
-	err = enc.Encode(privkey)
 	if err != nil {
 		return nil, err
 	}
@@ -1121,29 +1112,19 @@ func (ek *EntitySecretKey_IBE_BLS12381) GobDecode(ba []byte) error {
 	if err != nil {
 		return err
 	}
-	marshald := make([]byte, 0)
-	err = dec.Decode(&marshald)
-	if err != nil {
-		return err
-	}
 	err = dec.Decode(&ek.ID)
 	if err != nil {
 		return err
 	}
-	marshaldpriv := make([]byte, 0)
-	err = dec.Decode(&marshaldpriv)
-	if err != nil {
-		return err
+	ek.Params = &lqibe.Params{}
+	ok := ek.Params.Unmarshal(ek.SerdesForm.Public.Key.Content.(serdes.EntityParamsIBE_BLS12381), wkdIBECompressed, wkdIBEChecked)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
 	}
-	ek.Params = &ibe.MasterPublicKey{}
-	err = ek.Params.UnmarshalBinary(marshald)
-	if err != nil {
-		return err
-	}
-	ek.PrivateKey = &ibe.IdentityPrivateKey{}
-	err = ek.PrivateKey.UnmarshalBinary(marshaldpriv)
-	if err != nil {
-		return err
+	ek.PrivateKey = &lqibe.SecretKey{}
+	ok = ek.PrivateKey.Unmarshal(ek.SerdesForm.Private.Content.(serdes.EntitySecretIBE_BLS12381), wkdIBECompressed, wkdIBEChecked)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
 	}
 	return nil
 }
@@ -1490,10 +1471,7 @@ func (k *EntitySecretKey_OAQUE_BLS12381_S20) DecryptMessageAsChild(ctx context.C
 	oaqueCiphertextBA := ciphertext[2 : oaqueCiphertextLength+2]
 	ct := wkdibe.Ciphertext{}
 
-	copything := make([]byte, len(oaqueCiphertextBA)+2)
-	copy(copything[2:], oaqueCiphertextBA[:])
-
-	ok = ct.Unmarshal(copything[2:], wkdIBECompressed, wkdIBEChecked)
+	ok = ct.Unmarshal(oaqueCiphertextBA, wkdIBECompressed, wkdIBEChecked)
 	if !ok {
 		return nil, fmt.Errorf("invalid ciphertext")
 	}
