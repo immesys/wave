@@ -3,10 +3,9 @@ package iapi
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"testing"
 
-    "github.com/immesys/asn1"
+	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
 	"github.com/stretchr/testify/require"
 )
@@ -140,51 +139,49 @@ func TestIBE_BLS12381(t *testing.T) {
 	require.Nil(t, readback2)
 	ciphertext[3] ^= 0x80
 
-	fmt.Printf("passed the point\n")
-	
-	 //now test serdes
-	 scf := master.SecretCanonicalForm()
-	 masterder, err := asn1.Marshal(*scf)
-	 require.NoError(t, err)
-	 readbackmaster := serdes.EntityKeyringEntry{}
-	 _, err = asn1.Unmarshal(masterder, &readbackmaster)
-	 require.NoError(t, err)
-	 master2, err := EntitySecretKeySchemeInstanceFor(&readbackmaster)
-	 require.NoError(t, err)
-	 childpriv2, err := master2.GenerateChildSecretKey(context.Background(), []byte("foo"), true)
-	 require.NoError(t, err)
-	 plaintext2, err := childpriv2.DecryptMessage(context.Background(), ciphertext)
-	 require.NoError(t, err)
-	 require.EqualValues(t, msg, plaintext2)
-	
-	 //Check child private key serdes works
-	 cf := childpriv2.SecretCanonicalForm()
-	 childer, err := asn1.Marshal(*cf)
-	 require.NoError(t, err)
-	 readbackchild := serdes.EntityKeyringEntry{}
-	 _, err = asn1.Unmarshal(childer, &readbackchild)
-	 require.NoError(t, err)
-	 childpriv3, err := EntitySecretKeySchemeInstanceFor(&readbackchild)
-	 require.NoError(t, err)
-	 plaintext3, err := childpriv3.DecryptMessage(context.Background(), ciphertext)
-	 require.NoError(t, err)
-	 require.EqualValues(t, msg, plaintext3)
-	
-	 //Check child public key serdes works
-	 pubeks := childpriv3.Public()
-	 cf2 := pubeks.CanonicalForm()
-	 pubder, err := asn1.Marshal(*cf2)
-	 require.NoError(t, err)
-	 readbackpub := serdes.EntityPublicKey{}
-	 _, err = asn1.Unmarshal(pubder, &readbackpub)
-	 require.NoError(t, err)
-	 pubeks2, err := EntityKeySchemeInstanceFor(&readbackpub)
-	 require.NoError(t, err)
-	 ciphertext2, err := pubeks2.EncryptMessage(context.Background(), msg)
-	 require.NoError(t, err)
-	 plaintext4, err := childpriv.DecryptMessage(context.Background(), ciphertext2)
-	 require.NoError(t, err)
-	 require.EqualValues(t, msg, plaintext4)
+	//now test serdes
+	scf := master.SecretCanonicalForm()
+	masterder, err := asn1.Marshal(*scf)
+	require.NoError(t, err)
+	readbackmaster := serdes.EntityKeyringEntry{}
+	_, err = asn1.Unmarshal(masterder, &readbackmaster)
+	require.NoError(t, err)
+	master2, err := EntitySecretKeySchemeInstanceFor(&readbackmaster)
+	require.NoError(t, err)
+	childpriv2, err := master2.GenerateChildSecretKey(context.Background(), []byte("foo"), true)
+	require.NoError(t, err)
+	plaintext2, err := childpriv2.DecryptMessage(context.Background(), ciphertext)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, plaintext2)
+
+	//Check child private key serdes works
+	cf := childpriv2.SecretCanonicalForm()
+	childer, err := asn1.Marshal(*cf)
+	require.NoError(t, err)
+	readbackchild := serdes.EntityKeyringEntry{}
+	_, err = asn1.Unmarshal(childer, &readbackchild)
+	require.NoError(t, err)
+	childpriv3, err := EntitySecretKeySchemeInstanceFor(&readbackchild)
+	require.NoError(t, err)
+	plaintext3, err := childpriv3.DecryptMessage(context.Background(), ciphertext)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, plaintext3)
+
+	//Check child public key serdes works
+	pubeks := childpriv3.Public()
+	cf2 := pubeks.CanonicalForm()
+	pubder, err := asn1.Marshal(*cf2)
+	require.NoError(t, err)
+	readbackpub := serdes.EntityPublicKey{}
+	_, err = asn1.Unmarshal(pubder, &readbackpub)
+	require.NoError(t, err)
+	pubeks2, err := EntityKeySchemeInstanceFor(&readbackpub)
+	require.NoError(t, err)
+	ciphertext2, err := pubeks2.EncryptMessage(context.Background(), msg)
+	require.NoError(t, err)
+	plaintext4, err := childpriv.DecryptMessage(context.Background(), ciphertext2)
+	require.NoError(t, err)
+	require.EqualValues(t, msg, plaintext4)
 }
 
 func TestOAQUE(t *testing.T) {

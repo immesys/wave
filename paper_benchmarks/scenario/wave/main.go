@@ -126,6 +126,7 @@ func MakePolicy() []byte {
 	if attpub.Error != nil {
 		panic(attpub.Error.Message)
 	}
+	time.Sleep(100 * time.Millisecond)
 	waveconn.ResyncPerspectiveGraph(context.Background(), &pb.ResyncPerspectiveGraphParams{
 		Perspective: &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{

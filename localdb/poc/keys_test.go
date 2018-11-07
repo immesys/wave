@@ -64,7 +64,7 @@ func TestWR1Keys(t *testing.T) {
 	slots := make([][]byte, 20)
 	slots[0] = []byte("foo")
 	slots[1] = []byte("bar")
-	wr1body, err := es.WR1BodyKey(ctx, slots)
+	wr1body, err := es.WR1BodyKey(ctx, slots, true)
 	require.NoError(t, err)
 	err = db.InsertWR1KeysForP(ctx, es.Entity.Keccak256HI(), wr1body)
 	require.NoError(t, err)

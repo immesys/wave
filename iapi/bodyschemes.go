@@ -493,7 +493,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	} else {
 		//then := time.Now()
 		//Old method
-		const workers = 1 //TODO32
+		const workers = 8 //TODO32
 		togenerate := make([][]int, workers)
 		for i := 0; i < len(partitions); i++ {
 			togenerate[i%workers] = append(togenerate[i%workers], i)

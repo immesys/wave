@@ -2,7 +2,6 @@ package lls
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/immesys/wave/iapi"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -17,7 +16,6 @@ type lls struct {
 var _ iapi.LowLevelStorage = &lls{}
 
 func NewLowLevelStorage(dbpath string) (iapi.LowLevelStorage, error) {
-	fmt.Printf("lls at %q\n", dbpath)
 	db, err := leveldb.OpenFile(dbpath, nil)
 	if err != nil {
 		return nil, err

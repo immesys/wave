@@ -214,11 +214,7 @@ func matchPartition(superset [][]byte, subset [][]byte) bool {
 	return true
 }
 
-var kkk int
-
 func (p *poc) WR1KeysForP(ctx context.Context, dsthi iapi.HashSchemeInstance, slots [][]byte, onResult func(k iapi.SlottedSecretKey) bool) error {
-	fmt.Printf("WRKFP invoked %d times\n", kkk)
-	kkk += 1
 	dst := keccakFromHI(dsthi)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

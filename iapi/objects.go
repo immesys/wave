@@ -3,6 +3,7 @@ package iapi
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -422,7 +423,7 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 			erv := make([]SlottedSecretKey, len(parts))
 			do := make(chan int, 10)
 			wg := sync.WaitGroup{}
-			numworkers := 1 //TODO
+			numworkers := runtime.NumCPU() / 2
 			wg.Add(numworkers)
 			worker := func() {
 				for i := range do {
