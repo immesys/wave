@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"sync"
 	"time"
-
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/serdes"
@@ -429,9 +428,12 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	//If we split it over multiple cores it goes down to about 250 ms
 	then := time.Now()
 	if true {
-		workers := runtime.NumCPU() / 2
+		workers := runtime.NumCPU()
 		batches := make([][]int, workers)
 		numperworker := len(partitions) / workers
+		if numperworker == 0 {
+			numperworker = 1
+		}
 		for i := 0; i < workers; i++ {
 			batch := []int{}
 			if i == workers-1 {
@@ -440,18 +442,21 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 				}
 
 			} else {
-				for k := i * numperworker; k < (i+1)*numperworker; k++ {
+				for k := i * numperworker; k < (i+1)*numperworker && k < len(partitions); k++ {
 					batch = append(batch, k)
 				}
 			}
 			batches[i] = batch
 		}
-
 		wg := sync.WaitGroup{}
 		wg.Add(workers)
 		for i := 0; i < workers; i++ {
 			go func(i int) {
 				batchpartitions := make([][][]byte, 0, len(batches[i]))
+				if len(batches[i]) == 0 {
+					wg.Done()
+					return
+				}
 				for _, k := range batches[i] {
 					batchpartitions = append(batchpartitions, partitions[k])
 				}
