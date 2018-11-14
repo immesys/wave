@@ -132,19 +132,19 @@ func EntitySecretKeySchemeInstanceFor(e *serdes.EntityKeyringEntry) (EntitySecre
 		}, nil
 	case e.Private.OID.Equal(serdes.EntitySecretOAQUE_BLS12381_S20OID):
 		obj := e.Public.Key.Content.(serdes.EntityPublicOAQUE_BLS12381_s20)
-		params := wkdibe.Params{}
-		ok := params.Unmarshal(obj.Params, wkdIBECompressed, wkdIBEChecked)
-		if !ok {
-			return nil, fmt.Errorf("cannot unmarshal oaque params")
-		}
+		// params := wkdibe.Params{}
+		// ok := params.Unmarshal(obj.Params, wkdIBECompressed, wkdIBEChecked)
+		// if !ok {
+		// 	return nil, fmt.Errorf("cannot unmarshal oaque params")
+		// }
 		priv := wkdibe.SecretKey{}
-		ok = priv.Unmarshal(e.Private.Content.(serdes.EntitySecretOQAUE_BLS12381_s20), wkdIBECompressed, wkdIBEChecked)
+		ok := priv.Unmarshal(e.Private.Content.(serdes.EntitySecretOQAUE_BLS12381_s20), wkdIBECompressed, wkdIBEChecked)
 		if !ok {
 			return nil, fmt.Errorf("cannot unmarshal oaque params")
 		}
 		return &EntitySecretKey_OAQUE_BLS12381_S20{
-			SerdesForm:   e,
-			Params:       &params,
+			SerdesForm: e,
+			//Params:       &params,
 			PrivateKey:   &priv,
 			AttributeSet: obj.AttributeSet,
 		}, nil
@@ -1239,8 +1239,9 @@ func (k *EntityKey_OAQUE_BLS12381_S20_Params) CanonicalForm() *serdes.EntityPubl
 }
 
 func (ek *EntityKey_OAQUE_BLS12381_S20_Params) GobEncode() ([]byte, error) {
-	pubkey := ek.SerdesForm.Key.Content.(serdes.EntityParamsOQAUE_BLS12381_s20)
-
+	//pubkey := ek.SerdesForm.Key.Content.(serdes.EntityParamsOQAUE_BLS12381_s20)
+	ek.checkparams()
+	pubkey := ek.Params.Marshal(false)
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
 	err := enc.Encode(ek.SerdesForm)
@@ -1265,6 +1266,11 @@ func (ek *EntityKey_OAQUE_BLS12381_S20_Params) GobDecode(ba []byte) error {
 	err = dec.Decode(&marshald)
 	if err != nil {
 		return err
+	}
+	ek.Params = &wkdibe.Params{}
+	ok := ek.Params.Unmarshal(marshald, false, wkdIBEChecked)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal")
 	}
 	return nil
 }
@@ -1460,6 +1466,16 @@ type EntitySecretKey_OAQUE_BLS12381_S20 struct {
 	idhash       *[32]byte
 }
 
+func (k *EntitySecretKey_OAQUE_BLS12381_S20) checkparams() {
+	if k.Params == nil {
+		blob := k.SerdesForm.Public.Key.Content.(serdes.EntityPublicOAQUE_BLS12381_s20).Params
+		k.Params = &wkdibe.Params{}
+		ok := k.Params.Unmarshal(blob, wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			k.Params = nil
+		}
+	}
+}
 func (ek *EntitySecretKey_OAQUE_BLS12381_S20) Supported() bool {
 	return true
 }
@@ -1566,6 +1582,7 @@ func slotsToAttrMap(id [][]byte) wkdibe.AttributeList {
 }
 
 func (k *EntitySecretKey_OAQUE_BLS12381_S20) GenerateChildSecretKey(ctx context.Context, identity interface{}, delegable bool) (EntitySecretKeySchemeInstance, error) {
+	k.checkparams()
 	id, ok := identity.([][]byte)
 	if !ok {
 		return nil, fmt.Errorf("only [][]byte identities are supported")
@@ -1637,7 +1654,7 @@ func (ek *EntitySecretKey_OAQUE_BLS12381_S20) GobEncode() ([]byte, error) {
 	} else {
 		enc.Encode(&serdes.EntityKeyringEntry{})
 	}
-	pubkey := ek.Params.Marshal(wkdIBECompressed)
+	pubkey := ek.Params.Marshal(false)
 	err := enc.Encode(pubkey)
 	if err != nil {
 		return nil, err
@@ -1646,7 +1663,7 @@ func (ek *EntitySecretKey_OAQUE_BLS12381_S20) GobEncode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	privkey := ek.PrivateKey.Marshal(wkdIBECompressed)
+	privkey := ek.PrivateKey.Marshal(false)
 	err = enc.Encode(privkey)
 	if err != nil {
 		return nil, err
@@ -1677,13 +1694,13 @@ func (ek *EntitySecretKey_OAQUE_BLS12381_S20) GobDecode(ba []byte) error {
 	}
 	if len(marshald) > 0 {
 		ek.Params = &wkdibe.Params{}
-		ok := ek.Params.Unmarshal(marshald, wkdIBECompressed, wkdIBEChecked)
+		ok := ek.Params.Unmarshal(marshald, false, wkdIBEChecked)
 		if !ok {
 			return fmt.Errorf("failed to unmarshal")
 		}
 	}
 	ek.PrivateKey = &wkdibe.SecretKey{}
-	ek.PrivateKey.Unmarshal(marshaldpriv, wkdIBECompressed, wkdIBEChecked)
+	ek.PrivateKey.Unmarshal(marshaldpriv, false, wkdIBEChecked)
 	return nil
 }
 func (ek *EntitySecretKey_OAQUE_BLS12381_S20) Slots() [][]byte {

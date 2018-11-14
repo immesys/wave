@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"runtime/pprof"
 	"strconv"
 	"testing"
 	"time"
@@ -107,6 +108,7 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 	}
 	time.Sleep(1 * time.Second)
 	//fmt.Printf("== starting build==\n")
+	pprof.StartCPUProfile(prof)
 	then := time.Now()
 	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
 		Perspective: perspective,
@@ -119,7 +121,8 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 	})
 	fmt.Printf("%d,", time.Now().Sub(then)/time.Microsecond)
 	//fmt.Printf("== ending build==\n")
-
+	pprof.StopCPUProfile()
+	prof.Close()
 	permarr := []string{}
 	pbits, err := strconv.ParseInt(perms, 2, 64)
 	require.NoError(tst, err)
