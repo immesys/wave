@@ -61,6 +61,12 @@
   version = "v1.5.4"
 
 [[projects]]
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/dgryski/go-farm"
   packages = ["."]
@@ -371,8 +377,8 @@
 [[projects]]
   name = "github.com/libp2p/go-libp2p-pubsub"
   packages = ["pb"]
-  revision = "a031ab4d1b8142714eec946acb7033abafade3d7"
-  version = "v0.1.0"
+  revision = "f736644fe805a9f5677c82aca25c82da7cde2c76"
+  version = "v0.11.10"
 
 [[projects]]
   branch = "master"
@@ -540,6 +546,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/samkumar/embedded-pairing"
+  packages = [
+    "lang/go/bls12381",
+    "lang/go/cryptutils",
+    "lang/go/internal",
+    "lang/go/lqibe",
+    "lang/go/wkdibe"
+  ]
+  revision = "e1d952e4dad3037ab9b941011525c968b659cfd6"
+
+[[projects]]
+  branch = "master"
   name = "github.com/samkumar/reqcache"
   packages = ["."]
   revision = "664d78bf3ac181aa1a0a3cc2b5401c4c1b325a89"
@@ -579,6 +597,51 @@
   revision = "ae2bd5eed72d46b28834ec3f60db3a3ebedd8dbd"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/tidwall/btree"
+  packages = ["."]
+  revision = "9876f1454cf0993a53d74c27196993e345f50dd1"
+
+[[projects]]
+  name = "github.com/tidwall/buntdb"
+  packages = ["."]
+  revision = "2da7c106683f522198cdf55ed8db42b374de50d7"
+  version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/tidwall/gjson"
+  packages = ["."]
+  revision = "081192fa2e471ddff3ec98a3cc04fecfd031ed57"
+  version = "v1.1.4"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tidwall/grect"
+  packages = ["."]
+  revision = "ba9a043346eba55344e40d66a5e74cfda3a9d293"
+
+[[projects]]
+  name = "github.com/tidwall/match"
+  packages = ["."]
+  revision = "33827db735fff6510490d69a8622612558a557ed"
+  version = "v1.0.1"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tidwall/rtree"
+  packages = [
+    ".",
+    "base"
+  ]
+  revision = "6cd427091e0e662cb4f8e2c9eb1a41e1c46ff0d3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tidwall/tinyqueue"
+  packages = ["."]
+  revision = "1e39f55115634cad2c504631c8bfcc292f2c9c55"
+
+[[projects]]
   name = "github.com/tinylib/msgp"
   packages = ["msgp"]
   revision = "b2b6a672cf1e5b90748f79b8b81fc8c5cf0571a1"
@@ -587,17 +650,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/ucbrise/starwave"
-  packages = [
-    "crypto/cryptutils",
-    "crypto/oaque"
-  ]
+  packages = ["crypto/oaque"]
   revision = "4529c4ba0df141c18c5be7f904ea09efc9222496"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/ucbrise/vuvuzelacrypto"
-  packages = ["ibe"]
-  revision = "fccab9b96bef05a49d84e0dcfc56e0a79f596df3"
 
 [[projects]]
   name = "github.com/urfave/cli"
@@ -631,12 +685,8 @@
     "curve25519",
     "ed25519",
     "ed25519/internal/edwards25519",
-    "internal/subtle",
-    "nacl/secretbox",
     "pbkdf2",
-    "poly1305",
     "ripemd160",
-    "salsa20/salsa",
     "scrypt",
     "sha3",
     "ssh/terminal"
@@ -648,6 +698,7 @@
   name = "golang.org/x/net"
   packages = [
     "context",
+    "context/ctxhttp",
     "html",
     "html/atom",
     "html/charset",
@@ -660,6 +711,15 @@
     "websocket"
   ]
   revision = "49bb7cea24b1df9410e1712aa6433dae904ff66a"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/oauth2"
+  packages = [
+    ".",
+    "internal"
+  ]
+  revision = "fd3eaa146cbb5c89ce187c275fb79bd3a36a5ffc"
 
 [[projects]]
   branch = "master"
@@ -722,7 +782,16 @@
 
 [[projects]]
   name = "google.golang.org/appengine"
-  packages = ["cloudsql"]
+  packages = [
+    "cloudsql",
+    "internal",
+    "internal/base",
+    "internal/datastore",
+    "internal/log",
+    "internal/remote_api",
+    "internal/urlfetch",
+    "urlfetch"
+  ]
   revision = "ae0ab99deb4dc413a2b4bd6c8bdd0eb67f1e4d06"
   version = "v1.2.0"
 
@@ -800,6 +869,21 @@
   revision = "c1b8fa8bdccecb0b8db834ee0b92fdbcfa606dd6"
 
 [[projects]]
+  name = "gopkg.in/oauth2.v3"
+  packages = [
+    ".",
+    "errors",
+    "generates",
+    "manage",
+    "models",
+    "server",
+    "store",
+    "utils/uuid"
+  ]
+  revision = "770bbd92979768ec3e522fd8c7aaceaf99c5d4b5"
+  version = "v3.9.4"
+
+[[projects]]
   name = "gopkg.in/sourcemap.v1"
   packages = [
     ".",
@@ -817,15 +901,12 @@
 [[projects]]
   branch = "master"
   name = "vuvuzela.io/crypto"
-  packages = [
-    "bn256",
-    "bn256ref"
-  ]
+  packages = ["bn256"]
   revision = "61495c08530216116939f6dc3af094f4e4037b5f"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f4a95739f9e471e4314fd69dafe689dfdfafd93aaa28e576ae1d36c011a370c8"
+  inputs-digest = "3123fec3cf0cc9fbb4368ea09b725b7423fddc48ae15cbf8570910e14d4a284d"
   solver-name = "gps-cdcl"
   solver-version = 1

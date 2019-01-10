@@ -157,6 +157,10 @@
   branch = "master"
   name = "vuvuzela.io/crypto"
 
+[[constraint]]
+  name = "github.com/samkumar/embedded-pairing"
+  branch = "master"
+  packages = ["."]
+
 [prune]
   go-tests = true
-  unused-packages = true

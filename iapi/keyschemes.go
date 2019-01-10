@@ -14,6 +14,7 @@ import (
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
+	"github.com/samkumar/embedded-pairing/lang/go/bls12381"
 	wkdutils "github.com/samkumar/embedded-pairing/lang/go/cryptutils"
 	lqibe "github.com/samkumar/embedded-pairing/lang/go/lqibe"
 	"github.com/samkumar/embedded-pairing/lang/go/wkdibe"
@@ -1573,7 +1574,7 @@ func slotsToAttrMap(id [][]byte) wkdibe.AttributeList {
 		if len(arr) > 0 {
 			digest := sha256.Sum256(arr)
 			bigint := new(big.Int).SetBytes(digest[:])
-			bigint.Mod(bigint, new(big.Int).Add(wkdutils.GroupOrder, big.NewInt(-1)))
+			bigint.Mod(bigint, new(big.Int).Add(bls12381.GroupOrder, big.NewInt(-1)))
 			bigint.Add(bigint, big.NewInt(1))
 			rv[wkdibe.AttributeIndex(index)] = bigint
 		}
