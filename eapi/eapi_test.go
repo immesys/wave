@@ -52,6 +52,15 @@ func init() {
 	eapi = NewEAPI(ws)
 }
 
+func TestGarbageNS(t *testing.T) {
+	r, err := eapi.EncryptMessage(context.Background(), &pb.EncryptMessageParams{
+		Namespace: []byte("foobar"),
+		Resource:  "bar",
+		Content:   []byte("baz"),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, r.Error)
+}
 func TestCreateEntity(t *testing.T) {
 	ctx := context.Background()
 	rv, err := eapi.CreateEntity(ctx, &pb.CreateEntityParams{
