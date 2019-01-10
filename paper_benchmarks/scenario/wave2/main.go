@@ -3,17 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"time"
 
 	"github.com/immesys/wave/eapi"
 	"github.com/immesys/wave/eapi/pb"
+	"github.com/immesys/wave/iapi"
+	"github.com/immesys/wave/localdb/lls"
+	"github.com/immesys/wave/localdb/poc"
 	"github.com/immesys/wave/paper_benchmarks/scenario/common"
-	"google.golang.org/grpc"
+	"github.com/immesys/wave/storage/memoryserver"
+	"github.com/immesys/wave/storage/overlay"
 )
 
-var waveconn pb.WAVEClient
+var waveconn *eapi.EAPI
 
 func GetPolicy(authinfo []byte) *common.Policy {
 	resp, err := waveconn.VerifyProof(context.Background(), &pb.VerifyProofParams{
@@ -34,12 +37,24 @@ func GetPolicy(authinfo []byte) *common.Policy {
 }
 
 func Init() {
-	conn, err := grpc.Dial("127.0.0.1:410", grpc.WithInsecure(), grpc.FailOnNonTempDialError(true), grpc.WithBlock())
+	llsdb, err := lls.NewLowLevelStorage("/tmp/database")
 	if err != nil {
-		fmt.Printf("failed to connect to agent: %v\n", err)
+		panic(err)
+	}
+	go memoryserver.Main()
+	time.Sleep(100 * time.Millisecond)
+	cfg := make(map[string]map[string]string)
+	cfg["default"] = make(map[string]string)
+	cfg["default"]["provider"] = "http_v1"
+	cfg["default"]["url"] = "http://localhost:8080/v1"
+	si, err := overlay.NewOverlay(cfg)
+	if err != nil {
+		fmt.Printf("storage overlay error: %v\n", err)
 		os.Exit(1)
 	}
-	waveconn = pb.NewWAVEClient(conn)
+	iapi.InjectStorageInterface(si)
+	ws := poc.NewPOC(llsdb)
+	waveconn = eapi.NewEAPI(ws)
 }
 
 func MakePolicy() []byte {
@@ -126,7 +141,6 @@ func MakePolicy() []byte {
 	if attpub.Error != nil {
 		panic(attpub.Error.Message)
 	}
-	time.Sleep(100 * time.Millisecond)
 	waveconn.ResyncPerspectiveGraph(context.Background(), &pb.ResyncPerspectiveGraphParams{
 		Perspective: &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{
@@ -134,7 +148,7 @@ func MakePolicy() []byte {
 			},
 		},
 	})
-	cl, err := waveconn.WaitForSyncComplete(context.Background(), &pb.SyncParams{
+	err = waveconn.WaitForSyncCompleteHack(&pb.SyncParams{
 		Perspective: &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{
 				DER: dst.SecretDER,
@@ -143,12 +157,6 @@ func MakePolicy() []byte {
 	})
 	if err != nil {
 		panic(err)
-	}
-	for {
-		_, err := cl.Recv()
-		if err == io.EOF {
-			break
-		}
 	}
 	proofresp, err := waveconn.BuildRTreeProof(context.Background(), &pb.BuildRTreeProofParams{
 		Perspective: &pb.Perspective{
@@ -382,24 +390,15 @@ func MakePolicy3() []byte {
 			},
 		},
 	})
-	cl, err := waveconn.WaitForSyncComplete(context.Background(), &pb.SyncParams{
+	err = waveconn.WaitForSyncCompleteHack(&pb.SyncParams{
 		Perspective: &pb.Perspective{
 			EntitySecret: &pb.EntitySecret{
 				DER: dst.SecretDER,
-			},
-			Location: &pb.Location{
-				AgentLocation: "default",
 			},
 		},
 	})
 	if err != nil {
 		panic(err)
-	}
-	for {
-		_, err := cl.Recv()
-		if err == io.EOF {
-			break
-		}
 	}
 	proofresp, err := waveconn.BuildRTreeProof(context.Background(), &pb.BuildRTreeProofParams{
 		Perspective: &pb.Perspective{

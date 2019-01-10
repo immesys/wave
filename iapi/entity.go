@@ -73,7 +73,7 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 	}
 	// IBE
 	{
-		ibeKE, err := NewEntityKeySchemeInstance(serdes.EntityIBE_BN256_ParamsOID, CapEncryption)
+		ibeKE, err := NewEntityKeySchemeInstance(serdes.EntityIBE_BLS12381_ParamsOID, CapEncryption)
 		if err != nil {
 			panic(err)
 		}
@@ -82,7 +82,7 @@ func NewEntity(ctx context.Context, p *PNewEntity) (*RNewEntity, wve.WVE) {
 	}
 	// OAQUE
 	{
-		oaqueKE, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID, CapEncryption)
+		oaqueKE, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BLS12381_S20_ParamsOID, CapEncryption)
 		if err != nil {
 			panic(err)
 		}

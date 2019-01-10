@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"runtime/pprof"
 	"strconv"
 	"testing"
 	"time"
@@ -107,6 +108,7 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 	}
 	time.Sleep(1 * time.Second)
 	//fmt.Printf("== starting build==\n")
+
 	then := time.Now()
 	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
 		Perspective: perspective,
@@ -128,6 +130,7 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 			permarr = append(permarr, fmt.Sprintf("%x", 1<<uint(i)))
 		}
 	}
+	pprof.StartCPUProfile(prof)
 	then = time.Now()
 	resp, err := eapi.BuildRTreeProof(ctx, &pb.BuildRTreeProofParams{
 		Perspective: perspective,
@@ -141,6 +144,8 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 			},
 		},
 	})
+	pprof.StopCPUProfile()
+	prof.Close()
 	fmt.Printf("%d,", time.Now().Sub(then)/time.Microsecond)
 	require.NoError(tst, err)
 	return resp

@@ -96,13 +96,13 @@ func (kpd *KeyPoolDecryptionContext) EntityByHashLoc(ctx context.Context, hash H
 	}
 	return nil, nil
 }
-func (kpd *KeyPoolDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error {
+func (kpd *KeyPoolDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, delegable bool, slots [][]byte, onResult func(k SlottedSecretKey) bool) error {
 	toproc := []*EntitySecrets{}
 	toproc = append(toproc, kpd.entsecrets...)
 	for _, es := range toproc {
 		hi := es.Entity.Keccak256HI()
 		if dst.OID().Equal(hi.OID()) && bytes.Equal(hi.Value(), dst.Value()) {
-			bk, err := es.WR1BodyKey(ctx, slots)
+			bk, err := es.WR1BodyKey(ctx, slots, delegable)
 			if err != nil {
 				panic(err)
 			}

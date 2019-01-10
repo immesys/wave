@@ -126,7 +126,7 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 }
 
 type WR1MessageDecryptionContext interface {
-	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
+	WR1OAQUEKeysForContent(ctx context.Context, dst HashSchemeInstance, delegable bool, slots [][]byte, onResult func(k SlottedSecretKey) bool) error
 	WR1IBEKeysForPartitionLabel(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 	WR1DirectDecryptionKey(ctx context.Context, dst HashSchemeInstance, onResult func(k EntitySecretKeySchemeInstance) bool) error
 }
@@ -232,7 +232,7 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 
 			if ns.MultihashString() == p.Decryptor.Entity.Keccak256HI().MultihashString() {
 				//Instead of consulting the dctx, lets do it ourselves
-				sk, err := p.Decryptor.WR1BodyKey(ctx, realpartition)
+				sk, err := p.Decryptor.WR1BodyKey(ctx, realpartition, false)
 				if err != nil {
 					panic(err)
 				}
@@ -244,7 +244,7 @@ func DecryptMessage(ctx context.Context, p *PDecryptMessage) (*RDecryptMessage, 
 
 			if contentsKey == nil {
 				//fmt.Printf("looking for keys on %s\n", WR1PartitionToIntString(realpartition))
-				p.Dctx.WR1OAQUEKeysForContent(ctx, ns, realpartition, func(k SlottedSecretKey) bool {
+				p.Dctx.WR1OAQUEKeysForContent(ctx, ns, false, realpartition, func(k SlottedSecretKey) bool {
 					var err error
 					contentsKey, err = k.DecryptMessageAsChild(ctx, envelope.ContentsKey, realpartition)
 					if err == nil {
