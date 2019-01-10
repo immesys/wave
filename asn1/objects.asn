@@ -685,15 +685,15 @@ curve25519-secret-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 2 }
 -- 3 through 6 for deprecanted BN256
 oaque-BLS12381-s20-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 7 }
 oaque-BLS12381-s20-master-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 8 }
-BLS12381-ibe-master-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 9 }
-BLS12381-ibe-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 10 }
+bls12381-ibe-master-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 9 }
+bls12381-ibe-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 10 }
 EntitySecretKeySchemes TYPE-IDENTIFIER ::= {
   {Private-Ed25519 IDENTIFIED BY ed25519-secret-id} |
   {Private-Curve25519 IDENTIFIED BY curve25519-secret-id} |
   {Private-BLS12381-OAQUE IDENTIFIED BY oaque-BLS12381-s20-private-key-id} |
   {Master-BLS12381-OAQUE IDENTIFIED BY oaque-BLS12381-s20-master-key-id} |
-  {Master-BLS12381-IBE IDENTIFIED BY BLS12381-ibe-master-key-id} |
-  {Private-BLS12381-IBE IDENTIFIED BY BLS12381-ibe-private-key-id},
+  {Master-BLS12381-IBE IDENTIFIED BY bls12381-ibe-master-key-id} |
+  {Private-BLS12381-IBE IDENTIFIED BY bls12381-ibe-private-key-id},
   ...
 }
 
