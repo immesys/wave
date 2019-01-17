@@ -76,13 +76,13 @@ func (dctx *EngineDecryptionContext) WR1EntityFromHash(ctx context.Context, hi i
 func (dctx *EngineDecryptionContext) WR1ProverBodyKey(ctx context.Context) []byte {
 	return dctx.proverBodyKey
 }
-func (dctx *EngineDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst iapi.HashSchemeInstance, slots [][]byte, onResult func(k iapi.SlottedSecretKey) bool) error {
+func (dctx *EngineDecryptionContext) WR1OAQUEKeysForContent(ctx context.Context, dst iapi.HashSchemeInstance, delegable bool, slots [][]byte, onResult func(k iapi.SlottedSecretKey) bool) error {
 	if dctx.e == nil {
 		return nil
 	}
 	if iapi.HashSchemeInstanceEqual(dctx.e.perspective.Entity.Keccak256HI(), dst) {
 		//This is out perspective entity, generate the direct key
-		k, err := dctx.e.perspective.WR1BodyKey(dctx.e.ctx, slots)
+		k, err := dctx.e.perspective.WR1BodyKey(dctx.e.ctx, slots, delegable)
 		if err != nil {
 			return err
 		}

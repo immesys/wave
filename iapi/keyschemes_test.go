@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/immesys/asn1"
-
 	"github.com/immesys/wave/serdes"
 	"github.com/stretchr/testify/require"
 )
@@ -108,13 +107,13 @@ func TestCurve25519(t *testing.T) {
 	require.EqualValues(t, msg, readback2)
 }
 
-func TestIBE_BN256(t *testing.T) {
-	master, err := NewEntityKeySchemeInstance(serdes.EntityIBE_BN256_ParamsOID)
+func TestIBE_BLS12381(t *testing.T) {
+	master, err := NewEntityKeySchemeInstance(serdes.EntityIBE_BLS12381_ParamsOID)
 	require.NoError(t, err)
 
 	params := master.Public()
 
-	childpriv, err := master.GenerateChildSecretKey(context.Background(), []byte("foo"))
+	childpriv, err := master.GenerateChildSecretKey(context.Background(), []byte("foo"), true)
 	require.NoError(t, err)
 
 	childpub, err := params.GenerateChildKey(context.Background(), []byte("foo"))
@@ -135,6 +134,7 @@ func TestIBE_BN256(t *testing.T) {
 
 	ciphertext[3] ^= 0x80
 	readback2, err := childpriv.DecryptMessage(context.Background(), ciphertext)
+
 	require.Error(t, err)
 	require.Nil(t, readback2)
 	ciphertext[3] ^= 0x80
@@ -148,7 +148,7 @@ func TestIBE_BN256(t *testing.T) {
 	require.NoError(t, err)
 	master2, err := EntitySecretKeySchemeInstanceFor(&readbackmaster)
 	require.NoError(t, err)
-	childpriv2, err := master2.GenerateChildSecretKey(context.Background(), []byte("foo"))
+	childpriv2, err := master2.GenerateChildSecretKey(context.Background(), []byte("foo"), true)
 	require.NoError(t, err)
 	plaintext2, err := childpriv2.DecryptMessage(context.Background(), ciphertext)
 	require.NoError(t, err)
@@ -185,13 +185,13 @@ func TestIBE_BN256(t *testing.T) {
 }
 
 func TestOAQUE(t *testing.T) {
-	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BLS12381_S20_ParamsOID)
 	require.NoError(t, err)
 	params := master.Public()
 
 	slots := make([][]byte, 20)
 	slots[0] = []byte("foo")
-	k1, err := master.GenerateChildSecretKey(context.Background(), slots)
+	k1, err := master.GenerateChildSecretKey(context.Background(), slots, true)
 	require.NoError(t, err)
 
 	k1pub := k1.Public()
@@ -214,7 +214,7 @@ func TestOAQUE(t *testing.T) {
 }
 
 func TestOAQUEKeySchemeFor(t *testing.T) {
-	masterorig, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	masterorig, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BLS12381_S20_ParamsOID)
 	require.NoError(t, err)
 	mastercf := masterorig.SecretCanonicalForm()
 	master, err := EntitySecretKeySchemeInstanceFor(mastercf)
@@ -227,7 +227,7 @@ func TestOAQUEKeySchemeFor(t *testing.T) {
 
 	slots := make([][]byte, 20)
 	slots[0] = []byte("foo")
-	k1orig, err := master.GenerateChildSecretKey(context.Background(), slots)
+	k1orig, err := master.GenerateChildSecretKey(context.Background(), slots, true)
 	require.NoError(t, err)
 	k1cf := k1orig.SecretCanonicalForm()
 	k1, err := EntitySecretKeySchemeInstanceFor(k1cf)
@@ -255,14 +255,14 @@ func TestOAQUEKeySchemeFor(t *testing.T) {
 }
 
 func TestOAQUEDelegation(t *testing.T) {
-	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BN256_S20_ParamsOID)
+	master, err := NewEntityKeySchemeInstance(serdes.EntityOAQUE_BLS12381_S20_ParamsOID)
 	require.NoError(t, err)
 	//	params, err := master.Public()
 	//	require.NoError(t, err)
 
 	slots := make([][]byte, 20)
 	slots[0] = []byte("foo")
-	k1, err := master.GenerateChildSecretKey(context.Background(), slots)
+	k1, err := master.GenerateChildSecretKey(context.Background(), slots, true)
 	require.NoError(t, err)
 
 	k1pub := k1.Public()
@@ -272,7 +272,6 @@ func TestOAQUEDelegation(t *testing.T) {
 
 	msg := make([]byte, 64)
 	rand.Read(msg)
-
 	ciphertext, err := k2pub.EncryptMessage(context.Background(), msg)
 	require.NoError(t, err)
 

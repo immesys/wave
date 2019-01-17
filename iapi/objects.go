@@ -3,10 +3,12 @@ package iapi
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/immesys/asn1"
-	"github.com/ucbrise/starwave/crypto/oaque"
+	"github.com/samkumar/embedded-pairing/lang/go/wkdibe"
 
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
@@ -136,7 +138,7 @@ func (e *Entity) DER() ([]byte, error) {
 
 func (e *Entity) WR1_DomainVisiblityParams() (EntityKeySchemeInstance, error) {
 	for _, kr := range e.Keys {
-		params, ok := kr.(*EntityKey_IBE_Params_BN256)
+		params, ok := kr.(*EntityKey_IBE_Params_BLS12381)
 		if ok {
 			return params, nil
 		}
@@ -145,7 +147,7 @@ func (e *Entity) WR1_DomainVisiblityParams() (EntityKeySchemeInstance, error) {
 }
 func (e *Entity) WR1_BodyParams() (EntityKeySchemeInstance, error) {
 	for _, kr := range e.Keys {
-		params, ok := kr.(*EntityKey_OAQUE_BN256_S20_Params)
+		params, ok := kr.(*EntityKey_OAQUE_BLS12381_S20_Params)
 		if ok {
 			return params, nil
 		}
@@ -268,22 +270,72 @@ func (e *EntitySecrets) MessageSigningKey() EntitySecretKeySchemeInstance {
 }
 func (e *EntitySecrets) WR1LabelKey(ctx context.Context, namespace []byte) (EntitySecretKeySchemeInstance, error) {
 	for _, kr := range e.Keyring {
-		master, ok := kr.(*EntitySecretKey_IBE_Master_BN256)
+		master, ok := kr.(*EntitySecretKey_IBE_Master_BLS12381)
 		if ok {
-			return master.GenerateChildSecretKey(ctx, namespace)
+			return master.GenerateChildSecretKey(ctx, namespace, false)
 		}
 	}
 	return nil, fmt.Errorf("no WR1 label key found")
 }
-func (e *EntitySecrets) WR1BodyKey(ctx context.Context, slots [][]byte) (SlottedSecretKey, error) {
+func (e *EntitySecrets) WR1BodyKey(ctx context.Context, slots [][]byte, delegable bool) (SlottedSecretKey, error) {
 	if len(slots) != 20 {
 		return nil, fmt.Errorf("WR1 uses 20 slots")
 	}
 	for _, kr := range e.Keyring {
-		master, ok := kr.(*EntitySecretKey_OAQUE_BN256_S20_Master)
+		master, ok := kr.(*EntitySecretKey_OAQUE_BLS12381_S20_Master)
 		if ok {
-			rv, e := master.GenerateChildSecretKey(ctx, slots)
-			return rv.(*EntitySecretKey_OAQUE_BN256_S20), e
+			rv, e := master.GenerateChildSecretKey(ctx, slots, delegable)
+			return rv.(*EntitySecretKey_OAQUE_BLS12381_S20), e
+		}
+	}
+	return nil, fmt.Errorf("no WR1 body key found")
+}
+
+func (e *EntitySecrets) CalculateWR1Batch(partitions [][][]byte, delegable bool) ([]SlottedSecretKey, error) {
+	for _, kr := range e.Keyring {
+		master, ok := kr.(*EntitySecretKey_OAQUE_BLS12381_S20_Master)
+		if ok {
+			childparams := serdes.EntityParamsOQAUE_BLS12381_s20(master.Params.Marshal(wkdIBECompressed))
+			rv := make([]SlottedSecretKey, 0, len(partitions))
+			parent := wkdibe.NonDelegableKeyGen(master.Params, master.PrivateKey, slotsToAttrMap(make([][]byte, 20)))
+			lastal := slotsToAttrMap(partitions[0])
+			key := wkdibe.NonDelegableKeyGen(master.Params, master.PrivateKey, lastal)
+			precomputed := wkdibe.PrepareAttributeList(master.Params, lastal)
+			for _, p := range partitions {
+				var fullkey *wkdibe.SecretKey
+				if true {
+					//This does not
+					nextal := slotsToAttrMap(p)
+					wkdibe.AdjustNonDelegable(key, parent, lastal, nextal)
+					wkdibe.AdjustPreparedAttributeList(precomputed, master.Params, lastal, nextal)
+					fullkey = wkdibe.ResampleKey(master.Params, precomputed, key, delegable)
+					lastal = nextal
+				} else {
+					//This works
+					fullkey = wkdibe.KeyGen(master.Params, master.PrivateKey, slotsToAttrMap(p))
+				}
+
+				//Convert to internal form
+				privblob := fullkey.Marshal(wkdIBECompressed)
+				publicCF := serdes.EntityPublicOAQUE_BLS12381_s20{
+					Params:       childparams,
+					AttributeSet: p,
+				}
+				cf := &serdes.EntityKeyringEntry{
+					Public: serdes.EntityPublicKey{
+						Capabilities: master.SerdesForm.Public.Capabilities,
+						Key:          asn1.NewExternal(publicCF),
+					},
+					Private: asn1.NewExternal(serdes.EntitySecretOQAUE_BLS12381_s20(privblob)),
+				}
+				rv = append(rv, SlottedSecretKey(&EntitySecretKey_OAQUE_BLS12381_S20{
+					SerdesForm:   cf,
+					Params:       master.Params,
+					PrivateKey:   fullkey,
+					AttributeSet: p,
+				}))
+			}
+			return rv, nil
 		}
 	}
 	return nil, fmt.Errorf("no WR1 body key found")
@@ -342,7 +394,7 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 	rv := []SlottedSecretKey{}
 	for _, ex := range e.DecryptedBody.ProverPolicyAddendums {
 		var kre serdes.EntityKeyringEntry
-		k, ok := ex.Content.(serdes.WR1PartitionKey_OAQUE_BN256_s20)
+		k, ok := ex.Content.(serdes.WR1PartitionKey_OAQUE_BLS12381_s20)
 		if ok {
 			kre = serdes.EntityKeyringEntry(k)
 			realk, err := EntitySecretKeySchemeInstanceFor(&kre)
@@ -352,7 +404,7 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 			rv = append(rv, realk.(SlottedSecretKey))
 			continue
 		}
-		kb, ok := ex.Content.(serdes.BN256OAQUEKeyringBundle)
+		kb, ok := ex.Content.(serdes.BLS12381OAQUEKeyringBundle)
 		if ok {
 			parts, err := DecodeKeyBundleEntries(kb.Entries)
 			if err != nil {
@@ -362,33 +414,54 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 			//TODO we are not populating the public key nor the canonical form
 			// this might come back to bite us later as this is the exact object
 			// that gets persisted in WS
-			pub := oaque.Params{}
-			ok := pub.Unmarshal(kb.Params)
+			pub := wkdibe.Params{}
+			ok := pub.Unmarshal(kb.Params, wkdIBECompressed, wkdIBEChecked)
 			if !ok {
 				fmt.Printf("Bad oaque params\n")
 				continue
 			}
-			for i := 0; i < len(parts); i++ {
-				priv := oaque.PrivateKey{}
-				ok = priv.Unmarshal(kb.Entries[i].Key)
-				if !ok {
-					fmt.Printf("COULD NOT UNMARSHAL KEY\n")
-					continue
-				}
+			erv := make([]SlottedSecretKey, len(parts))
+			do := make(chan int, 10)
+			wg := sync.WaitGroup{}
+			numworkers := runtime.NumCPU() / 2
+			wg.Add(numworkers)
+			worker := func() {
+				for i := range do {
+					priv := wkdibe.SecretKey{}
+					ok = priv.Unmarshal(kb.Entries[i].Key, wkdIBECompressed, wkdIBEChecked)
+					if !ok {
+						fmt.Printf("COULD NOT UNMARSHAL KEY\n")
+						continue
+					}
 
-				esk := &EntitySecretKey_OAQUE_BN256_S20{
-					SerdesForm: &serdes.EntityKeyringEntry{
-						Public: serdes.EntityPublicKey{
-							Capabilities: []int{int(CapEncryption)},
+					ch := serdes.EntityPublicOAQUE_BLS12381_s20{
+						Params:       kb.Params,
+						AttributeSet: parts[i],
+					}
+					esk := &EntitySecretKey_OAQUE_BLS12381_S20{
+						SerdesForm: &serdes.EntityKeyringEntry{
+							Public: serdes.EntityPublicKey{
+								Capabilities: []int{int(CapEncryption)},
+								Key:          asn1.NewExternal(ch),
+							},
 						},
-					},
-					Params:       &pub,
-					PrivateKey:   &priv,
-					AttributeSet: parts[i],
+						Params:       &pub,
+						PrivateKey:   &priv,
+						AttributeSet: parts[i],
+					}
+					erv[i] = esk
 				}
-				//fmt.Printf("KB %2d : %s : %x\n", i, WR1PartitionToString(parts[i]), esk.IdHash())
-				rv = append(rv, esk)
+				wg.Done()
 			}
+			for i := 0; i < numworkers; i++ {
+				go worker()
+			}
+			for i := 0; i < len(parts); i++ {
+				do <- i
+			}
+			close(do)
+			wg.Wait()
+			rv = append(rv, erv...)
 		}
 	}
 	return rv
@@ -435,7 +508,7 @@ func (e *Attestation) ArrayKeccak256() [32]byte {
 func (e *Attestation) WR1DomainVisibilityKeys() []EntitySecretKeySchemeInstance {
 	rv := []EntitySecretKeySchemeInstance{}
 	for _, ex := range e.DecryptedBody.ProverPolicyAddendums {
-		k, ok := ex.Content.(serdes.WR1DomainVisibilityKey_IBE_BN256)
+		k, ok := ex.Content.(serdes.WR1DomainVisibilityKey_IBE_BLS12381)
 		if ok {
 			kre := serdes.EntityKeyringEntry(k)
 			realk, err := EntitySecretKeySchemeInstanceFor(&kre)

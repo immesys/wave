@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
@@ -22,7 +21,7 @@ func CompactProof(ctx context.Context, p *PCompactProof) (*RCompactProof, wve.WV
 	wwo := serdes.WaveWireObject{}
 	rest, err := asn1.Unmarshal(p.DER, &wwo.Content)
 	if err != nil {
-		return nil, wve.Err(wve.ProofInvalid, "asn1 is malformed")
+		return nil, wve.Err(wve.ProofInvalid, "asn1 is malformed (1)")
 	}
 	if len(rest) != 0 {
 		return nil, wve.Err(wve.ProofInvalid, "trailing bytes")
@@ -60,7 +59,7 @@ func VerifySignature(ctx context.Context, p *PVerifySignature) (*RVerifySignatur
 	sig := serdes.Signature{}
 	rest, err := asn1.Unmarshal(p.DER, &sig)
 	if err != nil {
-		return nil, wve.Err(wve.ProofInvalid, "asn1 is malformed")
+		return nil, wve.Err(wve.ProofInvalid, "asn1 is malformed (2)")
 	}
 	if len(rest) != 0 {
 		return nil, wve.Err(wve.ProofInvalid, "trailing bytes")
@@ -93,7 +92,7 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 	wwo := serdes.WaveWireObject{}
 	rest, err := asn1.Unmarshal(p.DER, &wwo.Content)
 	if err != nil {
-		return nil, wve.Err(wve.ProofInvalid, "asn1 is malformed")
+		return nil, wve.Err(wve.ProofInvalid, "asn1 is malformed (3)")
 	}
 	if len(rest) != 0 {
 		return nil, wve.Err(wve.ProofInvalid, "trailing bytes")
@@ -141,7 +140,6 @@ func VerifyRTreeProof(ctx context.Context, p *PVerifyRTreeProof) (*RVerifyRTreeP
 				DecryptionContext: dctx,
 			}
 		} else {
-			spew.Dump(atst)
 			for _, cfloc := range atst.Locations {
 				fmt.Printf("trying a location\n")
 				cf := cfloc

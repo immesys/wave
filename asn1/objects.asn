@@ -167,17 +167,17 @@ BEGIN
     secret EntityPrivateKey
   }
 
-  BN256OAQUEKeyringBundle ::= SEQUENCE {
-    params Params-BN256-OAQUE,
-    entries SEQUENCE OF BN256OAQUEBundleEntry
+  BLS12381OAQUEKeyringBundle ::= SEQUENCE {
+    params Params-BLS12381-OAQUE,
+    entries SEQUENCE OF BLS12381OAQUEBundleEntry
   }
 
-  BN256OAQUEBundleEntry ::= SEQUENCE {
+  BLS12381OAQUEBundleEntry ::= SEQUENCE {
     partitionChange SEQUENCE OF SEQUENCE {
       index INTEGER,
       content OCTET STRING
     },
-    key Private-BN256-OAQUE
+    key Private-BLS12381-OAQUE
   }
 
   EntityPrivateKey ::= INSTANCE OF TYPE-IDENTIFIER ({EntitySecretKeySchemes})
@@ -348,9 +348,9 @@ BEGIN
     envelope OCTET STRING,
 
     -- content envelopeKey
-    -- encryption algorithm: IBE-bn256 in declaration namespace system
+    -- encryption algorithm: IBE-BLS12381 in declaration namespace system
     -- id: envelopeID (namespace)
-    envelopeKey-ibe-bn256 OCTET STRING,
+    envelopeKey-ibe-BLS12381 OCTET STRING,
 
     namespace EntityHash,
     namespaceLocation Location
@@ -359,7 +359,7 @@ BEGIN
   NameDeclarationWR1Envelope ::= SEQUENCE {
     partition SEQUENCE OF OCTET STRING,
     -- content: bodyKey
-    -- encryption algorithm: oaque-bn256
+    -- encryption algorithm: oaque-BLS12381
     -- encryption id: partition
     bodyKey OCTET STRING
   }
@@ -382,9 +382,9 @@ BEGIN
     envelopeCiphertext OCTET STRING,
 
     -- content envelopeBodyKey
-    -- encryption algorithm: IBE-bn256 in subject system
+    -- encryption algorithm: IBE-BLS12381 in subject system
     -- id: envelopeID (namespace)
-    envelopeKey-ibe-bn256 OCTET STRING,
+    envelopeKey-ibe-BLS12381 OCTET STRING,
 
     -- content envelopeBodyKey
     -- encryption algorithm: AES128
@@ -403,7 +403,7 @@ BEGIN
 
   WR1Envelope ::= SEQUENCE {
     -- content: proverBodyKey || proverBodyNonce || verifierBodyKey || verifierBodyNonce
-    -- encryption algorithm: oaque-bn256 in subject system
+    -- encryption algorithm: oaque-BLS12381 in subject system
     -- encryption attribute set: Partition
     bodyKeys-oaque OCTET STRING,
 
@@ -458,20 +458,20 @@ BEGIN
 
   Private-Ed25519 ::= OCTET STRING
   Private-Curve25519 ::= OCTET STRING
-  Private-BN256-OAQUE ::= OCTET STRING
-  Private-BN256-IBE ::= OCTET STRING
-  Master-BN256-OAQUE ::= OCTET STRING
-  Master-BN256-IBE ::= OCTET STRING
+  Private-BLS12381-OAQUE ::= OCTET STRING
+  Private-BLS12381-IBE ::= OCTET STRING
+  Master-BLS12381-OAQUE ::= OCTET STRING
+  Master-BLS12381-IBE ::= OCTET STRING
   Public-Ed25519 ::= OCTET STRING
   Public-Curve25519 ::= OCTET STRING
   Public-OAQUE ::= SEQUENCE {
-    params Params-BN256-OAQUE,
+    params Params-BLS12381-OAQUE,
     attributeset SEQUENCE OF OCTET STRING
   }
-  Params-BN256-OAQUE ::= OCTET STRING
-  Params-BN256-IBE ::= OCTET STRING
-  Public-BN256-IBE ::= SEQUENCE {
-    params Params-BN256-IBE,
+  Params-BLS12381-OAQUE ::= OCTET STRING
+  Params-BLS12381-IBE ::= OCTET STRING
+  Public-BLS12381-IBE ::= SEQUENCE {
+    params Params-BLS12381-IBE,
     id OCTET STRING
   }
   -- Encapsulates parameters to PBKDF2. Sha3-512 is assumed as the hash function
@@ -493,9 +493,9 @@ BEGIN
     envelope OCTET STRING,
 
     -- content envelopeKey
-    -- encryption algorithm: IBE-bn256 in message namespace system
+    -- encryption algorithm: IBE-BLS12381 in message namespace system
     -- id: envelopeID (namespace)
-    envelopeKey-ibe-bn256 OCTET STRING,
+    envelopeKey-ibe-BLS12381 OCTET STRING,
 
     -- the system for the keys
     namespace EntityHash,
@@ -505,7 +505,7 @@ BEGIN
   MessageKeyWR1Envelope ::= SEQUENCE {
     partition SEQUENCE OF OCTET STRING,
     -- content: contentsKey
-    -- encryption algorithm: oaque-bn256
+    -- encryption algorithm: oaque-BLS12381
     -- encryption id: partition,
     contentsKey OCTET STRING
   }
@@ -626,17 +626,18 @@ RevocationSchemes TYPE-IDENTIFIER ::= {
 entity-key-scheme OBJECT IDENTIFIER ::= { wave-id 11 }
 ed25519-id OBJECT IDENTIFIER ::= { entity-key-scheme 1 }
 curve25519-id OBJECT IDENTIFIER ::= { entity-key-scheme 2 }
-oaque-bn256-s20-attributeset-id OBJECT IDENTIFIER ::= { entity-key-scheme 3 }
-oaque-bn256-s20-params-id OBJECT IDENTIFIER ::= { entity-key-scheme 4 }
-ibe-bn256-params-id OBJECT IDENTIFIER ::= { entity-key-scheme 5 }
-ibe-bn256-public-id OBJECT IDENTIFIER ::= { entity-key-scheme 6 }
+--  3 through 6 for deprecated BN256 keys
+oaque-BLS12381-s20-attributeset-id OBJECT IDENTIFIER ::= { entity-key-scheme 7 }
+oaque-BLS12381-s20-params-id OBJECT IDENTIFIER ::= { entity-key-scheme 8 }
+ibe-BLS12381-params-id OBJECT IDENTIFIER ::= { entity-key-scheme 9 }
+ibe-BLS12381-public-id OBJECT IDENTIFIER ::= { entity-key-scheme 10 }
 EntityKeySchemes TYPE-IDENTIFIER ::= {
   {Public-Ed25519 IDENTIFIED BY ed25519-id} |
   {Public-Curve25519 IDENTIFIED BY curve25519-id} |
-  {Public-OAQUE IDENTIFIED BY oaque-bn256-s20-attributeset-id} |
-  {Params-BN256-OAQUE IDENTIFIED BY oaque-bn256-s20-params-id} |
-  {Params-BN256-IBE  IDENTIFIED BY ibe-bn256-params-id} |
-  {Public-BN256-IBE IDENTIFIED BY ibe-bn256-public-id},
+  {Public-OAQUE IDENTIFIED BY oaque-BLS12381-s20-attributeset-id} |
+  {Params-BLS12381-OAQUE IDENTIFIED BY oaque-BLS12381-s20-params-id} |
+  {Params-BLS12381-IBE  IDENTIFIED BY ibe-BLS12381-params-id} |
+  {Public-BLS12381-IBE IDENTIFIED BY ibe-BLS12381-public-id},
   ...
 }
 
@@ -657,21 +658,22 @@ policy-addendum-scheme OBJECT IDENTIFIER ::= { wave-id 13 }
 -- this key permits the recipient to view the attribute set corresponding
 -- to the partition key that would decrypt the attestation body for all
 -- attestations in the same visibility domain
-wr1-domain-visibility-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 1 }
+wr1-domain-visibility-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 6 }
 -- this key permits decrypting attestations where the partition is
 -- more qualified than the given key
-wr1-partition-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 2 }
+wr1-partition-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 7 }
 
 -- skip 3, it used to be encryption key
 
 -- this key permits decrypting messages encrypted using OAQUE range
 -- keys (like expiry). It is a family of multiple keys
-wr1-oaque-bundle-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 4 }
+-- 4 reserved for bn256 bundle key
+wr1-oaque-bundle-key OBJECT IDENTIFIER ::= { policy-addendum-scheme 5 }
 
 PolicyAddendumSchemes TYPE-IDENTIFIER ::= {
   {EntityKeyringEntry IDENTIFIED BY wr1-domain-visibility-key} |
   {EntityKeyringEntry IDENTIFIED BY wr1-partition-key} |
-  {BN256OAQUEKeyringBundle IDENTIFIED BY wr1-oaque-bundle-key},
+  {BLS12381OAQUEKeyringBundle IDENTIFIED BY wr1-oaque-bundle-key},
   ...
 }
 
@@ -680,17 +682,18 @@ PolicyAddendumSchemes TYPE-IDENTIFIER ::= {
 entity-secret-key-scheme OBJECT IDENTIFIER ::= { wave-id 14 }
 ed25519-secret-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 1 }
 curve25519-secret-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 2 }
-oaque-bn256-s20-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 3 }
-oaque-bn256-s20-master-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 4 }
-bn256-ibe-master-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 5 }
-bn256-ibe-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 6 }
+-- 3 through 6 for deprecanted BN256
+oaque-BLS12381-s20-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 7 }
+oaque-BLS12381-s20-master-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 8 }
+bls12381-ibe-master-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 9 }
+bls12381-ibe-private-key-id OBJECT IDENTIFIER ::= { entity-secret-key-scheme 10 }
 EntitySecretKeySchemes TYPE-IDENTIFIER ::= {
   {Private-Ed25519 IDENTIFIED BY ed25519-secret-id} |
   {Private-Curve25519 IDENTIFIED BY curve25519-secret-id} |
-  {Private-BN256-OAQUE IDENTIFIED BY oaque-bn256-s20-private-key-id} |
-  {Master-BN256-OAQUE IDENTIFIED BY oaque-bn256-s20-master-key-id} |
-  {Master-BN256-IBE IDENTIFIED BY bn256-ibe-master-key-id} |
-  {Private-BN256-IBE IDENTIFIED BY bn256-ibe-private-key-id},
+  {Private-BLS12381-OAQUE IDENTIFIED BY oaque-BLS12381-s20-private-key-id} |
+  {Master-BLS12381-OAQUE IDENTIFIED BY oaque-BLS12381-s20-master-key-id} |
+  {Master-BLS12381-IBE IDENTIFIED BY bls12381-ibe-master-key-id} |
+  {Private-BLS12381-IBE IDENTIFIED BY bls12381-ibe-private-key-id},
   ...
 }
 

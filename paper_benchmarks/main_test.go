@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"runtime/pprof"
 	"strconv"
 	"testing"
 
@@ -13,6 +15,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var prof *os.File
+
+func init() {
+	f, err := os.Create("cpux.out")
+	if err != nil {
+		panic(err)
+	}
+	prof = f
+}
 func TestRTreeSimpleExisting(t *testing.T) {
 	tg := TG()
 	tg.Edge(t, "ns", "a", "1", 1)
@@ -36,7 +47,10 @@ func TGraph(t *testing.T, outdegree int, depth int) {
 		last_tier = next_tier
 	}
 	//Graph built
+	pprof.StartCPUProfile(prof)
 	tg.BuildCompare(t, last_tier[0], "1", depth, 101-depth)
+	pprof.StopCPUProfile()
+	prof.Close()
 	fmt.Printf("#,")
 	tg.BuildCompare(t, last_tier[0], "1", depth, 101-depth)
 }
@@ -46,12 +60,16 @@ func TGraph(t *testing.T, outdegree int, depth int) {
 // }
 
 func TestDepth(t *testing.T) {
-	for i := 0; i < 30; i++ {
-		for j := 0; j < 10; j++ {
-			fmt.Printf("%d,", 1+i)
-			TGraph(t, 1, 1+i)
+	TGraph(t, 1, 60)
+	/*
+		for i := 0; i < 30; i++ {
+			for j := 0; j < 10; j++ {
+				fmt.Printf("%d,", 1+i)
+				TGraph(t, 1, 1+i)
+
+			}
 		}
-	}
+	*/
 }
 
 func BenchmarkDecryptAttestationVerifier(b *testing.B) {
@@ -334,7 +352,7 @@ func BenchmarkCreateAttestation(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		r, _ := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
 			Perspective: &pb.Perspective{
 				EntitySecret: &pb.EntitySecret{
 					DER: srcsec,
@@ -346,6 +364,7 @@ func BenchmarkCreateAttestation(b *testing.B) {
 			SubjectLocation: &inmem,
 			Policy:          pbpolicy,
 		})
+		//fmt.Printf("attestation size: %d (%d)\n", len(r.DER), len(r.DER)/1024)
 	}
 }
 

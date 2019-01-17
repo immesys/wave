@@ -215,6 +215,9 @@ func (s *SimpleHTTPStorage) verifyV1Promise(mp *MergePromise, expectedkey []byte
 		return fmt.Errorf("merge promise has expired")
 	}
 	if expectedkey != nil && !bytes.Equal(mptbs.Key, expectedkey) {
+		fmt.Printf("expected: %x\n", expectedkey)
+		fmt.Printf("received: %x\n", mptbs.Key)
+		fmt.Printf("rec valuehash: %x\n", mptbs.ValHash)
 		return fmt.Errorf("promise is for a different key")
 	}
 	if expectedcontent != nil && !bytes.Equal(mptbs.ValHash, expectedcontent) {

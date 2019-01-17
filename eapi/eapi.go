@@ -1014,6 +1014,11 @@ func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (
 		params.ValidAfter = validFrom
 		params.ValidBefore = validUntil
 		nsHash := iapi.HashSchemeInstanceFromMultihash(p.Namespace)
+		if !nsHash.Supported() {
+			return &pb.EncryptMessageResponse{
+				Error: ToError(wve.Err(wve.InvalidParameter, "could not parse namespace")),
+			}, nil
+		}
 		nsLoc, err := LocationSchemeInstance(p.NamespaceLocation)
 		if err != nil {
 			return &pb.EncryptMessageResponse{
