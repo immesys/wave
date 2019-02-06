@@ -50,10 +50,11 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 		canonicalForm.Keys = append(canonicalForm.Keys, asn1.NewExternal(directKey))
 	}
 	if p.Namespace != nil {
-		pprefix, werr := pprefixFromResource(p.Resource, true)
+		pprefixMinusFirst, werr := pprefixFromResource(p.Resource, true)
 		if werr != nil {
 			return nil, werr
 		}
+		pprefix := append([][]byte{[]byte("\x00e2ee")}, pprefixMinusFirst...)
 		if p.ValidBefore == nil || p.ValidAfter == nil {
 			return nil, wve.Err(wve.InvalidParameter, "valid times are required if encrypting on a namespace")
 		}
@@ -64,8 +65,6 @@ func EncryptMessage(ctx context.Context, p *PEncryptMessage) (*REncryptMessage, 
 		if werr != nil {
 			return nil, werr
 		}
-		//	fmt.Printf("enc partition: %s\n", WR1PartitionToIntString(partition))
-
 		outerkey, err := p.Namespace.WR1_DomainVisiblityParams()
 		if err != nil {
 			return nil, wve.Err(wve.InvalidParameter, "namespace missing WR1 parameters")
