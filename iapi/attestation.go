@@ -240,8 +240,14 @@ func checkPolicyForSpecialCases(p PolicySchemeInstance) wve.WVE {
 		hi := HashSchemeInstanceFor(&s.PermissionSet)
 		if hi.Supported() && hi.MultihashString() == consts.WaveBuiltinPSET {
 			foundE2E = true
-			if len(s.Permissions) != 1 || s.Permissions[0] != consts.WaveBuiltinE2EE {
+			if len(s.Permissions) == 0 {
+				return wve.Err(wve.InvalidE2EEGrant, "a wave pset grant must have exactly one permission")
+			}
+			if len(s.Permissions) > 1 {
 				return wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt grant can only have one permission and one statement")
+			}
+			if s.Permissions[0] != consts.WaveBuiltinE2EE {
+				return wve.Err(wve.InvalidE2EEGrant, "the only valid wave pset permissions is 'decrypt'")
 			}
 			res = s.Resource
 		}

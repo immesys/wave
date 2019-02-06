@@ -556,15 +556,21 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 			return nil, nil, wve.ErrW(wve.InvalidE2EEGrant, "could not look up namespace entity", err)
 		}
 		expected := []byte(nsEnt.Keccak256HI().MultihashString())
+		var foundVisKey bool
 		ec.WR1IBEKeysForPartitionLabel(ctx, e2eNS, func(k EntitySecretKeySchemeInstance) bool {
-			id := k.Public().CanonicalForm().Key.Content.(serdes.EntityPublicIBE_BLS12381).ID
+			id := k.Public().(*EntityKey_IBE_BLS12381).ID
 			if bytes.Equal(id, expected) {
 				cf := k.SecretCanonicalForm()
+				foundVisKey = true
 				e2eVisiblityKey = serdes.WR1DomainVisibilityKey_IBE_BLS12381(*cf)
 				return false
+			} else {
 			}
 			return true
 		})
+		if !foundVisKey {
+			return nil, nil, wve.Err(wve.InvalidE2EEGrant, "could find namespace visibility key")
+		}
 		nsparams, err := nsEnt.WR1_BodyParams()
 		if err != nil {
 			return nil, nil, err

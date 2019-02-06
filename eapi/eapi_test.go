@@ -25,6 +25,7 @@ var eapi *EAPI
 var inmem pb.Location
 
 func init() {
+	engine.CacheRevocationChecks = false
 	go memoryserver.Main()
 	time.Sleep(100 * time.Millisecond)
 	cfg := make(map[string]map[string]string)
@@ -535,6 +536,106 @@ func TestE2EEOAQUEEncryptionDelegated(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, decrv.Error)
 	require.Equal(t, decrv.Content, msg)
+}
+
+func TestE2EEOAQUEEncryptionDelegatedNoPerms(t *testing.T) {
+	ctx := context.Background()
+	srcPublic, srcSecret := createEntity(t)
+	dstPublic, dstSecret := createEntity(t)
+	_ = dstSecret
+	srcpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      srcPublic,
+		Location: &inmem,
+	})
+	_ = srcpub
+	dstpub, err := eapi.PublishEntity(ctx, &pb.PublishEntityParams{
+		DER:      dstPublic,
+		Location: &inmem,
+	})
+	_ = dstpub
+	require.NoError(t, err)
+
+	srcperspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        srcSecret,
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+	dstperspective := &pb.Perspective{
+		EntitySecret: &pb.EntitySecret{
+			DER:        dstSecret,
+			Passphrase: []byte("password"),
+		},
+		Location: &inmem,
+	}
+	msg := make([]byte, 512)
+	rand.Read(msg)
+	encrv, err := eapi.EncryptMessage(ctx, &pb.EncryptMessageParams{
+		Content:           msg,
+		Namespace:         srcpub.Hash,
+		NamespaceLocation: &inmem,
+		Resource:          "foo/bar",
+	})
+	require.NoError(t, err)
+	require.Nil(t, encrv.Error)
+
+	//---------
+	policy := pb.RTreePolicy{
+		Namespace:    srcpub.Hash,
+		Indirections: 5,
+		Statements: []*pb.RTreePolicyStatement{
+			&pb.RTreePolicyStatement{
+				PermissionSet: srcpub.Hash,
+				Permissions:   []string{"note2ee"},
+				Resource:      "foo/*",
+			},
+		},
+	}
+
+	att, err := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		Perspective:     srcperspective,
+		BodyScheme:      BodySchemeWaveRef1,
+		SubjectHash:     dstpub.Hash,
+		SubjectLocation: &inmem,
+		Policy: &pb.Policy{
+			RTreePolicy: &policy,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, att.Error)
+	eapi.PublishAttestation(ctx, &pb.PublishAttestationParams{
+		DER: att.DER,
+	})
+	fmt.Printf("==== SYNCING DESTINATION GRAPH ====\n")
+	rv, err := eapi.ResyncPerspectiveGraph(ctx, &pb.ResyncPerspectiveGraphParams{
+		Perspective: dstperspective,
+	})
+	require.NoError(t, err)
+	require.Nil(t, rv.Error)
+	//Spin until sync complete (but don't use wait because its hard to use)
+	for {
+		ss, err := eapi.SyncStatus(ctx, &pb.SyncParams{
+			Perspective: dstperspective,
+		})
+		require.NoError(t, err)
+		require.Nil(t, ss.Error)
+		fmt.Printf("syncs %d/%d\n", ss.TotalSyncRequests, ss.CompletedSyncs)
+		if ss.CompletedSyncs == ss.TotalSyncRequests {
+			fmt.Printf("Syncs complete\n")
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	decrv, err := eapi.DecryptMessage(ctx, &pb.DecryptMessageParams{
+		Perspective: dstperspective,
+		Ciphertext:  encrv.Ciphertext,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, decrv.Error)
+	require.Nil(t, decrv.Content)
 }
 
 func TestE2EEOAQUEEncryptionDelegated2HopBroadening(t *testing.T) {
