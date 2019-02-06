@@ -12,6 +12,7 @@ import (
 	"bou.ke/monkey"
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/eapi/pb"
+	"github.com/immesys/wave/engine"
 	"github.com/immesys/wave/iapi"
 	"github.com/immesys/wave/localdb/lls"
 	"github.com/immesys/wave/localdb/poc"

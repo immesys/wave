@@ -196,8 +196,7 @@ func pprefixFromResource(res string, ismessage bool) ([][]byte, wve.WVE) {
 	if len(parts) > 11 {
 		return nil, wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt resource can not be more than 11 elements long")
 	}
-	pprefix := make([][]byte, 12)
-	pprefix[0] = []byte("\x00e2ee")
+	pprefix := make([][]byte, 11)
 	close := true
 	for idx, p := range parts {
 		if p == "+" {
@@ -219,10 +218,10 @@ func pprefixFromResource(res string, ismessage bool) ([][]byte, wve.WVE) {
 		if p == "" {
 			return nil, wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt resource may not have empty elements")
 		}
-		pprefix[idx+1] = []byte(p)
+		pprefix[idx] = []byte(p)
 	}
 	if close {
-		for i := len(parts) + 1; i < 12; i++ {
+		for i := len(parts); i < 11; i++ {
 			pprefix[i] = []byte("\x00") //bottom
 		}
 	}
@@ -258,7 +257,7 @@ func checkPolicyForSpecialCases(p PolicySchemeInstance) wve.WVE {
 	if len(rtree.SerdesForm.Statements) != 1 {
 		return wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt grant can only have one permission and one statement")
 	}
-	for _, p := range rtree.WR1PartitionPrefix() {
+	for _, p := range rtree.WR1PartitionPrefix(true)[1:] {
 		if len(p) != 0 {
 			return wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt grant must have no partition specified (it is generated from the resource)")
 		}

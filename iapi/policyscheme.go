@@ -41,7 +41,7 @@ func (ps *UnsupportedPolicySchemeInstance) CanonicalForm() *asn1.External {
 func (ps *UnsupportedPolicySchemeInstance) WR1DomainEntity() HashSchemeInstance {
 	panic("WR1DomainEntity() called on unsupported policy")
 }
-func (ps *UnsupportedPolicySchemeInstance) WR1PartitionPrefix() [][]byte {
+func (ps *UnsupportedPolicySchemeInstance) WR1PartitionPrefix(bool) [][]byte {
 	panic("WR1Partition() called on unsupported policy")
 }
 
@@ -76,7 +76,7 @@ func (ps *TrustLevelPolicy) CanonicalForm() *asn1.External {
 func (ps *TrustLevelPolicy) WR1DomainEntity() HashSchemeInstance {
 	return nil
 }
-func (ps *TrustLevelPolicy) WR1PartitionPrefix() [][]byte {
+func (ps *TrustLevelPolicy) WR1PartitionPrefix(bool) [][]byte {
 	return make([][]byte, 12)
 }
 
@@ -86,7 +86,7 @@ type RTreePolicy struct {
 }
 
 func NewRTreePolicyScheme(policy serdes.RTreePolicy, visuri [][]byte) (*RTreePolicy, error) {
-	if len(visuri) > 12 {
+	if len(visuri) > 11 {
 		return nil, fmt.Errorf("too many elements in visibility URI")
 	}
 	if policy.Namespace.Content != nil {
@@ -94,7 +94,7 @@ func NewRTreePolicyScheme(policy serdes.RTreePolicy, visuri [][]byte) (*RTreePol
 			panic("missing ns location")
 		}
 	}
-	vuri := make([][]byte, 12)
+	vuri := make([][]byte, 11)
 	for idx, p := range visuri {
 		vuri[idx] = p
 	}
@@ -115,8 +115,18 @@ func (ps *RTreePolicy) CanonicalForm() *asn1.External {
 func (ps *RTreePolicy) WR1DomainEntity() HashSchemeInstance {
 	return HashSchemeInstanceFor(&ps.SerdesForm.Namespace)
 }
-func (ps *RTreePolicy) WR1PartitionPrefix() [][]byte {
-	return ps.VisibilityURI
+func (ps *RTreePolicy) WR1PartitionPrefix(e2ee bool) [][]byte {
+	rv := make([][]byte, 1, 12)
+	if e2ee {
+		rv[0] = []byte("\x00e2ee")
+	} else {
+		rv[0] = []byte("\x00attestation")
+	}
+	rv = append(rv, ps.VisibilityURI...)
+	if len(rv) > 12 {
+		panic("wut")
+	}
+	return rv
 }
 
 const PermittedPrimaryStatements = 10

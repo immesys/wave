@@ -365,7 +365,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	}
 	bodySlots, err := CalculateWR1Partition(plaintextBody.VerifierBody.Validity.NotBefore,
 		plaintextBody.VerifierBody.Validity.NotAfter,
-		policy.WR1PartitionPrefix())
+		policy.WR1PartitionPrefix(false))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -406,18 +406,19 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	//Get the bundle, but it is empty (no keys)
 	partitions, delegatedBundle, err := CalculateEmptyKeyBundleEntries(plaintextBody.VerifierBody.Validity.NotBefore,
 		plaintextBody.VerifierBody.Validity.NotAfter,
-		policy.WR1PartitionPrefix())
+		policy.WR1PartitionPrefix(false))
 	if err != nil {
 		fmt.Printf("K 2\n")
 		return nil, nil, err
 	}
 
 	var e2eDelegatedBundle []serdes.BLS12381OAQUEKeyringBundleEntry
+	var e2ePartitions [][][]byte
 	if isE2E {
 		var err error
-		_, e2eDelegatedBundle, err = CalculateEmptyKeyBundleEntries(plaintextBody.VerifierBody.Validity.NotBefore,
+		e2ePartitions, e2eDelegatedBundle, err = CalculateEmptyKeyBundleEntries(plaintextBody.VerifierBody.Validity.NotBefore,
 			plaintextBody.VerifierBody.Validity.NotAfter,
-			policy.WR1PartitionPrefix())
+			policy.WR1PartitionPrefix(true))
 		if err != nil {
 			fmt.Printf("K 1\n")
 			return nil, nil, err
@@ -473,8 +474,8 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 					if isE2E {
 						//Also try generate the e2e key, which is in the namespace system
 						var sk SlottedSecretKey
-						ec.WR1OAQUEKeysForContent(ctx, e2eNS, true, partitions[idx], func(k SlottedSecretKey) bool {
-							esk, err := k.GenerateChildSecretKey(ctx, partitions[idx], true)
+						ec.WR1OAQUEKeysForContent(ctx, e2eNS, true, e2ePartitions[idx], func(k SlottedSecretKey) bool {
+							esk, err := k.GenerateChildSecretKey(ctx, e2ePartitions[idx], true)
 							if err != nil {
 								panic(err)
 							}
@@ -518,7 +519,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 					delegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BLS12381_s20)
 
 					if isE2E {
-						panic("not expecting this")
+						//panic("not expecting this")
 						//Also try generate the e2e key, which is in the namespace system
 						var sk SlottedSecretKey
 						ec.WR1OAQUEKeysForContent(ctx, e2eNS, true, partitions[idx], func(k SlottedSecretKey) bool {
@@ -549,6 +550,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 
 	var e2eBundle serdes.BLS12381OAQUEKeyringBundle
 	var e2eVisiblityKey serdes.WR1DomainVisibilityKey_IBE_BLS12381
+
 	if isE2E {
 		nsEnt, err := ec.WR1EntityFromHash(ctx, e2eNS, e2eNSLoc)
 		if err != nil {
@@ -558,13 +560,13 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		expected := []byte(nsEnt.Keccak256HI().MultihashString())
 		var foundVisKey bool
 		ec.WR1IBEKeysForPartitionLabel(ctx, e2eNS, func(k EntitySecretKeySchemeInstance) bool {
+			//id := k.Public().CanonicalForm().Key.Content.(serdes.EntityPublicIBE_BLS12381).ID
 			id := k.Public().(*EntityKey_IBE_BLS12381).ID
 			if bytes.Equal(id, expected) {
 				cf := k.SecretCanonicalForm()
 				foundVisKey = true
 				e2eVisiblityKey = serdes.WR1DomainVisibilityKey_IBE_BLS12381(*cf)
 				return false
-			} else {
 			}
 			return true
 		})

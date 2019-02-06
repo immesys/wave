@@ -42,7 +42,7 @@ type PolicySchemeInstance interface {
 	//These are required for WR1 support
 	WR1DomainEntity() HashSchemeInstance
 	//The first 12 elements used in the final partition
-	WR1PartitionPrefix() [][]byte
+	WR1PartitionPrefix(e2ee bool) [][]byte
 	CheckValid() error
 }
 type PolicyAddendumSchemeInstance interface {
