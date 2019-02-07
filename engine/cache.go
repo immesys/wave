@@ -13,6 +13,8 @@ var rvkCache map[string]time.Time
 
 var entityCacheTime = 3 * time.Hour
 
+var CacheRevocationChecks = true
+
 type ecacheKey struct {
 	Hash     [32]byte
 	Location string
@@ -55,9 +57,11 @@ func getCachedEntity(h iapi.HashSchemeInstance, loc iapi.LocationSchemeInstance)
 }
 
 func cacheRevocationCheck(id string) {
-	cachemu.Lock()
-	rvkCache[id] = time.Now().Add(1 * time.Hour)
-	cachemu.Unlock()
+	if CacheRevocationChecks {
+		cachemu.Lock()
+		rvkCache[id] = time.Now().Add(1 * time.Hour)
+		cachemu.Unlock()
+	}
 }
 func isCachedRevocationCheck(id string) bool {
 	cachemu.RLock()

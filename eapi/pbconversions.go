@@ -122,7 +122,7 @@ func ToPbPolicy(in iapi.PolicySchemeInstance) *pb.Policy {
 		rtp := &pb.RTreePolicy{
 			Namespace:     rt.WR1DomainEntity().Multihash(),
 			Indirections:  uint32(rt.SerdesForm.Indirections),
-			VisibilityURI: rt.WR1PartitionPrefix(),
+			VisibilityURI: rt.WR1PartitionPrefix(false)[1:],
 		}
 		for _, st := range rt.SerdesForm.Statements {
 			rtp.Statements = append(rtp.Statements, &pb.RTreePolicyStatement{
