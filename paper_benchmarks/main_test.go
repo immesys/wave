@@ -60,7 +60,9 @@ func TGraph(t *testing.T, outdegree int, depth int) {
 // }
 
 func TestDepth(t *testing.T) {
+	t.Skip()
 	TGraph(t, 1, 60)
+
 	/*
 		for i := 0; i < 30; i++ {
 			for j := 0; j < 10; j++ {
@@ -352,7 +354,7 @@ func BenchmarkCreateAttestation(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r, _ := eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
+		_, _ = eapi.CreateAttestation(ctx, &pb.CreateAttestationParams{
 			Perspective: &pb.Perspective{
 				EntitySecret: &pb.EntitySecret{
 					DER: srcsec,

@@ -123,10 +123,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/ucbrise/starwave"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/ucbrise/vuvuzelacrypto"
 
 [[constraint]]
