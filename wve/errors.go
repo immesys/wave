@@ -153,6 +153,9 @@ const GRPCNotFound = 500
 const GRPCAlreadyExists = 600
 
 //700 errors reserved for WaveMQ
+const EnclaveError = 700
+const MessageEncryptionError = 701
+const MessageDecryptionError = 702
 
 const GRPCFailedPrecondition = 900
 const UnsupportedHashScheme = 901
