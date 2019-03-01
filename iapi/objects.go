@@ -423,7 +423,7 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 			erv := make([]SlottedSecretKey, len(parts))
 			do := make(chan int, 10)
 			wg := sync.WaitGroup{}
-			numworkers := runtime.NumCPU() / 2
+			numworkers := runtime.NumCPU()
 			wg.Add(numworkers)
 			worker := func() {
 				for i := range do {
