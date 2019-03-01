@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/base64"
 
-	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
 	multihash "github.com/multiformats/go-multihash"
+	"golang.org/x/crypto/sha3"
 )
 
 func HashSchemeFor(h asn1.External) HashScheme {
@@ -107,7 +107,7 @@ func (hs *HashScheme_Keccak_256) Supported() bool {
 	return true
 }
 func (hs *HashScheme_Keccak_256) Instance(input []byte) HashSchemeInstance {
-	eng := sha3.NewKeccak256()
+	eng := sha3.NewLegacyKeccak256()
 	eng.Write(input)
 	hash := eng.Sum(nil)
 	return &HashSchemeInstance_Keccak_256{Val: hash[:]}
