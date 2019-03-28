@@ -1,4 +1,3 @@
-//https://gist.github.com/whyrusleeping/169a28cffe1aedd4419d80aa62d361aa
 package main
 
 import (
