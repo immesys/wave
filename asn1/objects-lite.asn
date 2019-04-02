@@ -8,25 +8,7 @@ BEGIN
   -- A set of policy statements about an Entity, potentially granting
   -- permissions or establishing facts
   WaveAttestation ::= SEQUENCE {
-    tbs SEQUENCE {
-      -- the subject of the attestation, who is receiving permissions or
-      -- having a property attested to
-      subject EntityHash,
-      subjectLocation Location,
-
-      -- how this attestation revoked
-      revocations SEQUENCE OF RevocationOption,
-      -- extensions that are visible without any decryption of the
-      -- attestation
-      publicExtensions SEQUENCE OF Extension,
-      -- The main content of the attestation SHOULD be encrypted using
-      -- a scheme that permits provers and verifiers to decrypt it but
-      -- nobody else. The result of decrypting this MUST be an
-      -- AttestationBody object but depending on the context of the
-      -- decryption (e.g prover vs verifier) the contents of that
-      -- AttestationBody object may differ.
-      body EXTERNAL
-    },
+    tbs WaveAttestationTbs,
     -- The attestation is signed with an ephemeral signing key generated
     -- for a single use (or another signature scheme suitable for single
     -- use is permitted). The details of this signature are bound to
@@ -35,6 +17,25 @@ BEGIN
     outerSignature EXTERNAL
   }
 
+  WaveAttestationTbs ::= SEQUENCE {
+    -- the subject of the attestation, who is receiving permissions or
+    -- having a property attested to
+    subject EntityHash,
+    subjectLocation Location,
+
+    -- how this attestation revoked
+    revocations SEQUENCE OF RevocationOption,
+    -- extensions that are visible without any decryption of the
+    -- attestation
+    publicExtensions SEQUENCE OF Extension,
+    -- The main content of the attestation SHOULD be encrypted using
+    -- a scheme that permits provers and verifiers to decrypt it but
+    -- nobody else. The result of decrypting this MUST be an
+    -- AttestationBody object but depending on the context of the
+    -- decryption (e.g prover vs verifier) the contents of that
+    -- AttestationBody object may differ.
+    body EXTERNAL
+  }
 
   -- An arbitrary message encrypted using WAVE
   WaveEncryptedMessage ::= SEQUENCE {
@@ -128,25 +129,27 @@ BEGIN
   }
 
   WaveEntity ::= SEQUENCE {
-    tbs SEQUENCE {
-      -- the canonical certification and attestation key. This is what is used
-      -- to sign attestation outerSignatureBindings, and to sign this object
-      verifyingKey EntityPublicKey,
-      -- other public keys
-      keys SEQUENCE OF EntityPublicKey,
-      -- when is this entity valid
-      validity SEQUENCE {
-        notBefore UTCTime,
-        notAfter UTCTime
-      },
-      -- revocations
-      revocations SEQUENCE OF RevocationOption,
-      -- extensions
-      extensions SEQUENCE OF Extension
-    },
+    tbs WaveEntityTbs,
     -- the algorithm is determined by the type of
     -- verifyingKey
     signature OCTET STRING
+  }
+
+  WaveEntityTbs ::= SEQUENCE {
+    -- the canonical certification and attestation key. This is what is used
+    -- to sign attestation outerSignatureBindings, and to sign this object
+    verifyingKey EntityPublicKey,
+    -- other public keys
+    keys SEQUENCE OF EntityPublicKey,
+    -- when is this entity valid
+    validity SEQUENCE {
+      notBefore UTCTime,
+      notAfter UTCTime
+    },
+    -- revocations
+    revocations SEQUENCE OF RevocationOption,
+    -- extensions
+    extensions SEQUENCE OF Extension
   }
 
   WaveEntitySecret ::= SEQUENCE {
@@ -164,17 +167,17 @@ BEGIN
     secret EntityPrivateKey
   }
 
-  BN256OAQUEKeyringBundle ::= SEQUENCE {
-    params Params-BN256-OAQUE,
-    entries SEQUENCE OF BN256OAQUEBundleEntry
+  BLS12381OAQUEKeyringBundle ::= SEQUENCE {
+    params Params-BLS12381-OAQUE,
+    entries SEQUENCE OF BLS12381OAQUEBundleEntry
   }
 
-  BN256OAQUEBundleEntry ::= SEQUENCE {
+  BLS12381OAQUEBundleEntry ::= SEQUENCE {
     partitionChange SEQUENCE OF SEQUENCE {
       index INTEGER,
       content OCTET STRING
     },
-    key Private-BN256-OAQUE
+    key Private-BLS12381-OAQUE
   }
 
   EntityPrivateKey ::= EXTERNAL
@@ -345,9 +348,9 @@ BEGIN
     envelope OCTET STRING,
 
     -- content envelopeKey
-    -- encryption algorithm: IBE-bn256 in declaration namespace system
+    -- encryption algorithm: IBE-BLS12381 in declaration namespace system
     -- id: envelopeID (namespace)
-    envelopeKey-ibe-bn256 OCTET STRING,
+    envelopeKey-ibe-BLS12381 OCTET STRING,
 
     namespace EntityHash,
     namespaceLocation Location
@@ -356,7 +359,7 @@ BEGIN
   NameDeclarationWR1Envelope ::= SEQUENCE {
     partition SEQUENCE OF OCTET STRING,
     -- content: bodyKey
-    -- encryption algorithm: oaque-bn256
+    -- encryption algorithm: oaque-BLS12381
     -- encryption id: partition
     bodyKey OCTET STRING
   }
@@ -379,9 +382,9 @@ BEGIN
     envelopeCiphertext OCTET STRING,
 
     -- content envelopeBodyKey
-    -- encryption algorithm: IBE-bn256 in subject system
+    -- encryption algorithm: IBE-BLS12381 in subject system
     -- id: envelopeID (namespace)
-    envelopeKey-ibe-bn256 OCTET STRING,
+    envelopeKey-ibe-BLS12381 OCTET STRING,
 
     -- content envelopeBodyKey
     -- encryption algorithm: AES128
@@ -400,7 +403,7 @@ BEGIN
 
   WR1Envelope ::= SEQUENCE {
     -- content: proverBodyKey || proverBodyNonce || verifierBodyKey || verifierBodyNonce
-    -- encryption algorithm: oaque-bn256 in subject system
+    -- encryption algorithm: oaque-BLS12381 in subject system
     -- encryption attribute set: Partition
     bodyKeys-oaque OCTET STRING,
 
@@ -433,11 +436,13 @@ BEGIN
   }
 
   SignedOuterKey ::= SEQUENCE {
-    tbs SEQUENCE {
-      outerSignatureScheme OBJECT IDENTIFIER,
-      verifyingKey OCTET STRING
-    },
+    tbs SignedOuterKeyTbs,
     signature OCTET STRING
+  }
+
+  SignedOuterKeyTbs ::= SEQUENCE {
+    outerSignatureScheme OBJECT IDENTIFIER,
+    verifyingKey OCTET STRING
   }
 
   TrustLevel ::= SEQUENCE {
@@ -455,20 +460,20 @@ BEGIN
 
   Private-Ed25519 ::= OCTET STRING
   Private-Curve25519 ::= OCTET STRING
-  Private-BN256-OAQUE ::= OCTET STRING
-  Private-BN256-IBE ::= OCTET STRING
-  Master-BN256-OAQUE ::= OCTET STRING
-  Master-BN256-IBE ::= OCTET STRING
+  Private-BLS12381-OAQUE ::= OCTET STRING
+  Private-BLS12381-IBE ::= OCTET STRING
+  Master-BLS12381-OAQUE ::= OCTET STRING
+  Master-BLS12381-IBE ::= OCTET STRING
   Public-Ed25519 ::= OCTET STRING
   Public-Curve25519 ::= OCTET STRING
   Public-OAQUE ::= SEQUENCE {
-    params Params-BN256-OAQUE,
+    params Params-BLS12381-OAQUE,
     attributeset SEQUENCE OF OCTET STRING
   }
-  Params-BN256-OAQUE ::= OCTET STRING
-  Params-BN256-IBE ::= OCTET STRING
-  Public-BN256-IBE ::= SEQUENCE {
-    params Params-BN256-IBE,
+  Params-BLS12381-OAQUE ::= OCTET STRING
+  Params-BLS12381-IBE ::= OCTET STRING
+  Public-BLS12381-IBE ::= SEQUENCE {
+    params Params-BLS12381-IBE,
     id OCTET STRING
   }
   -- Encapsulates parameters to PBKDF2. Sha3-512 is assumed as the hash function
@@ -490,9 +495,9 @@ BEGIN
     envelope OCTET STRING,
 
     -- content envelopeKey
-    -- encryption algorithm: IBE-bn256 in message namespace system
+    -- encryption algorithm: IBE-BLS12381 in message namespace system
     -- id: envelopeID (namespace)
-    envelopeKey-ibe-bn256 OCTET STRING,
+    envelopeKey-ibe-BLS12381 OCTET STRING,
 
     -- the system for the keys
     namespace EntityHash,
@@ -502,7 +507,7 @@ BEGIN
   MessageKeyWR1Envelope ::= SEQUENCE {
     partition SEQUENCE OF OCTET STRING,
     -- content: contentsKey
-    -- encryption algorithm: oaque-bn256
+    -- encryption algorithm: oaque-BLS12381
     -- encryption id: partition,
     contentsKey OCTET STRING
   }
