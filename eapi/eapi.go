@@ -60,13 +60,14 @@ func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	h.Write(in.EntitySecret.DER)
 	dg := [32]byte{}
 	h.Read(dg[:])
-	e.escachemu.RLock()
+
+	//It's important that we only have one engine per entity
+	e.escachemu.Lock()
 	eng, ok := e.escache[dg]
-	e.escachemu.RUnlock()
+	defer e.escachemu.Unlock()
 	if ok {
 		return eng, nil
 	}
-
 	secret, err := ConvertEntitySecret(ctx, in.EntitySecret)
 	if err != nil {
 		return nil, err
@@ -83,9 +84,7 @@ func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	if uerr != nil {
 		panic(uerr)
 	}
-	e.escachemu.Lock()
 	e.escache[dg] = eng
-	e.escachemu.Unlock()
 
 	val, uerr := eng.CheckEntity(ctx, eng.Perspective().Entity)
 	if uerr != nil {
@@ -1074,12 +1073,7 @@ func (e *EAPI) DecryptMessage(ctx context.Context, p *pb.DecryptMessageParams) (
 		<-waitchan
 	}
 
-	secret, err := ConvertEntitySecret(ctx, p.Perspective.EntitySecret)
-	if err != nil {
-		return &pb.DecryptMessageResponse{
-			Error: ToError(err),
-		}, nil
-	}
+	secret := eng.Perspective()
 	dctx := engine.NewEngineDecryptionContext(eng)
 	dctx.AutoLoadPartitionSecrets(true)
 	params := iapi.PDecryptMessage{
