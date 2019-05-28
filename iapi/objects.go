@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/immesys/asn1"
-	"github.com/samkumar/embedded-pairing/lang/go/wkdibe"
+	"github.com/ucbrise/jedi-pairing/lang/go/wkdibe"
 
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
