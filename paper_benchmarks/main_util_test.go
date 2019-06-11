@@ -79,7 +79,7 @@ func TG() *TestGraph {
 		pubs:    make(map[string]*pb.PublishEntityResponse),
 	}
 }
-func (t *TestGraph) BuildCompare(tst *testing.T, dst string, perms string, edges int, ttl int) {
+func (t *TestGraph) BuildCompare(tst testing.TB, dst string, perms string, edges int, ttl int) {
 	rv := t.Build(tst, dst, perms)
 	if edges == -1 {
 		//No path is meant to exist
@@ -98,7 +98,7 @@ func (t *TestGraph) BuildCompare(tst *testing.T, dst string, perms string, edges
 	require.NoError(tst, err)
 }
 
-func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTreeProofResponse {
+func (t *TestGraph) Build(tst testing.TB, dst string, perms string) *pb.BuildRTreeProofResponse {
 	ctx := context.Background()
 	perspective := &pb.Perspective{
 		EntitySecret: &pb.EntitySecret{
@@ -150,7 +150,7 @@ func (t *TestGraph) Build(tst *testing.T, dst string, perms string) *pb.BuildRTr
 	require.NoError(tst, err)
 	return resp
 }
-func (t *TestGraph) Edge(tst *testing.T, src, dst string, perms string, ttl int) {
+func (t *TestGraph) Edge(tst testing.TB, src, dst string, perms string, ttl int) {
 	ctx := context.Background()
 	if t.pubs[src] == nil {
 		t.publics[src], t.secrets[src] = createEntity(tst)

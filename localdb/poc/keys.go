@@ -3,6 +3,7 @@ package poc
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"strings"
@@ -219,29 +220,60 @@ func (p *poc) WR1KeysForP(ctx context.Context, dsthi iapi.HashSchemeInstance, sl
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	k := p.PKey(ctx, "oaq", ToB64(dst))
-	vch, ech := p.u.LoadPrefix(ctx, k)
-	for v := range vch {
+	kch, ech := p.u.LoadPrefixKeys(ctx, k)
+	for v := range kch {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		parts := strings.Split(v.Key, "/")
+		sslots := strings.Split(parts[len(parts)-1], ",")
+		bslots := make([][]byte, len(sslots))
+		for i, s := range sslots {
+			bslots[i], _ = base64.StdEncoding.DecodeString(s)
+		}
+		if !matchPartition(bslots, slots) {
+			continue
+		}
+		val, err := p.u.Load(ctx, v.Key)
+		if err != nil {
+			return err
+		}
 		cks := &ContentKeyState{}
-		err := unmarshalGob(v.Value, cks)
+		err = unmarshalGob(val, cks)
 		if err != nil {
 			panic(err)
 		}
-
-		//Only return this dot if the given partition is a superset
-		//of the dot
-		if !matchPartition(cks.Slots, slots) {
-			continue
-		}
-
 		//The key is a superset of the given slots
 		more := onResult(cks.Key)
 		if !more {
 			return nil
 		}
 	}
+	return <-ech
+	//
+	// vch, ech := p.u.LoadPrefix(ctx, k)
+	// for v := range vch {
+	// 	if ctx.Err() != nil {
+	// 		return ctx.Err()
+	// 	}
+	// 	cks := &ContentKeyState{}
+	// 	err := unmarshalGob(v.Value, cks)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	//
+	// 	//Only return this dot if the given partition is a superset
+	// 	//of the dot
+	// 	if !matchPartition(cks.Slots, slots) {
+	// 		continue
+	// 	}
+	//
+	// 	//The key is a superset of the given slots
+	// 	more := onResult(cks.Key)
+	// 	if !more {
+	// 		return nil
+	// 	}
+	// }
 	return <-ech
 }
 func (p *poc) InsertWR1KeysForP(ctx context.Context, fromhi iapi.HashSchemeInstance, key iapi.SlottedSecretKey) error {
@@ -251,7 +283,7 @@ func (p *poc) InsertWR1KeysForP(ctx context.Context, fromhi iapi.HashSchemeInsta
 	for i, s := range slots {
 		bslots[i] = ToB64(s)
 	}
-	allSlots := strings.Join(bslots, "/")
+	allSlots := strings.Join(bslots, ",")
 	k := p.PKey(ctx, "oaq", ToB64(from), allSlots)
 	cks := &ContentKeyState{
 		Slots: slots,
