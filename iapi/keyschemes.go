@@ -49,8 +49,14 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 	case e.Key.OID.Equal(serdes.EntityIBE_BLS12381_ParamsOID):
 		rv := &EntityKey_IBE_Params_BLS12381{
 			SerdesForm: e,
-			PublicKey:  &lqibe.Params{},
 		}
+		obj := e.Key.Content.(serdes.EntityParamsIBE_BLS12381)
+		lqparams := lqibe.Params{}
+		ok := lqparams.Unmarshal(obj, wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			return nil, fmt.Errorf("failed to unmarshal LQ-IBE params")
+		}
+		rv.PublicKey = &lqparams
 		return rv, nil
 	case e.Key.OID.Equal(serdes.EntityIBE_BLS12381_PublicOID):
 		rv := &EntityKey_IBE_BLS12381{
@@ -71,6 +77,13 @@ func EntityKeySchemeInstanceFor(e *serdes.EntityPublicKey) (EntityKeySchemeInsta
 			SerdesForm: e,
 			Params:     nil,
 		}
+		obj := e.Key.Content.(serdes.EntityParamsOQAUE_BLS12381_s20)
+		params := wkdibe.Params{}
+		ok := params.Unmarshal(obj, wkdIBECompressed, wkdIBEChecked)
+		if !ok {
+			return nil, fmt.Errorf("failed to unmarshal WKD-IBE params")
+		}
+		rv.Params = &params
 		return rv, nil
 	case e.Key.OID.Equal(serdes.EntityOAQUE_BLS12381_S20_AttributeSetOID):
 		rv := &EntityKey_OAQUE_BLS12381_S20{
