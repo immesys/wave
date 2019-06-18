@@ -134,6 +134,10 @@
   name = "golang.org/x/net"
 
 [[constraint]]
+  branch = "master"
+  name = "github.com/ucbrise/jedi-pairing"
+
+[[constraint]]
   name = "google.golang.org/grpc"
   version = "1.13.0"
 
@@ -144,14 +148,6 @@
 [[constraint]]
   name = "gopkg.in/urfave/cli.v1"
   version = "1.20.0"
-
-[[constraint]]
-  branch = "master"
-  name = "vuvuzela.io/crypto"
-
-[[constraint]]
-  name = "github.com/samkumar/embedded-pairing"
-  branch = "master"
 
 [prune]
   go-tests = true
