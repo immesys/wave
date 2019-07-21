@@ -6,7 +6,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/serdes"
-	"github.com/ucbrise/jedi-pairing/lang/go/bls12381"
 	wkdutils "github.com/ucbrise/jedi-pairing/lang/go/cryptutils"
 	lqibe "github.com/ucbrise/jedi-pairing/lang/go/lqibe"
 	"github.com/ucbrise/jedi-pairing/lang/go/wkdibe"
@@ -1585,11 +1583,7 @@ func slotsToAttrMap(id [][]byte) wkdibe.AttributeList {
 	rv := make(map[wkdibe.AttributeIndex]*big.Int)
 	for index, arr := range id {
 		if len(arr) > 0 {
-			digest := sha256.Sum256(arr)
-			bigint := new(big.Int).SetBytes(digest[:])
-			bigint.Mod(bigint, new(big.Int).Add(bls12381.GroupOrder, big.NewInt(-1)))
-			bigint.Add(bigint, big.NewInt(1))
-			rv[wkdibe.AttributeIndex(index)] = bigint
+			rv[wkdibe.AttributeIndex(index)] = wkdutils.HashToZp(new(big.Int), arr)
 		}
 	}
 	return rv

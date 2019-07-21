@@ -286,7 +286,7 @@ func (e *EAPI) ConvertPolicy(in *pb.Policy) (iapi.PolicySchemeInstance, wve.WVE)
 		spol.Namespace = *ext
 
 		//Try locate the namespace
-		eng := e.getEngineNoPerspective()
+		eng := e.GetEngineNoPerspective()
 		found := false
 		locz, err := iapi.SI().RegisteredLocations(context.Background())
 		if err != nil {
