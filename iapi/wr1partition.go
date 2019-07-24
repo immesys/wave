@@ -59,6 +59,10 @@ func CalculateEmptyKeyBundleEntries(startDat time.Time, endDat time.Time, userPr
 		return nil, nil, err
 	}
 
+	return partitions, CalculateEmptyKeyBundleEntriesFromPartitions(partitions), nil
+}
+
+func CalculateEmptyKeyBundleEntriesFromPartitions(partitions [][][]byte) []serdes.BLS12381OAQUEKeyringBundleEntry {
 	rv := make([]serdes.BLS12381OAQUEKeyringBundleEntry, len(partitions))
 	current := make([][]byte, 20)
 	for i := 0; i < len(partitions); i++ {
@@ -77,7 +81,7 @@ func CalculateEmptyKeyBundleEntries(startDat time.Time, endDat time.Time, userPr
 		}
 	}
 
-	return partitions, rv, nil
+	return rv
 }
 
 func DecodeKeyBundleEntries(be []serdes.BLS12381OAQUEKeyringBundleEntry) ([][][]byte, wve.WVE) {

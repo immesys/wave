@@ -134,10 +134,6 @@
   name = "golang.org/x/net"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/ucbrise/jedi-pairing"
-
-[[constraint]]
   name = "google.golang.org/grpc"
   version = "1.13.0"
 

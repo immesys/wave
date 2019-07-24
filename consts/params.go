@@ -24,5 +24,11 @@ var WAVEMQPSETBytes = "\x1b\x20\x14\x33\x74\xb3\x2f\xd2\x74\x39\x54\xfe\x47\x86\
 //to decrypt end-to-end encrypted messages
 var WaveBuiltinE2EE = "decrypt"
 
+// This is the JEDI built-in permission set.
+var JEDIBuiltinPSET = "GyAdzlOf-YTN8eq9Fw0-S0XQ_Lh2KL0HCBrDQTvqiDe88A=="
+var JEDIBuiltinPSETByteArray = []byte{27, 32, 29, 206, 83, 159, 249, 132, 205, 241, 234, 189, 23, 13, 62, 75, 69, 208, 252, 184, 118, 40, 189, 7, 8, 26, 195, 65, 59, 234, 136, 55, 188, 240}
+var JEDIBuiltinDecrypt = "decrypt"
+var JEDIBuiltinSign = "sign"
+
 //This can actually be changed
 var DefaultToUnrevoked = false

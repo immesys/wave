@@ -11,6 +11,8 @@ import (
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
+
+	jedi "github.com/ucbrise/jedi-protocol/core"
 )
 
 type PCreateAttestation struct {
@@ -237,18 +239,40 @@ func checkPolicyForSpecialCases(p PolicySchemeInstance) wve.WVE {
 	var res string
 	for _, s := range rtree.SerdesForm.Statements {
 		hi := HashSchemeInstanceFor(&s.PermissionSet)
-		if hi.Supported() && hi.MultihashString() == consts.WaveBuiltinPSET {
-			foundE2E = true
-			if len(s.Permissions) == 0 {
-				return wve.Err(wve.InvalidE2EEGrant, "a wave pset grant must have exactly one permission")
+		if hi.Supported() {
+			if hi.MultihashString() == consts.WaveBuiltinPSET {
+				foundE2E = true
+				if len(s.Permissions) == 0 {
+					return wve.Err(wve.InvalidE2EEGrant, "a wave pset grant must have exactly one permission")
+				}
+				if len(s.Permissions) > 1 {
+					return wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt grant can only have one permission and one statement")
+				}
+				if s.Permissions[0] != consts.WaveBuiltinE2EE {
+					return wve.Err(wve.InvalidE2EEGrant, "the only valid wave pset permissions is 'decrypt'")
+				}
+				res = s.Resource
+			} else if hi.MultihashString() == consts.JEDIBuiltinPSET {
+				seen := make(map[string]struct{})
+				for _, perm := range s.Permissions {
+					if _, ok := seen[perm]; ok {
+						return wve.Err(wve.InvalidJEDIGrant, fmt.Sprintf("permission '%s' repeats", perm))
+					}
+
+					if perm != consts.JEDIBuiltinDecrypt && perm != consts.JEDIBuiltinSign {
+						return wve.Err(wve.InvalidJEDIGrant, fmt.Sprintf("the only valid jedi grants are '%s' and '%s'", consts.JEDIBuiltinDecrypt, consts.JEDIBuiltinSign))
+					}
+					seen[perm] = struct{}{}
+				}
+				uri, err2 := jedi.ParseURI(s.Resource)
+				if err2 != nil {
+					return wve.Err(wve.InvalidJEDIGrant, fmt.Sprintf("Invalid URI for JEDI grant: '%s'", err2.Error()))
+				}
+				rtree.VisibilityURI = make([][]byte, len(uri))
+				for i, comp := range uri {
+					rtree.VisibilityURI[i] = comp.Representation()
+				}
 			}
-			if len(s.Permissions) > 1 {
-				return wve.Err(wve.InvalidE2EEGrant, "a wave:decrypt grant can only have one permission and one statement")
-			}
-			if s.Permissions[0] != consts.WaveBuiltinE2EE {
-				return wve.Err(wve.InvalidE2EEGrant, "the only valid wave pset permissions is 'decrypt'")
-			}
-			res = s.Resource
 		}
 	}
 	if !foundE2E {

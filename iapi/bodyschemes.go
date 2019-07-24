@@ -14,6 +14,8 @@ import (
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
+
+	jedi "github.com/ucbrise/jedi-protocol/core"
 )
 
 var ErrDecryptBodyMalformed = errors.New("body is malformed")
@@ -343,6 +345,52 @@ func isPolicyE2EE(p PolicySchemeInstance) (HashSchemeInstance, LocationSchemeIns
 	return nil, nil, false
 }
 
+func isPolicyJEDI(p PolicySchemeInstance) (HashSchemeInstance, LocationSchemeInstance, bool, bool) {
+	rtree, ok := p.(*RTreePolicy)
+	if !ok {
+		return nil, nil, false, false
+	}
+	for _, s := range rtree.SerdesForm.Statements {
+		hi := HashSchemeInstanceFor(&s.PermissionSet)
+		if hi.Supported() && hi.MultihashString() == consts.JEDIBuiltinPSET {
+			ns := rtree.WR1DomainEntity()
+			nsloc := LocationSchemeInstanceFor(&rtree.SerdesForm.NamespaceLocation)
+
+			seen := make(map[string]struct{})
+			for _, perm := range s.Permissions {
+				seen[perm] = struct{}{}
+			}
+			_, decrypt := seen["decrypt"]
+			_, sign := seen["sign"]
+
+			return ns, nsloc, decrypt, sign
+		}
+	}
+	return nil, nil, false, false
+}
+
+func computeBatches(numtasks int, numworkers int) [][]int {
+	batches := make([][]int, numworkers)
+	numperworker := numtasks / numworkers
+	if numperworker == 0 {
+		numperworker = 1
+	}
+	for i := 0; i < numworkers; i++ {
+		batch := []int{}
+		if i == numworkers-1 {
+			for k := i * numperworker; k < numtasks; k++ {
+				batch = append(batch, k)
+			}
+		} else {
+			for k := i * numperworker; k < (i+1)*numperworker && k < numtasks; k++ {
+				batch = append(batch, k)
+			}
+		}
+		batches[i] = batch
+	}
+	return batches
+}
+
 func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
 	//fmt.Printf("encrypt body called\n")
 	ec := ecp.(WR1BodyEncryptionContext)
@@ -424,6 +472,71 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 			return nil, nil, err
 		}
 	}
+
+	/* Check for JEDI delegation. */
+	jediNS, jediNSLoc, jediDecrypt, jediSign := isPolicyJEDI(policy)
+	if jediDecrypt || jediSign {
+		startTime := plaintextBody.VerifierBody.Validity.NotBefore
+		endTime := plaintextBody.VerifierBody.Validity.NotAfter
+		startPath, err2 := jedi.ParseTime(startTime)
+		if err2 != nil {
+			return nil, nil, err2
+		}
+		endPath, err2 := jedi.ParseTime(endTime)
+		if err2 != nil {
+			return nil, nil, err2
+		}
+		rangeTimePaths := jedi.TimeRangeFromPaths(startPath, endPath)
+
+		numpaths := len(rangeTimePaths)
+		if jediDecrypt && jediSign {
+			numpaths <<= 1
+		}
+		paths := make([][][]byte, 0, numpaths)
+		rtree, ok := policy.(*RTreePolicy)
+		if !ok {
+			panic("Trying to apply JEDI to non-RTree policy")
+		}
+		for i, timePath := range rangeTimePaths {
+			path := make([][]byte, 20)
+			for j, comp := range timePath {
+				path[len(path)-jedi.MaxTimeLength+j] = comp.Representation()
+			}
+			copy(path[1:len(path)-jedi.MaxTimeLength], rtree.VisibilityURI)
+			if jediDecrypt {
+				path[0] = []byte("\x00jedi:decrypt")
+			} else {
+				path[0] = []byte("\x00jedi:sign")
+			}
+			paths = append(paths, path)
+
+			if jediDecrypt && jediSign {
+				path2 := make([][]byte, len(path))
+				path2[0] = []byte("\x00jedi:sign")
+				copy(path2[1:], path[1:])
+				paths = append(paths, path2)
+
+				/* This optimization minimizes the size of diffs. */
+				if (i & 0x1) == 0x1 {
+					path[0], path2[0] = path2[0], path[0]
+				}
+			}
+		}
+
+		/*
+		 * We reuse the same code as WAVE uses for generating keys for E2EE
+		 * delegations. This takes advantage of the fact that a single
+		 * attestation can't include both JEDI keys and WAVE E2EE keys.
+		 */
+		if isE2E {
+			panic("Both JEDI and E2EE active for a single attestation")
+		}
+		e2eNS = jediNS
+		e2eNSLoc = jediNSLoc
+		e2ePartitions = paths
+		e2eDelegatedBundle = CalculateEmptyKeyBundleEntriesFromPartitions(paths)
+		isE2E = true
+	}
 	e2eKeyOkay := make([]bool, len(e2eDelegatedBundle))
 
 	//Generating these delegated keys is a bit of a pain. Sequentially its about 1.5s on my machine.
@@ -431,27 +544,11 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	then := time.Now()
 	if true {
 		workers := runtime.NumCPU()
-		batches := make([][]int, workers)
-		numperworker := len(partitions) / workers
-		if numperworker == 0 {
-			numperworker = 1
-		}
-		for i := 0; i < workers; i++ {
-			batch := []int{}
-			if i == workers-1 {
-				for k := i * numperworker; k < len(partitions); k++ {
-					batch = append(batch, k)
-				}
-
-			} else {
-				for k := i * numperworker; k < (i+1)*numperworker && k < len(partitions); k++ {
-					batch = append(batch, k)
-				}
-			}
-			batches[i] = batch
-		}
+		batches := computeBatches(len(partitions), workers)
+		e2eBatches := computeBatches(len(e2ePartitions), workers)
 		wg := sync.WaitGroup{}
 		wg.Add(workers)
+		workererrs := make([]error, workers)
 		for i := 0; i < workers; i++ {
 			go func(i int) {
 				batchpartitions := make([][][]byte, 0, len(batches[i]))
@@ -471,7 +568,9 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 					cf := kz[kzidx].SecretCanonicalForm()
 					kzidx += 1
 					delegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BLS12381_s20)
-					if isE2E {
+				}
+				if isE2E {
+					for _, idx := range e2eBatches[i] {
 						//Also try generate the e2e key, which is in the namespace system
 						var sk SlottedSecretKey
 						ec.WR1OAQUEKeysForContent(ctx, e2eNS, true, e2ePartitions[idx], func(k SlottedSecretKey) bool {
@@ -484,9 +583,15 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 						})
 						if sk != nil {
 							e2eKeyOkay[idx] = true
-							//fmt.Printf("Delegated NS key %s was ok\n", WR1PartitionToIntString(partitions[idx]))
+							// fmt.Printf("Delegated NS key %s was ok\n", WR1PartitionToIntString(e2ePartitions[idx]))
+							//fmt.Printf("Key %d was ok: %v\n", idx, e2ePartitions[idx])
 							cf := sk.SecretCanonicalForm()
 							e2eDelegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BLS12381_s20)
+						} else if jediDecrypt || jediSign {
+							// We weren't able to generate the key --- return error to user.
+							//fmt.Printf("Couldn't find key for %v\n", e2ePartitions[idx])
+							workererrs[i] = errors.New("Could not generate key: requisite delegation(s) not received")
+							break
 						}
 					}
 				}
@@ -494,6 +599,11 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 			}(i)
 		}
 		wg.Wait()
+		for _, workererr := range workererrs {
+			if workererr != nil {
+				return nil, nil, workererr
+			}
+		}
 		// for l, ll := range delegatedBundle {
 		// 	//	fmt.Printf("%d : %p\n", l, ll)
 		// }
@@ -587,6 +697,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		}
 		e2eBundle.Entries = entries
 	}
+
 	// for idx, p := range partitions {
 	// 	fmt.Printf("granted key %d: %s\n", idx, WR1PartitionToIntString(p))
 	// }
