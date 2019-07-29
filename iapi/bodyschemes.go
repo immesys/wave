@@ -12,6 +12,7 @@ import (
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/consts"
+	"github.com/immesys/wave/jediutils"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
 
@@ -499,25 +500,16 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		}
 		uriPath := jedi.DecodeURIPathFrom(rtree.VisibilityURI)
 		for i, timePath := range rangeTimePaths {
-			path := make([][]byte, 20)
 			if jediDecrypt {
-				path[0] = []byte("\x00jedi:decrypt")
-			} else {
-				path[0] = []byte("\x00jedi:sign")
+				paths = append(paths, jediutils.WAVEPatternEncoderSingleton.Encode(uriPath, timePath, jedi.PatternTypeDecryption))
 			}
-			jedi.EncodePattern(uriPath, timePath, path[1:])
-			paths = append(paths, path)
-
-			if jediDecrypt && jediSign {
-				path2 := make([][]byte, len(path))
-				path2[0] = []byte("\x00jedi:sign")
-				copy(path2[1:], path[1:])
-				paths = append(paths, path2)
-
-				/* This optimization minimizes the size of diffs. */
-				if (i & 0x1) == 0x1 {
-					path[0], path2[0] = path2[0], path[0]
-				}
+			if jediSign {
+				paths = append(paths, jediutils.WAVEPatternEncoderSingleton.Encode(uriPath, timePath, jedi.PatternTypeSigning))
+			}
+			if jediDecrypt && jediSign && (i&0x1) == 0x1 {
+				i := len(paths) - 2
+				j := len(paths) - 1
+				paths[i], paths[j] = paths[j], paths[i]
 			}
 		}
 
