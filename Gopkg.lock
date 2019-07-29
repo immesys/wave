@@ -759,14 +759,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a9a562133862eb5fe42a8b7a76729c087211157dc1c1721efb0d177b12749b17"
-  name = "github.com/ucbrise/jedi-protocol"
-  packages = [
-    "core",
-    "crypto/roaque/csroaque/optimized",
-  ]
+  digest = "1:b9842cfc77114784a1297d5627399c366f89e42c0aed1cb01b8ee832ca8c6811"
+  name = "github.com/ucbrise/jedi-protocol-go"
+  packages = ["."]
   pruneopts = "T"
-  revision = "7187fb0b5b8a0f744600940b62b4a1466965e677"
+  revision = "0c76dc4f47f7106047c2e46e945019905efa4cf0"
 
 [[projects]]
   digest = "1:a4ef215bd846f9407d095f526879cb232330e1e7a748c70e384f775a6a64fd3e"
@@ -807,12 +804,8 @@
     "curve25519",
     "ed25519",
     "ed25519/internal/edwards25519",
-    "internal/subtle",
-    "nacl/secretbox",
     "pbkdf2",
-    "poly1305",
     "ripemd160",
-    "salsa20/salsa",
     "scrypt",
     "sha3",
     "ssh/terminal",
@@ -1123,7 +1116,7 @@
     "github.com/ucbrise/jedi-pairing/lang/go/cryptutils",
     "github.com/ucbrise/jedi-pairing/lang/go/lqibe",
     "github.com/ucbrise/jedi-pairing/lang/go/wkdibe",
-    "github.com/ucbrise/jedi-protocol/core",
+    "github.com/ucbrise/jedi-protocol-go",
     "github.com/urfave/cli",
     "golang.org/x/crypto/curve25519",
     "golang.org/x/crypto/ed25519",

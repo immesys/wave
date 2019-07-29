@@ -15,7 +15,7 @@ import (
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
 
-	jedi "github.com/ucbrise/jedi-protocol/core"
+	"github.com/ucbrise/jedi-protocol-go"
 )
 
 var ErrDecryptBodyMalformed = errors.New("body is malformed")
@@ -497,17 +497,15 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		if !ok {
 			panic("Trying to apply JEDI to non-RTree policy")
 		}
+		uriPath := jedi.DecodeURIPathFrom(rtree.VisibilityURI)
 		for i, timePath := range rangeTimePaths {
 			path := make([][]byte, 20)
-			for j, comp := range timePath {
-				path[len(path)-jedi.MaxTimeLength+j] = comp.Representation()
-			}
-			copy(path[1:len(path)-jedi.MaxTimeLength], rtree.VisibilityURI)
 			if jediDecrypt {
 				path[0] = []byte("\x00jedi:decrypt")
 			} else {
 				path[0] = []byte("\x00jedi:sign")
 			}
+			jedi.EncodePattern(uriPath, timePath, path[1:])
 			paths = append(paths, path)
 
 			if jediDecrypt && jediSign {

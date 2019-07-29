@@ -11,8 +11,7 @@ import (
 	"github.com/immesys/wave/consts"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
-
-	jedi "github.com/ucbrise/jedi-protocol/core"
+	"github.com/ucbrise/jedi-protocol-go"
 )
 
 type PCreateAttestation struct {
@@ -260,7 +259,7 @@ func checkPolicyForSpecialCases(p PolicySchemeInstance) wve.WVE {
 					}
 
 					if perm != consts.JEDIBuiltinDecrypt && perm != consts.JEDIBuiltinSign {
-						return wve.Err(wve.InvalidJEDIGrant, fmt.Sprintf("the only valid jedi grants are '%s' and '%s'", consts.JEDIBuiltinDecrypt, consts.JEDIBuiltinSign))
+						return wve.Err(wve.InvalidJEDIGrant, fmt.Sprintf("the only valid JEDI grants are '%s' and '%s'", consts.JEDIBuiltinDecrypt, consts.JEDIBuiltinSign))
 					}
 					seen[perm] = struct{}{}
 				}
@@ -268,10 +267,11 @@ func checkPolicyForSpecialCases(p PolicySchemeInstance) wve.WVE {
 				if err2 != nil {
 					return wve.Err(wve.InvalidJEDIGrant, fmt.Sprintf("Invalid URI for JEDI grant: '%s'", err2.Error()))
 				}
-				rtree.VisibilityURI = make([][]byte, len(uri))
-				for i, comp := range uri {
-					rtree.VisibilityURI[i] = comp.Representation()
+				rtree.VisibilityURI = make([][]byte, 11)
+				if len(uri) > len(rtree.VisibilityURI) {
+					return wve.Err(wve.InvalidJEDIGrant, "URI is too long for a JEDI grant")
 				}
+				jedi.EncodeURIPathInto(uri, rtree.VisibilityURI)
 			}
 		}
 	}
