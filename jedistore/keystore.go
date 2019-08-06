@@ -13,28 +13,24 @@ import (
 	"github.com/ucbrise/jedi-protocol-go"
 )
 
-// WAVEKeyStore implements the jedi.KeyStoreReader interface. It lifts a WAVE
-// entity's view of the attestation graph to JEDI's key storage interface. The
-// (abstract) key store consists of the keys in all attestations decryptable by
-// that WAVE entity.
-type WAVEKeyStore struct {
-	eng  *engine.Engine
-	wave *eapi.EAPI
+// WAVEPublicInfo implements the jedi.PublicInfoReader interface. It lifts the
+// view of WAVE entity public information to JEDI's public parameters
+// interface.
+type WAVEPublicInfo struct {
+	eng *engine.Engine
 }
 
-// NewWAVEKeyStore creates and returns a new WAVEKeyStore. The entity whose
-// perpsective to use is implicit in the WAVE engine that is passed as an
-// argument to this function.
-func NewWAVEKeyStore(wave *eapi.EAPI, eng *engine.Engine) *WAVEKeyStore {
-	return &WAVEKeyStore{
-		eng:  eng,
-		wave: wave,
+// NewWAVEPublicInfo creates and returns a new WAVEPublicInfo. The provided
+// engine need not have a perspective.
+func NewWAVEPublicInfo(eng *engine.Engine) *WAVEPublicInfo {
+	return &WAVEPublicInfo{
+		eng: eng,
 	}
 }
 
 // ParamsForHierarchy accepts as input the multihash for a namespace (as the
 // "namespace" argument) and outputs the corresponding WKD-IBE parameters.
-func (wks *WAVEKeyStore) ParamsForHierarchy(ctx context.Context, namespace []byte) (*wkdibe.Params, error) {
+func (wpi *WAVEPublicInfo) ParamsForHierarchy(ctx context.Context, namespace []byte) (*wkdibe.Params, error) {
 	var err error
 	var werr wve.WVE
 
@@ -55,7 +51,7 @@ func (wks *WAVEKeyStore) ParamsForHierarchy(ctx context.Context, namespace []byt
 
 	var nsEntity *iapi.Entity
 	var nsValidity *engine.Validity
-	if nsEntity, nsValidity, err = wks.eng.LookupEntity(ctx, nsHash, nsLocation); err != nil {
+	if nsEntity, nsValidity, err = wpi.eng.LookupEntity(ctx, nsHash, nsLocation); err != nil {
 		return nil, err
 	}
 	if !nsValidity.Valid {
@@ -74,6 +70,24 @@ func (wks *WAVEKeyStore) ParamsForHierarchy(ctx context.Context, namespace []byt
 		}
 	}
 	return nil, errors.New("could not find WKD-IBE params in namespace entity")
+}
+
+// WAVEKeyStore implements the jedi.KeyStoreReader interface. It lifts a WAVE
+// entity's view of the attestation graph to JEDI's key storage interface. The
+// (abstract) key store consists of the keys in all attestations decryptable by
+// that WAVE entity.
+type WAVEKeyStore struct {
+	eng  *engine.Engine
+	wave *eapi.EAPI
+}
+
+// NewWAVEKeyStore creates and returns a new WAVEKeyStore. The entity whose
+// perpsective to use is implicit in the WAVE engine that is passed as an
+// argument to this function.
+func NewWAVEKeyStore(eng *engine.Engine) *WAVEKeyStore {
+	return &WAVEKeyStore{
+		eng: eng,
+	}
 }
 
 // KeyForPattern retrieves a key whose pattern matches the one provided as
