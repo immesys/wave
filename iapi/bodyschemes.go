@@ -522,7 +522,6 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		}
 		jediDelegation, err2 = jedi.DelegateParsed(ctx, reader, jediutils.WAVEPatternEncoderSingleton, jediNS.Multihash(), uriPath, rangeTimePaths, perm)
 		if err2 != nil {
-			fmt.Println("Error here")
 			return nil, nil, err2
 		}
 	}
@@ -576,11 +575,6 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 							//fmt.Printf("Key %d was ok: %v\n", idx, e2ePartitions[idx])
 							cf := sk.SecretCanonicalForm()
 							e2eDelegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BLS12381_s20)
-						} else if jediDecrypt || jediSign {
-							// We weren't able to generate the key --- return error to user.
-							//fmt.Printf("Couldn't find key for %v\n", e2ePartitions[idx])
-							workererrs[i] = errors.New("Could not generate key: requisite delegation(s) not received")
-							break
 						}
 					}
 				}
