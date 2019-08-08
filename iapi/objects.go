@@ -463,6 +463,25 @@ func (e *Attestation) WR1SecretSlottedKeys() []SlottedSecretKey {
 			wg.Wait()
 			rv = append(rv, erv...)
 		}
+		delegation := e.WR1Extra.JEDIDelegation
+		for i, key := range delegation.Keys {
+			ch := serdes.EntityPublicOAQUE_BLS12381_s20{
+				Params:       delegation.Params.Marshal(true),
+				AttributeSet: delegation.Patterns[i],
+			}
+			esk := &EntitySecretKey_OAQUE_BLS12381_S20{
+				SerdesForm: &serdes.EntityKeyringEntry{
+					Public: serdes.EntityPublicKey{
+						Capabilities: []int{int(CapEncryption)},
+						Key:          asn1.NewExternal(ch),
+					},
+				},
+				Params:       delegation.Params,
+				PrivateKey:   key,
+				AttributeSet: delegation.Patterns[i],
+			}
+			rv = append(rv, esk)
+		}
 	}
 	return rv
 }

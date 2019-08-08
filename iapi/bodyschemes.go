@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"runtime"
@@ -88,7 +89,9 @@ type WR1Extra struct {
 	VerifierBodyKey []byte
 	ProverBodyKey   []byte
 
-	EnvelopeKey []byte
+	EnvelopeKey    []byte
+	JEDIDelegation *jedi.Delegation
+
 	//For NameDecl only
 	Namespace         HashSchemeInstance
 	NamespaceLocation LocationSchemeInstance
@@ -218,6 +221,22 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 
 	//The key is actually 16 bytes of AES key + 12 bytes of GCM nonce
+	var jediDelegation *jedi.Delegation
+	if len(envelopeKey) > 16+12 {
+		marshalled := envelopeKey[16+12:]
+		envelopeKey = envelopeKey[:16+12]
+
+		if len(marshalled) < 4 {
+			return nil, nil, ErrDecryptBodyMalformed
+		}
+		length := int(binary.LittleEndian.Uint32(marshalled[:4]))
+		if len(marshalled) != 4+length {
+			return nil, nil, ErrDecryptBodyMalformed
+		}
+		if !jediDelegation.Unmarshal(marshalled[4:]) {
+			return nil, nil, ErrDecryptBodyMalformed
+		}
+	}
 	if len(envelopeKey) != 16+12 {
 		fmt.Printf("dc E\n")
 		return nil, nil, ErrDecryptBodyMalformed
@@ -247,7 +266,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 
 	//fmt.Printf("dc2 1\n")
 	//We know the partition labels now
-	rvextra := &WR1Extra{Partition: realpartition, EnvelopeKey: envelopeKey}
+	rvextra := &WR1Extra{Partition: realpartition, EnvelopeKey: envelopeKey, JEDIDelegation: jediDelegation}
 	extra = rvextra
 	if explicitProverBodyKey != nil {
 		bodyKeys = explicitProverBodyKey[28:]
@@ -475,10 +494,16 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	}
 
 	/* Check for JEDI delegation. */
-	jediNS, jediNSLoc, jediDecrypt, jediSign := isPolicyJEDI(policy)
+	jediNS, _, jediDecrypt, jediSign := isPolicyJEDI(policy)
+	var jediDelegation *jedi.Delegation
 	if jediDecrypt || jediSign {
 		startTime := plaintextBody.VerifierBody.Validity.NotBefore
 		endTime := plaintextBody.VerifierBody.Validity.NotAfter
+		rtree, ok := policy.(*RTreePolicy)
+		if !ok {
+			panic("Trying to apply JEDI to non-RTree policy")
+		}
+		uriPath := jedi.DecodeURIPathFrom(rtree.VisibilityURI)
 		startPath, err2 := jedi.ParseTime(startTime)
 		if err2 != nil {
 			return nil, nil, err2
@@ -489,43 +514,19 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		}
 		rangeTimePaths := jedi.TimeRangeFromPaths(startPath, endPath)
 
-		numpaths := len(rangeTimePaths)
-		if jediDecrypt && jediSign {
-			numpaths <<= 1
+		reader := &WR1JEDIKeyStoreReader{WR1JEDIKeyRetriever: ec}
+		perm := jedi.Permission(0)
+		if jediDecrypt {
+			perm |= jedi.DecryptPermission
 		}
-		paths := make([][][]byte, 0, numpaths)
-		rtree, ok := policy.(*RTreePolicy)
-		if !ok {
-			panic("Trying to apply JEDI to non-RTree policy")
+		if jediSign {
+			perm |= jedi.SignPermission
 		}
-		uriPath := jedi.DecodeURIPathFrom(rtree.VisibilityURI)
-		for i, timePath := range rangeTimePaths {
-			if jediDecrypt {
-				paths = append(paths, jediutils.WAVEPatternEncoderSingleton.Encode(uriPath, timePath, jedi.PatternTypeDecryption))
-			}
-			if jediSign {
-				paths = append(paths, jediutils.WAVEPatternEncoderSingleton.Encode(uriPath, timePath, jedi.PatternTypeSigning))
-			}
-			if jediDecrypt && jediSign && (i&0x1) == 0x1 {
-				i := len(paths) - 2
-				j := len(paths) - 1
-				paths[i], paths[j] = paths[j], paths[i]
-			}
+		jediDelegation, err2 = jedi.DelegateParsed(ctx, reader, jediutils.WAVEPatternEncoderSingleton, jediNS.Multihash(), uriPath, rangeTimePaths, perm)
+		if err2 != nil {
+			fmt.Println("Error here")
+			return nil, nil, err2
 		}
-
-		/*
-		 * We reuse the same code as WAVE uses for generating keys for E2EE
-		 * delegations. This takes advantage of the fact that a single
-		 * attestation can't include both JEDI keys and WAVE E2EE keys.
-		 */
-		if isE2E {
-			panic("Both JEDI and E2EE active for a single attestation")
-		}
-		e2eNS = jediNS
-		e2eNSLoc = jediNSLoc
-		e2ePartitions = paths
-		e2eDelegatedBundle = CalculateEmptyKeyBundleEntriesFromPartitions(paths)
-		isE2E = true
 	}
 	e2eKeyOkay := make([]bool, len(e2eDelegatedBundle))
 
@@ -754,7 +755,17 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	rand.Read(envelopeSymKey)
 
 	//Encrypt under the destination's curve25519 key
-	ciphertext.EnvelopeKey_Curve25519, err = directKey1.EncryptMessage(ctx, envelopeSymKey)
+	var recipientData []byte
+	if jediDelegation == nil {
+		recipientData = envelopeSymKey
+	} else {
+		marshalled := jediDelegation.Marshal()
+		recipientData = make([]byte, len(envelopeSymKey)+4+len(marshalled))
+		copy(recipientData[:len(envelopeSymKey)], envelopeSymKey)
+		binary.LittleEndian.PutUint32(recipientData[len(envelopeSymKey):len(envelopeSymKey)+4], uint32(len(marshalled)))
+		copy(recipientData[len(envelopeSymKey)+4:], marshalled)
+	}
+	ciphertext.EnvelopeKey_Curve25519, err = directKey1.EncryptMessage(ctx, recipientData)
 	if err != nil {
 		return nil, nil, err
 	}

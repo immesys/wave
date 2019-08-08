@@ -77,8 +77,7 @@ func (wpi *WAVEPublicInfo) ParamsForHierarchy(ctx context.Context, namespace []b
 // (abstract) key store consists of the keys in all attestations decryptable by
 // that WAVE entity.
 type WAVEKeyStore struct {
-	eng  *engine.Engine
-	wave *eapi.EAPI
+	eng *engine.Engine
 }
 
 // NewWAVEKeyStore creates and returns a new WAVEKeyStore. The entity whose
@@ -100,25 +99,14 @@ func (wks *WAVEKeyStore) KeyForPattern(ctx context.Context, namespace []byte, pa
 	dctx = engine.NewEngineDecryptionContext(wks.eng)
 	dctx.AutoLoadPartitionSecrets(true)
 
-	var nsHash iapi.HashSchemeInstance
-	if nsHash = iapi.HashSchemeInstanceFromMultihash(namespace); !nsHash.Supported() {
-		return nil, nil, errors.New("could not parse namespace")
-	}
+	reader := iapi.WR1JEDIKeyStoreReader{WR1JEDIKeyRetriever: dctx}
 
 	synced := false
 
 	var params *wkdibe.Params
 	var key *wkdibe.SecretKey
 searchforkey:
-	if err = dctx.WR1OAQUEKeysForContent(ctx, nsHash, false, pattern, func(k iapi.SlottedSecretKey) bool {
-		wrapped, ok := k.(*iapi.EntitySecretKey_OAQUE_BLS12381_S20)
-		if ok {
-			params = wrapped.Params
-			key = wrapped.PrivateKey
-			return false
-		}
-		return false
-	}); err != nil {
+	if params, key, err = reader.KeyForPattern(ctx, namespace, pattern); err != nil {
 		return nil, nil, err
 	}
 	if key == nil {
