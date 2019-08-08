@@ -112,7 +112,7 @@ searchforkey:
 	if key == nil {
 		/* If we've already tried resyncing the graph, then give up. */
 		if synced {
-			return nil, nil, errors.New("could not find suitable key")
+			return nil, nil, nil
 		}
 
 		/* If not, resync the graph and try again. */

@@ -759,11 +759,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:32e46c6715769ffb19959596ffc30c5a5dfe73287903f81734f21b0c8ca8aad9"
+  digest = "1:81346cbbaf2dfb1887e53f0fc1900ea1fe2233c7da8b5d169d87080a3064d1d9"
   name = "github.com/ucbrise/jedi-protocol-go"
   packages = ["."]
   pruneopts = "T"
-  revision = "14cba6ef5407988e85ded87b5ca9db94f89ea320"
+  revision = "5b11ad625ee5f1b1f4fc1381d4293f54a2e52b3c"
 
 [[projects]]
   digest = "1:a4ef215bd846f9407d095f526879cb232330e1e7a748c70e384f775a6a64fd3e"
