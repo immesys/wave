@@ -90,7 +90,7 @@ type WR1Extra struct {
 	ProverBodyKey   []byte
 
 	EnvelopeKey    []byte
-	JEDIDelegation *jedi.Delegation
+	JEDIDelegation []byte
 
 	//For NameDecl only
 	Namespace         HashSchemeInstance
@@ -221,7 +221,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 
 	//The key is actually 16 bytes of AES key + 12 bytes of GCM nonce
-	var jediDelegation *jedi.Delegation
+	var jediDelegation []byte
 	if len(envelopeKey) > 16+12 {
 		marshalled := envelopeKey[16+12:]
 		envelopeKey = envelopeKey[:16+12]
@@ -233,9 +233,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 		if len(marshalled) != 4+length {
 			return nil, nil, ErrDecryptBodyMalformed
 		}
-		if !jediDelegation.Unmarshal(marshalled[4:]) {
-			return nil, nil, ErrDecryptBodyMalformed
-		}
+		jediDelegation = marshalled[4:]
 	}
 	if len(envelopeKey) != 16+12 {
 		fmt.Printf("dc E\n")
