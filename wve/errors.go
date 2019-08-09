@@ -175,3 +175,5 @@ const MalformedPartition = 914
 const InvalidE2EEGrant = 915
 
 const ProofNotCached = 916
+
+const InvalidJEDIGrant = 917

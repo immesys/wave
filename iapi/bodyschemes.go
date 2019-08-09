@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"runtime"
@@ -12,8 +13,11 @@ import (
 
 	"github.com/immesys/asn1"
 	"github.com/immesys/wave/consts"
+	"github.com/immesys/wave/jediutils"
 	"github.com/immesys/wave/serdes"
 	"github.com/immesys/wave/wve"
+
+	"github.com/ucbrise/jedi-protocol-go"
 )
 
 var ErrDecryptBodyMalformed = errors.New("body is malformed")
@@ -85,7 +89,9 @@ type WR1Extra struct {
 	VerifierBodyKey []byte
 	ProverBodyKey   []byte
 
-	EnvelopeKey []byte
+	EnvelopeKey    []byte
+	JEDIDelegation []byte
+
 	//For NameDecl only
 	Namespace         HashSchemeInstance
 	NamespaceLocation LocationSchemeInstance
@@ -215,6 +221,20 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 	}
 
 	//The key is actually 16 bytes of AES key + 12 bytes of GCM nonce
+	var jediDelegation []byte
+	if len(envelopeKey) > 16+12 {
+		marshalled := envelopeKey[16+12:]
+		envelopeKey = envelopeKey[:16+12]
+
+		if len(marshalled) < 4 {
+			return nil, nil, ErrDecryptBodyMalformed
+		}
+		length := int(binary.LittleEndian.Uint32(marshalled[:4]))
+		if len(marshalled) != 4+length {
+			return nil, nil, ErrDecryptBodyMalformed
+		}
+		jediDelegation = marshalled[4:]
+	}
 	if len(envelopeKey) != 16+12 {
 		fmt.Printf("dc E\n")
 		return nil, nil, ErrDecryptBodyMalformed
@@ -244,7 +264,7 @@ func (w *WR1BodyScheme) DecryptBody(ctx context.Context, dc BodyDecryptionContex
 
 	//fmt.Printf("dc2 1\n")
 	//We know the partition labels now
-	rvextra := &WR1Extra{Partition: realpartition, EnvelopeKey: envelopeKey}
+	rvextra := &WR1Extra{Partition: realpartition, EnvelopeKey: envelopeKey, JEDIDelegation: jediDelegation}
 	extra = rvextra
 	if explicitProverBodyKey != nil {
 		bodyKeys = explicitProverBodyKey[28:]
@@ -343,6 +363,52 @@ func isPolicyE2EE(p PolicySchemeInstance) (HashSchemeInstance, LocationSchemeIns
 	return nil, nil, false
 }
 
+func isPolicyJEDI(p PolicySchemeInstance) (HashSchemeInstance, LocationSchemeInstance, bool, bool) {
+	rtree, ok := p.(*RTreePolicy)
+	if !ok {
+		return nil, nil, false, false
+	}
+	for _, s := range rtree.SerdesForm.Statements {
+		hi := HashSchemeInstanceFor(&s.PermissionSet)
+		if hi.Supported() && hi.MultihashString() == consts.JEDIBuiltinPSET {
+			ns := rtree.WR1DomainEntity()
+			nsloc := LocationSchemeInstanceFor(&rtree.SerdesForm.NamespaceLocation)
+
+			seen := make(map[string]struct{})
+			for _, perm := range s.Permissions {
+				seen[perm] = struct{}{}
+			}
+			_, decrypt := seen["decrypt"]
+			_, sign := seen["sign"]
+
+			return ns, nsloc, decrypt, sign
+		}
+	}
+	return nil, nil, false, false
+}
+
+func computeBatches(numtasks int, numworkers int) [][]int {
+	batches := make([][]int, numworkers)
+	numperworker := numtasks / numworkers
+	if numperworker == 0 {
+		numperworker = 1
+	}
+	for i := 0; i < numworkers; i++ {
+		batch := []int{}
+		if i == numworkers-1 {
+			for k := i * numperworker; k < numtasks; k++ {
+				batch = append(batch, k)
+			}
+		} else {
+			for k := i * numperworker; k < (i+1)*numperworker && k < numtasks; k++ {
+				batch = append(batch, k)
+			}
+		}
+		batches[i] = batch
+	}
+	return batches
+}
+
 func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionContext, attester *EntitySecrets, subject *Entity, intermediateForm *serdes.WaveAttestation, policy PolicySchemeInstance) (encryptedForm *serdes.WaveAttestation, extra interface{}, err error) {
 	//fmt.Printf("encrypt body called\n")
 	ec := ecp.(WR1BodyEncryptionContext)
@@ -424,6 +490,41 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 			return nil, nil, err
 		}
 	}
+
+	/* Check for JEDI delegation. */
+	jediNS, _, jediDecrypt, jediSign := isPolicyJEDI(policy)
+	var jediDelegation *jedi.Delegation
+	if jediDecrypt || jediSign {
+		startTime := plaintextBody.VerifierBody.Validity.NotBefore
+		endTime := plaintextBody.VerifierBody.Validity.NotAfter
+		rtree, ok := policy.(*RTreePolicy)
+		if !ok {
+			panic("Trying to apply JEDI to non-RTree policy")
+		}
+		uriPath := jedi.DecodeURIPathFrom(rtree.VisibilityURI)
+		startPath, err2 := jedi.ParseTime(startTime)
+		if err2 != nil {
+			return nil, nil, err2
+		}
+		endPath, err2 := jedi.ParseTime(endTime)
+		if err2 != nil {
+			return nil, nil, err2
+		}
+		rangeTimePaths := jedi.TimeRangeFromPaths(startPath, endPath)
+
+		reader := &WR1JEDIKeyStoreReader{WR1JEDIKeyRetriever: ec}
+		perm := jedi.Permission(0)
+		if jediDecrypt {
+			perm |= jedi.DecryptPermission
+		}
+		if jediSign {
+			perm |= jedi.SignPermission
+		}
+		jediDelegation, err2 = jedi.DelegateParsed(ctx, reader, jediutils.WAVEPatternEncoderSingleton, jediNS.Multihash(), uriPath, rangeTimePaths, perm)
+		if err2 != nil {
+			return nil, nil, err2
+		}
+	}
 	e2eKeyOkay := make([]bool, len(e2eDelegatedBundle))
 
 	//Generating these delegated keys is a bit of a pain. Sequentially its about 1.5s on my machine.
@@ -431,27 +532,11 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	then := time.Now()
 	if true {
 		workers := runtime.NumCPU()
-		batches := make([][]int, workers)
-		numperworker := len(partitions) / workers
-		if numperworker == 0 {
-			numperworker = 1
-		}
-		for i := 0; i < workers; i++ {
-			batch := []int{}
-			if i == workers-1 {
-				for k := i * numperworker; k < len(partitions); k++ {
-					batch = append(batch, k)
-				}
-
-			} else {
-				for k := i * numperworker; k < (i+1)*numperworker && k < len(partitions); k++ {
-					batch = append(batch, k)
-				}
-			}
-			batches[i] = batch
-		}
+		batches := computeBatches(len(partitions), workers)
+		e2eBatches := computeBatches(len(e2ePartitions), workers)
 		wg := sync.WaitGroup{}
 		wg.Add(workers)
+		workererrs := make([]error, workers)
 		for i := 0; i < workers; i++ {
 			go func(i int) {
 				batchpartitions := make([][][]byte, 0, len(batches[i]))
@@ -471,7 +556,9 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 					cf := kz[kzidx].SecretCanonicalForm()
 					kzidx += 1
 					delegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BLS12381_s20)
-					if isE2E {
+				}
+				if isE2E {
+					for _, idx := range e2eBatches[i] {
 						//Also try generate the e2e key, which is in the namespace system
 						var sk SlottedSecretKey
 						ec.WR1OAQUEKeysForContent(ctx, e2eNS, true, e2ePartitions[idx], func(k SlottedSecretKey) bool {
@@ -484,7 +571,8 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 						})
 						if sk != nil {
 							e2eKeyOkay[idx] = true
-							//fmt.Printf("Delegated NS key %s was ok\n", WR1PartitionToIntString(partitions[idx]))
+							// fmt.Printf("Delegated NS key %s was ok\n", WR1PartitionToIntString(e2ePartitions[idx]))
+							//fmt.Printf("Key %d was ok: %v\n", idx, e2ePartitions[idx])
 							cf := sk.SecretCanonicalForm()
 							e2eDelegatedBundle[idx].Key = cf.Private.Content.(serdes.EntitySecretOQAUE_BLS12381_s20)
 						}
@@ -494,6 +582,11 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 			}(i)
 		}
 		wg.Wait()
+		for _, workererr := range workererrs {
+			if workererr != nil {
+				return nil, nil, workererr
+			}
+		}
 		// for l, ll := range delegatedBundle {
 		// 	//	fmt.Printf("%d : %p\n", l, ll)
 		// }
@@ -587,6 +680,7 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 		}
 		e2eBundle.Entries = entries
 	}
+
 	// for idx, p := range partitions {
 	// 	fmt.Printf("granted key %d: %s\n", idx, WR1PartitionToIntString(p))
 	// }
@@ -653,7 +747,17 @@ func (w *WR1BodyScheme) EncryptBody(ctx context.Context, ecp BodyEncryptionConte
 	rand.Read(envelopeSymKey)
 
 	//Encrypt under the destination's curve25519 key
-	ciphertext.EnvelopeKey_Curve25519, err = directKey1.EncryptMessage(ctx, envelopeSymKey)
+	var recipientData []byte
+	if jediDelegation == nil {
+		recipientData = envelopeSymKey
+	} else {
+		marshalled := jediDelegation.Marshal()
+		recipientData = make([]byte, len(envelopeSymKey)+4+len(marshalled))
+		copy(recipientData[:len(envelopeSymKey)], envelopeSymKey)
+		binary.LittleEndian.PutUint32(recipientData[len(envelopeSymKey):len(envelopeSymKey)+4], uint32(len(marshalled)))
+		copy(recipientData[len(envelopeSymKey)+4:], marshalled)
+	}
+	ciphertext.EnvelopeKey_Curve25519, err = directKey1.EncryptMessage(ctx, recipientData)
 	if err != nil {
 		return nil, nil, err
 	}

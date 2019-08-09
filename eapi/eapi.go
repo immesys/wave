@@ -52,7 +52,7 @@ func (e *EAPI) StartServer(listenaddr string, httplistenaddr string) {
 	go grpcServer.Serve(l)
 	go runHTTPserver(listenaddr, httplistenaddr)
 }
-func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engine, wve.WVE) {
+func (e *EAPI) GetEngine(ctx context.Context, in *pb.Perspective) (*engine.Engine, wve.WVE) {
 	if in == nil {
 		return nil, wve.Err(wve.InvalidParameter, "missing perspective parameter")
 	}
@@ -95,11 +95,11 @@ func (e *EAPI) getEngine(ctx context.Context, in *pb.Perspective) (*engine.Engin
 	}
 	return eng, nil
 }
-func (e *EAPI) getEngineNoPerspective() *engine.Engine {
+func (e *EAPI) GetEngineNoPerspective() *engine.Engine {
 	return e.npengine
 }
 func (e *EAPI) Inspect(ctx context.Context, p *pb.InspectParams) (*pb.InspectResponse, error) {
-	eng := e.getEngineNoPerspective()
+	eng := e.GetEngineNoPerspective()
 	//Try as entitysecret
 
 	//Bit of a hack: users might accidentally send us PEM instead of DER. Check that first:
@@ -211,7 +211,7 @@ func (e *EAPI) CreateEntity(ctx context.Context, p *pb.CreateEntityParams) (*pb.
 	}, nil
 }
 func (e *EAPI) CreateAttestation(ctx context.Context, p *pb.CreateAttestationParams) (*pb.CreateAttestationResponse, error) {
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.CreateAttestationResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -380,7 +380,7 @@ func (e *EAPI) PublishAttestation(ctx context.Context, p *pb.PublishAttestationP
 func (e *EAPI) AddAttestation(ctx context.Context, p *pb.AddAttestationParams) (*pb.AddAttestationResponse, error) {
 	//TODO even if a dot is inserted with a prover key, it seems we insert it as pending and don't actually
 	//treat it as decrypted unless we also somehow decrypt it from scratch.
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.AddAttestationResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -419,7 +419,7 @@ func (e *EAPI) LookupAttestations(ctx context.Context, p *pb.LookupAttestationsP
 			Error: ToError(wve.Err(wve.InvalidParameter, "you should specify To entity or From entity, not both")),
 		}, nil
 	}
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.LookupAttestationsResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -468,7 +468,7 @@ results:
 	return rv, nil
 }
 func (e *EAPI) ResyncPerspectiveGraph(ctx context.Context, p *pb.ResyncPerspectiveGraphParams) (*pb.ResyncPerspectiveGraphResponse, error) {
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.ResyncPerspectiveGraphResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -483,7 +483,7 @@ func (e *EAPI) ResyncPerspectiveGraph(ctx context.Context, p *pb.ResyncPerspecti
 	return &pb.ResyncPerspectiveGraphResponse{}, nil
 }
 func (e *EAPI) SyncStatus(ctx context.Context, p *pb.SyncParams) (*pb.SyncResponse, error) {
-	eng, werr := e.getEngine(ctx, p.Perspective)
+	eng, werr := e.GetEngine(ctx, p.Perspective)
 	if werr != nil {
 		return &pb.SyncResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
@@ -512,7 +512,7 @@ func (e *EAPI) SyncStatus(ctx context.Context, p *pb.SyncParams) (*pb.SyncRespon
 }
 func (e *EAPI) WaitForSyncCompleteHack(p *pb.SyncParams) error {
 	ctx := context.Background()
-	eng, werr := e.getEngine(ctx, p.Perspective)
+	eng, werr := e.GetEngine(ctx, p.Perspective)
 	if werr != nil {
 		return werr
 	}
@@ -523,7 +523,7 @@ func (e *EAPI) WaitForSyncCompleteHack(p *pb.SyncParams) error {
 
 func (e *EAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncCompleteServer) error {
 	ctx := srv.Context()
-	eng, werr := e.getEngine(ctx, p.Perspective)
+	eng, werr := e.GetEngine(ctx, p.Perspective)
 	if werr != nil {
 		srv.Send(&pb.SyncResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
@@ -587,7 +587,7 @@ func (e *EAPI) WaitForSyncComplete(p *pb.SyncParams, srv pb.WAVE_WaitForSyncComp
 }
 
 func (e *EAPI) VerifySignature(ctx context.Context, p *pb.VerifySignatureParams) (*pb.VerifySignatureResponse, error) {
-	eng := e.getEngineNoPerspective()
+	eng := e.GetEngineNoPerspective()
 	dctx := engine.NewEngineDecryptionContext(eng)
 
 	loc, err := LocationSchemeInstance(p.SignerLocation)
@@ -623,7 +623,7 @@ func (e *EAPI) VerifySignature(ctx context.Context, p *pb.VerifySignatureParams)
 }
 
 func (e *EAPI) Sign(ctx context.Context, p *pb.SignParams) (*pb.SignResponse, error) {
-	eng, werr := e.getEngine(ctx, p.Perspective)
+	eng, werr := e.GetEngine(ctx, p.Perspective)
 	if werr != nil {
 		return &pb.SignResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
@@ -649,7 +649,7 @@ func (e *EAPI) Sign(ctx context.Context, p *pb.SignParams) (*pb.SignResponse, er
 }
 
 func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.VerifyProofResponse, error) {
-	eng := e.getEngineNoPerspective()
+	eng := e.GetEngineNoPerspective()
 	dctx := engine.NewEngineDecryptionContext(eng)
 
 	der := p.ProofDER
@@ -731,10 +731,10 @@ func (e *EAPI) VerifyProof(ctx context.Context, p *pb.VerifyProofParams) (*pb.Ve
 func (e *EAPI) ResolveHash(ctx context.Context, p *pb.ResolveHashParams) (*pb.ResolveHashResponse, error) {
 	var en *engine.Engine
 	if p.Perspective == nil {
-		en = e.getEngineNoPerspective()
+		en = e.GetEngineNoPerspective()
 	} else {
 		var err wve.WVE
-		en, err = e.getEngine(ctx, p.Perspective)
+		en, err = e.GetEngine(ctx, p.Perspective)
 		if err != nil {
 			return &pb.ResolveHashResponse{
 				Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -805,7 +805,7 @@ func (e *EAPI) ResolveHash(ctx context.Context, p *pb.ResolveHashParams) (*pb.Re
 	}, nil
 }
 func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeProofParams) (*pb.BuildRTreeProofResponse, error) {
-	eng, werr := e.getEngine(ctx, p.Perspective)
+	eng, werr := e.GetEngine(ctx, p.Perspective)
 	if werr != nil {
 		return &pb.BuildRTreeProofResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", werr)),
@@ -981,7 +981,7 @@ func (e *EAPI) BuildRTreeProof(ctx context.Context, p *pb.BuildRTreeProofParams)
 }
 
 func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (*pb.EncryptMessageResponse, error) {
-	eng := e.getEngineNoPerspective()
+	eng := e.GetEngineNoPerspective()
 	params := iapi.PEncryptMessage{}
 	if len(p.SubjectHash) != 0 {
 		subHash := iapi.HashSchemeInstanceFromMultihash(p.SubjectHash)
@@ -1055,7 +1055,7 @@ func (e *EAPI) EncryptMessage(ctx context.Context, p *pb.EncryptMessageParams) (
 }
 
 func (e *EAPI) DecryptMessage(ctx context.Context, p *pb.DecryptMessageParams) (*pb.DecryptMessageResponse, error) {
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.DecryptMessageResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -1094,7 +1094,7 @@ func (e *EAPI) DecryptMessage(ctx context.Context, p *pb.DecryptMessageParams) (
 }
 
 func (e *EAPI) ResolveName(ctx context.Context, p *pb.ResolveNameParams) (*pb.ResolveNameResponse, error) {
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.ResolveNameResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -1139,7 +1139,7 @@ func (e *EAPI) ResolveName(ctx context.Context, p *pb.ResolveNameParams) (*pb.Re
 }
 
 func (e *EAPI) CreateNameDeclaration(ctx context.Context, p *pb.CreateNameDeclarationParams) (*pb.CreateNameDeclarationResponse, error) {
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.CreateNameDeclarationResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -1256,7 +1256,7 @@ func (e *EAPI) CreateNameDeclaration(ctx context.Context, p *pb.CreateNameDeclar
 }
 
 func (e *EAPI) MarkEntityInteresting(ctx context.Context, p *pb.MarkEntityInterestingParams) (*pb.MarkEntityInterestingResponse, error) {
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.MarkEntityInterestingResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -1290,7 +1290,7 @@ func (e *EAPI) MarkEntityInteresting(ctx context.Context, p *pb.MarkEntityIntere
 }
 
 func (e *EAPI) ResolveReverseName(ctx context.Context, p *pb.ResolveReverseNameParams) (*pb.ResolveReverseNameResponse, error) {
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.ResolveReverseNameResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),
@@ -1319,7 +1319,7 @@ func (e *EAPI) ResolveReverseName(ctx context.Context, p *pb.ResolveReverseNameP
 }
 
 func (e *EAPI) Revoke(ctx context.Context, p *pb.RevokeParams) (*pb.RevokeResponse, error) {
-	eng, err := e.getEngine(ctx, p.Perspective)
+	eng, err := e.GetEngine(ctx, p.Perspective)
 	if err != nil {
 		return &pb.RevokeResponse{
 			Error: ToError(wve.ErrW(wve.InvalidParameter, "could not create perspective", err)),

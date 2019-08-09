@@ -784,6 +784,10 @@ func resolveEntityNameOrHashOrFile(conn pb.WAVEClient, perspective *pb.Perspecti
 			return rv
 		} else if in == "wavemq" {
 			return []byte("\x1b\x20\x14\x33\x74\xb3\x2f\xd2\x74\x39\x54\xfe\x47\x86\xf6\xcf\x86\xd4\x03\x72\x0f\x5e\xc4\x42\x36\xb6\x58\xc2\x6a\x1e\x68\x0f\x6e\x01")
+		} else if in == "jedi" {
+			rv := make([]byte, len(consts.JEDIBuiltinPSETByteArray))
+			copy(rv, consts.JEDIBuiltinPSETByteArray)
+			return rv
 		}
 
 		resp, err := conn.ResolveName(context.Background(), &pb.ResolveNameParams{
